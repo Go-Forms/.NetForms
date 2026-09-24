@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
 
 - The property grid keeps its place while you edit: after a change the selection, the scroll position, an open
   flags drop-down (Anchor: Top, then Left, then Right without looking for it again) and the field Tab moved to
   stay as they were. Before, each change reloaded the form a moment later, selected the form and rebuilt the
   grid from the top.
 - Renaming a control keeps it selected under its new name.
+- New projects reference NetForms 0.1.0-preview.3.
 
 ## 0.1.1
 

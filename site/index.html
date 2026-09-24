@@ -98,7 +98,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.2" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0-preview.3" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -191,7 +191,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>New app</h3>
 <pre class="term" id="new-app"><span class="p"># project and item templates</span>
-dotnet new install NetForms.Templates::0.1.0-preview.2
+dotnet new install NetForms.Templates::0.1.0-preview.3
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>

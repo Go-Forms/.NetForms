@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-preview.3 — the designer keeps its place
 
 - **Designer:** editing a property no longer resets the property grid — the selection, the scroll position, an open
   Anchor drop-down and the focus stay where they were.
