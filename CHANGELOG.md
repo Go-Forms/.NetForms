@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-preview.2 — data binding and grid editing
 
 - **DataGridView:** the default cell styles carry the grid's font and follow it, as in WinForms — a custom cell's
   `Paint` gets `cellStyle.Font` (it was `null`), and `new Font(grid.DefaultCellStyle.Font, FontStyle.Bold)` works.

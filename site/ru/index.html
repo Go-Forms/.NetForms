@@ -94,7 +94,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.1" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0-preview.2" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -152,6 +152,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
             <tr><th colspan="2">Работает</th></tr>
             <tr><td>Раскладка</td><td>Anchor, Dock, TableLayoutPanel, FlowLayoutPanel, AutoSize, AutoScroll</td></tr>
             <tr><td>Контролы</td><td>От Button до DataGridView: текст, списки, деревья, ListView (все виды), RichTextBox, выбор дат, MDI</td></tr>
+            <tr><td>Данные</td><td>BindingSource, DataSet и DataTable, master-detail, правка в DataGridView с её событиями</td></tr>
             <tr><td>Меню</td><td>MenuStrip, ToolStrip, StatusStrip, ContextMenuStrip, NotifyIcon</td></tr>
             <tr><td>Рисование</td><td>System.Drawing на Skia, метрики TextRenderer, свой OnPaint</td></tr>
             <tr><td>Ресурсы</td><td>картинки и значки в .resx, Properties.Settings, app.config</td></tr>
@@ -186,7 +187,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>Новое приложение</h3>
 <pre class="term" id="new-app"><span class="p"># шаблоны проекта и форм</span>
-dotnet new install NetForms.Templates::0.1.0-preview.1
+dotnet new install NetForms.Templates::0.1.0-preview.2
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>

@@ -18,7 +18,7 @@ NetForms — копия Windows Forms. **Справочник по API — от 
 `System.Windows.Forms` и `System.Drawing.Common` — генерируется автоматически:
 **[покрытие API](../api/README.md)** (на английском).
 
-Состояние на версию **0.1.0-preview.1** (сентябрь 2026).
+Состояние на версию **0.1.0-preview.2** (сентябрь 2026).
 
 ---
 

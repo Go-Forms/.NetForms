@@ -98,7 +98,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.1" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0-preview.2" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -156,6 +156,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
             <tr><th colspan="2">Works</th></tr>
             <tr><td>Layout</td><td>Anchor, Dock, TableLayoutPanel, FlowLayoutPanel, AutoSize, AutoScroll</td></tr>
             <tr><td>Controls</td><td>Button to DataGridView: text, lists, trees, ListView (all views), RichTextBox, pickers, MDI</td></tr>
+            <tr><td>Data</td><td>BindingSource, DataSet and DataTable, master-detail, DataGridView editing with its events</td></tr>
             <tr><td>Menus</td><td>MenuStrip, ToolStrip, StatusStrip, ContextMenuStrip, NotifyIcon</td></tr>
             <tr><td>Drawing</td><td>System.Drawing on Skia, TextRenderer metrics, custom OnPaint</td></tr>
             <tr><td>Resources</td><td>.resx images and icons, Properties.Settings, app.config</td></tr>
@@ -190,7 +191,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>New app</h3>
 <pre class="term" id="new-app"><span class="p"># project and item templates</span>
-dotnet new install NetForms.Templates::0.1.0-preview.1
+dotnet new install NetForms.Templates::0.1.0-preview.2
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>

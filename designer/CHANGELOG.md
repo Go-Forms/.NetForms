@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.1.1
 
 - Events tab: a **+** button creates the handler with the default name in one click (no need to type the
   name and press Enter) and opens it; **✕** unbinds a handler, the method stays in the code.
+- New projects reference NetForms 0.1.0-preview.2 (data binding and grid editing, see the NetForms changelog).
 
 ## 0.1.0 — first preview
 

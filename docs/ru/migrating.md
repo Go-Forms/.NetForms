@@ -48,7 +48,7 @@ dotnet run
    </PropertyGroup>
 
 +  <ItemGroup>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.1" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.2" />
 +    <!-- What <UseWindowsForms>true</UseWindowsForms> added: the WinForms namespaces as implicit usings. -->
 +    <Using Include="System.Drawing" />
 +    <Using Include="System.Windows.Forms" />
@@ -94,7 +94,7 @@ dotnet run
 
 1. `TargetFramework`: `net10.0` (или `net10.0-windows` — только для Windows).
 2. Удалите `<UseWindowsForms>true</UseWindowsForms>` (и `<EnableWindowsTargeting>`, если добавляли).
-3. Добавьте `<PackageReference Include="NetForms" Version="0.1.0-preview.1" />`.
+3. Добавьте `<PackageReference Include="NetForms" Version="0.1.0-preview.2" />`.
 4. Если включён `ImplicitUsings`, добавьте `<Using Include="System.Drawing" />` и `<Using Include="System.Windows.Forms" />`.
 
 ## Что может сказать отчёт
