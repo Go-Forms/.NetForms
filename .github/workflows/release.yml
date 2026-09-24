@@ -66,25 +66,31 @@ jobs:
           path: artifacts/pkg/
 
       # Trusted publishing (no stored key): a policy on nuget.org for this repository and release.yml, and
-      # the repository variable NUGET_USER. Otherwise the secret NUGET_API_KEY.
+      # the repository variable NUGET_USER. The secret NUGET_API_KEY is the fallback: used when there is no
+      # policy, when the exchange fails, or when nuget.org refuses the temporary key.
       - name: NuGet login (trusted publishing)
         id: nuget-login
         if: env.PUBLISH == 'true' && vars.NUGET_USER != ''
+        continue-on-error: true
         uses: NuGet/login@v1
         with:
           user: ${{ vars.NUGET_USER }}
 
-      # The .snupkg symbol packages go with their .nupkg.
+      # The .snupkg symbol packages go with their .nupkg; --skip-duplicate makes a retry safe.
       - name: Push to nuget.org
         if: env.PUBLISH == 'true'
         env:
-          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY }}
+          TRUSTED_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          SECRET_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          if [ -z "$NUGET_API_KEY" ]; then
-            echo "::error::No NuGet credentials: set the repository variable NUGET_USER (trusted publishing) or the secret NUGET_API_KEY (docs/RELEASING.md)."
-            exit 1
+          push() { dotnet nuget push "artifacts/pkg/*.nupkg" --api-key "$1" --source https://api.nuget.org/v3/index.json --skip-duplicate; }
+          if [ -n "$TRUSTED_KEY" ]; then
+            if push "$TRUSTED_KEY"; then exit 0; fi
+            echo "::warning::nuget.org refused the trusted-publishing key. The policy needs the scope 'Push new packages and package versions' and a glob matching NetForms* (docs/RELEASING.md)."
           fi
-          dotnet nuget push "artifacts/pkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          if [ -n "$SECRET_KEY" ]; then push "$SECRET_KEY"; exit $?; fi
+          echo "::error::Nothing could publish: fix the trusted-publishing policy on nuget.org or add the secret NUGET_API_KEY (docs/RELEASING.md)."
+          exit 1
 
   vscode:
     runs-on: ubuntu-latest

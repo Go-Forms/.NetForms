@@ -49,13 +49,20 @@
 
 1. Войдите на nuget.org под учётной записью, которая будет владельцем пакетов.
 2. *Username → Trusted Publishing → Create*: Repository Owner `Go-Forms`, Repository `.NetForms`,
-   Workflow File `release.yml` (если публикация упадёт с ошибкой политики, добавьте вторую политику с
-   `ci.yml` — CI вызывает `release.yml` как reusable workflow).
+   Workflow File `release.yml` (если публикация из CI упадёт с ошибкой политики, добавьте вторую политику с
+   `ci.yml` — CI вызывает `release.yml` как reusable workflow). **Scopes: «Push new packages and package
+   versions»** (не только новых версий: первые публикации — это новые пакеты), **Glob Pattern: `NetForms*`**
+   (или `*`). Environment оставьте пустым.
 3. В GitHub: *Settings → Secrets and variables → Actions → Variables* → переменная `NUGET_USER` = имя
    пользователя nuget.org (не e-mail).
 
 Workflow получает от GitHub OIDC-токен, обменивает его на ключ, живущий час (`NuGet/login@v1`), и публикует.
 Самой первой публикацией нового id на nuget.org владельцем становится эта учётная запись.
+
+Если в логе «Successfully exchanged OIDC token for NuGet API key», а затем `403 … does not have permission to
+access the specified package`, — политика найдена, но не разрешает эту публикацию: проверьте Scopes и Glob
+Pattern (выше) и что e-mail учётной записи nuget.org подтверждён. Если в репозитории есть и секрет
+`NUGET_API_KEY`, workflow после такого отказа повторяет публикацию с ним.
 
 **B. API-ключ.**
 
