@@ -31,6 +31,7 @@
 		filter: '',
 		props: null, // { id, rows }
 		events: null,
+		openFlags: { id: null, names: new Set() }, // the flags drop-downs left open, kept across edits
 		busy: false,
 		tabOrder: false,
 		tabOrderNext: 0,
@@ -67,7 +68,7 @@
 				renderToolbox();
 				break;
 			case 'view':
-				receiveView(m.view, m.select, m.reset);
+				receiveView(m.view, m.select);
 				break;
 			case 'properties':
 				if (m.id === primaryId()) { state.props = { id: m.id, rows: m.rows }; renderInspector(); }
@@ -79,6 +80,7 @@
 				done();
 				toast(m.message, 'error');
 				renderStage();
+				requestInspector(); // the grid shows the value that stands, not the one refused
 				break;
 			case 'parseError':
 				done();
@@ -90,10 +92,12 @@
 
 	function done() { state.busy = false; document.body.style.cursor = ''; }
 
-	function receiveView(view, select, reset) {
+	function receiveView(view, select) {
 		done();
+		const hadError = !!state.parseError;
 		state.parseError = null;
 		const before = state.selectNew;
+		const selectedBefore = state.selection.join('\n');
 		state.view = view;
 		if (before) {
 			const fresh = allIds().filter((id) => !before.has(id));
@@ -102,13 +106,21 @@
 		} else if (select) {
 			state.selection = select;
 		}
-		if (reset) state.selection = [''];
 		const ids = new Set(allIds());
 		state.selection = state.selection.filter((id) => id === '' || ids.has(id));
 		if (!state.selection.length) state.selection = [''];
-		state.props = null;
-		state.events = null;
-		renderAll();
+		// The same selection after an edit: the inspector stays as it is (scrolled, a drop-down open, the
+		// focus in the next field) until the fresh values arrive, instead of blinking through "Loading…".
+		const same = !hadError && state.selection.join('\n') === selectedBefore && (state.tab === 'events' ? state.events : state.props);
+		if (!same) {
+			state.props = null;
+			state.events = null;
+		}
+		renderToolbar();
+		renderStage();
+		renderTray();
+		if (!same) renderInspector();
+		renderStatus();
 		requestInspector();
 	}
 
@@ -627,11 +639,66 @@
 
 	// --- inspector: properties and events -------------------------------------------------------------
 
-	function renderInspector() {
+	/**
+	 * What a rebuild of the inspector must not lose: the scroll position, the field with the focus
+	 * (and what is typed in it, not yet committed) - as long as it shows the same component and tab.
+	 */
+	function inspectorSnapshot() {
 		const box = $('inspector');
-		box.textContent = '';
-		if (!state.view || state.parseError) return;
+		const body = box.querySelector('.insp-body');
+		const snap = { key: box.dataset.key, scroll: body ? body.scrollTop : 0, focus: null };
+		const a = document.activeElement;
+		if (a && box.contains(a)) {
+			const row = a.closest('[data-prop]');
+			const flags = a.closest('[data-flags-of]');
+			snap.focus = {
+				prop: row ? row.dataset.prop : null,
+				flags: flags ? flags.dataset.flagsOf : null,
+				search: a.classList.contains('insp-search'),
+				check: a.type === 'checkbox' ? a.value : null,
+				tag: a.tagName,
+				value: a.tagName === 'INPUT' && a.value !== a.defaultValue ? a.value : null,
+				start: a.selectionStart,
+				end: a.selectionEnd,
+			};
+		}
+		return snap;
+	}
+
+	function restoreInspector(snap) {
+		const box = $('inspector');
+		if (snap.key !== box.dataset.key) return;
+		const body = box.querySelector('.insp-body');
+		if (body) body.scrollTop = snap.scroll;
+		const f = snap.focus;
+		if (!f) return;
+		let target = null;
+		if (f.search) target = box.querySelector('.insp-search');
+		else if (f.flags !== null) {
+			const panel = [...box.querySelectorAll('[data-flags-of]')].find((n) => n.dataset.flagsOf === f.flags);
+			target = panel && [...panel.querySelectorAll('input')].find((n) => n.value === f.check);
+		} else if (f.prop !== null) {
+			const row = [...box.querySelectorAll('[data-prop]')].find((n) => n.dataset.prop === f.prop);
+			target = row && row.querySelector(f.tag.toLowerCase());
+		}
+		if (!target || target.disabled) return;
+		if (f.value !== null && !target.readOnly) target.value = f.value;
+		target.focus({ preventScroll: true });
+		if (f.start !== null && f.start !== undefined && typeof target.setSelectionRange === 'function') {
+			try { target.setSelectionRange(f.start, f.end); } catch { /* not a text field */ }
+		}
+	}
+
+	function renderInspector() {
+		const snap = inspectorSnapshot();
+		const box = $('inspector');
+		// Removing a focused field makes the browser report its unfinished text as a change: not a commit.
+		state.rebuilding = true;
+		try { box.textContent = ''; } finally { state.rebuilding = false; }
+		if (!state.view || state.parseError) { delete box.dataset.key; return; }
 		const id = primaryId();
+		const data = state.tab === 'events' ? state.events : state.props;
+		box.dataset.key = data ? state.tab + '\n' + id : '';
 		const it = itemById(id), tr = trayById(id);
 		const head = el('div', 'insp-head');
 		head.append(el('div', 'target', id === '' ? state.view.className : id));
@@ -649,7 +716,7 @@
 		box.append(tabs);
 
 		const tools = el('div', 'insp-tools');
-		const search = el('input');
+		const search = el('input', 'insp-search');
 		search.placeholder = T('Search');
 		search.value = state.inspectorFilter || '';
 		search.addEventListener('input', () => { state.inspectorFilter = search.value.toLowerCase(); renderRows(body); });
@@ -662,6 +729,7 @@
 		help.id = 'help';
 		box.append(help);
 		renderRows(body);
+		restoreInspector(snap);
 	}
 
 	function renderRows(body) {
@@ -684,7 +752,12 @@
 				c.classList.toggle('collapsed');
 			});
 			const list = el('div', 'rows');
-			for (const r of rows) list.append(state.tab === 'events' ? eventRow(data.id, r) : propertyRow(data.id, r));
+			for (const r of rows) {
+				const row = state.tab === 'events' ? eventRow(data.id, r) : propertyRow(data.id, r);
+				row.dataset.prop = r.name;
+				list.append(row);
+				if (row.extra) list.append(row.extra);
+			}
 			c.append(h, list);
 			body.append(c);
 		}
@@ -704,7 +777,12 @@
 		const value = el('div', 'value');
 		row.append(name, value);
 		row.addEventListener('mouseenter', () => showHelp(r.name, r.description));
-		const commit = (v) => { if (v !== r.value) apply([{ op: 'setProp', id, prop: r.name, value: v }], state.selection); };
+		const commit = (v) => {
+			if (v === r.value) return;
+			// A renamed component stays selected under its new name.
+			const select = r.name === 'Name' ? state.selection.map((s) => (s === id ? v.trim() : s)) : state.selection;
+			apply([{ op: 'setProp', id, prop: r.name, value: v }], select);
+		};
 
 		switch (r.editor) {
 			case 'bool':
@@ -723,12 +801,18 @@
 				const more = el('button', 'mini', '▾');
 				more.title = 'Choose flags';
 				const panel = el('div', 'flags');
-				panel.style.display = 'none';
+				panel.dataset.flagsOf = r.name;
+				// Open stays open across the edits made in it: Top, then Left, then Right, without reopening.
+				const open = state.openFlags;
+				if (open.id !== id) { open.id = id; open.names = new Set(); }
+				panel.style.display = open.names.has(r.name) ? '' : 'none';
+				more.classList.toggle('on', open.names.has(r.name));
 				const set = new Set((r.value || '').split(',').map((s) => s.trim()).filter(Boolean));
 				for (const o of r.options || []) {
 					const label = el('label');
 					const cb = el('input');
 					cb.type = 'checkbox';
+					cb.value = o;
 					cb.checked = set.has(o);
 					cb.addEventListener('change', () => {
 						if (cb.checked) set.add(o); else set.delete(o);
@@ -738,9 +822,14 @@
 					label.append(cb, document.createTextNode(' ' + o));
 					panel.append(label);
 				}
-				more.addEventListener('click', () => { panel.style.display = panel.style.display === 'none' ? '' : 'none'; });
+				more.addEventListener('click', () => {
+					const show = panel.style.display === 'none';
+					panel.style.display = show ? '' : 'none';
+					more.classList.toggle('on', show);
+					if (show) open.names.add(r.name); else open.names.delete(r.name);
+				});
 				value.append(input, more);
-				queueMicrotask(() => row.parentNode && row.parentNode.insertBefore(panel, row.nextSibling));
+				row.extra = panel;
 				break;
 			}
 			case 'color': {
@@ -790,11 +879,12 @@
 		const input = el('input');
 		input.type = 'text';
 		input.value = val ?? '';
+		input.defaultValue = val ?? '';
 		input.addEventListener('keydown', (e) => {
 			if (e.key === 'Enter') { input.blur(); e.preventDefault(); }
 			if (e.key === 'Escape') { input.value = val ?? ''; input.blur(); }
 		});
-		input.addEventListener('change', () => commit(input.value));
+		input.addEventListener('change', () => { if (!state.rebuilding) commit(input.value); });
 		return input;
 	}
 

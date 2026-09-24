@@ -48,8 +48,14 @@ export class DesignerEditorProvider implements vscode.CustomTextEditorProvider {
 export class DesignerSession implements vscode.Disposable {
 	private host: HostClient | undefined;
 	private readonly subscriptions: vscode.Disposable[] = [];
-	/** Our own writes also come back as document changes; they must not trigger a reload. */
-	private ownWriteUntil = 0;
+	/**
+	 * The host saves each edit to disk, and VS Code reports that as a change of the document - late,
+	 * whenever its file watcher gets to it. Those changes are ours and must not reload the form (that
+	 * would drop the selection and rebuild the inspector); they are told apart by content, not by time.
+	 */
+	private readonly ownTexts: string[] = [];
+	private writing = 0;
+	private recheck = false;
 
 	constructor(
 		readonly document: vscode.TextDocument,
@@ -60,12 +66,11 @@ export class DesignerSession implements vscode.Disposable {
 		this.subscriptions.push(panel.webview.onDidReceiveMessage((m: FromWebview) => this.onMessage(m)));
 		this.subscriptions.push(vscode.workspace.onDidChangeTextDocument((e) => {
 			if (e.document !== document || e.contentChanges.length === 0) return;
-			if (Date.now() < this.ownWriteUntil) return;
 			// Edited as text (or by git): read it again once the edit has been saved.
-			if (!document.isDirty) void this.reopen();
+			this.changed();
 		}));
 		this.subscriptions.push(vscode.workspace.onDidSaveTextDocument((d) => {
-			if (d === document && Date.now() >= this.ownWriteUntil) void this.reopen();
+			if (d === document) this.changed();
 		}));
 	}
 
@@ -108,8 +113,32 @@ export class DesignerSession implements vscode.Disposable {
 	}
 
 	private async write(action: () => Promise<DesignerView>): Promise<DesignerView> {
-		this.ownWriteUntil = Date.now() + 3000;
-		try { return await action(); } finally { this.ownWriteUntil = Date.now() + 1500; }
+		this.writing++;
+		try { return await action(); } finally {
+			this.writing--;
+			this.rememberOwnText();
+			if (this.writing === 0 && this.recheck) {
+				this.recheck = false;
+				this.changed();
+			}
+		}
+	}
+
+	private rememberOwnText() {
+		let text: string;
+		try { text = fs.readFileSync(this.file, 'utf8'); } catch { return; }
+		text = normalize(text);
+		if (this.ownTexts.includes(text)) return;
+		this.ownTexts.push(text);
+		if (this.ownTexts.length > 8) this.ownTexts.shift();
+	}
+
+	/** The document changed on disk or in a text editor: reload the form unless the change is our own write. */
+	private changed() {
+		if (this.writing > 0) { this.recheck = true; return; }
+		if (this.document.isDirty) return;
+		if (this.ownTexts.includes(normalize(this.document.getText()))) return;
+		void this.reopen();
 	}
 
 	private show(view: DesignerView, select?: string[]) {
@@ -134,7 +163,8 @@ export class DesignerSession implements vscode.Disposable {
 	}
 
 	async reopen() {
-		try { this.post({ type: 'view', view: await this.ensureHost().open(this.file), reset: true }); }
+		// The selection stays where the components it names are still there.
+		try { this.post({ type: 'view', view: await this.ensureHost().open(this.file) }); }
 		catch (err) { this.reportError(err); }
 	}
 
@@ -173,6 +203,11 @@ export class DesignerSession implements vscode.Disposable {
 		for (const s of this.subscriptions) s.dispose();
 		this.host?.dispose();
 	}
+}
+
+/** The text as VS Code holds it: no BOM, one kind of line break. */
+function normalize(text: string): string {
+	return text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
 }
 
 function html(webview: vscode.Webview, media: vscode.Uri): string {

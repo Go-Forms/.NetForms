@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Designer:** editing a property no longer resets the property grid — the selection, the scroll position, an open
+  Anchor drop-down and the focus stay where they were.
+
 ## 0.1.0-preview.2 — data binding and grid editing
 
 - **DataGridView:** the default cell styles carry the grid's font and follow it, as in WinForms — a custom cell's

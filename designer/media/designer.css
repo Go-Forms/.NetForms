@@ -141,6 +141,7 @@ button, input, select { font: inherit; color: inherit; }
 .row .swatch { width: 14px; height: 14px; border: 1px solid #8888; flex: none; }
 .row .mini { padding: 0 4px; height: 20px; border: none; background: transparent; cursor: pointer; opacity: .7; }
 .row .mini:hover { opacity: 1; }
+.row .mini.on { opacity: 1; background: var(--vscode-toolbar-activeBackground, #8883); }
 .row .mini.create { font-weight: 700; color: var(--vscode-textLink-foreground, #0078d4); }
 .row .mini.create:hover, .row .mini.unbind:hover { background: var(--vscode-toolbar-hoverBackground, #8883); }
 .row.selected { background: var(--vscode-list-inactiveSelectionBackground); }

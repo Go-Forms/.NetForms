@@ -166,6 +166,74 @@ test('the canvas edits the form with the mouse', { skip, timeout: 120000 }, asyn
 	assert.deepEqual(errors, [], 'no script errors in the webview');
 });
 
+test('the property grid keeps its place while a property is edited', { skip, timeout: 90000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-grid-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1100, height: 480 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	const settled = () => page.evaluate(() => window.__settled || 0);
+	const gesture = async (fn) => {
+		await new Promise((r) => setTimeout(r, 50));
+		const before = await settled();
+		await fn();
+		await page.waitForFunction((n) => (window.__settled || 0) > n + 1, { timeout: 20000 }, before); // the view, then the properties
+		await new Promise((r) => setTimeout(r, 150));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+	};
+	const anchorLine = () => (/button1\.Anchor = (.*);/.exec(fs.readFileSync(designer, 'utf8')) || [, ''])[1];
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+
+	const b = await (await page.waitForSelector('.hit[data-id="button1"]')).boundingBox();
+	await page.mouse.click(b.x + 5, b.y + 5);
+	await page.waitForFunction(() => document.querySelector('#inspector [data-prop="Anchor"] button.mini'));
+	// Scrolled down to Anchor, its check boxes open.
+	const scroll = await page.evaluate(() => {
+		const body = document.querySelector('.insp-body');
+		document.querySelector('#inspector [data-prop="Anchor"] button.mini').click();
+		body.scrollTop = body.scrollHeight;
+		return body.scrollTop;
+	});
+	const state = () => page.evaluate(() => ({
+		open: document.querySelector('[data-flags-of="Anchor"]')?.style.display !== 'none',
+		scroll: document.querySelector('.insp-body').scrollTop,
+		selected: document.querySelector('.hit.primary')?.dataset.id,
+		target: document.querySelector('#inspector .target')?.textContent,
+	}));
+	const check = (flag) => gesture(() => page.evaluate((f) => [...document.querySelectorAll('[data-flags-of="Anchor"] input')].find((c) => c.value === f).click(), flag));
+
+	// Three flags one after another, without looking for Anchor again: the grid stays where it was.
+	await check('Top');
+	assert.match(anchorLine(), /Top/);
+	assert.deepEqual(await state(), { open: true, scroll, selected: 'button1', target: 'button1' });
+	await check('Left');
+	assert.match(anchorLine(), /Left/);
+	await check('Right');
+	const anchor = anchorLine();
+	assert.ok(/Top/.test(anchor) && /Left/.test(anchor) && !/Right/.test(anchor) && /Bottom/.test(anchor), anchor);
+	assert.deepEqual(await state(), { open: true, scroll, selected: 'button1', target: 'button1' });
+	await page.screenshot({ path: path.join(out, '8-anchor.png') });
+
+	// A committed text box leaves the focus in the next one, which Tab moved it to.
+	await page.evaluate(() => { const body = document.querySelector('.insp-body'); body.scrollTop = 0; });
+	await gesture(async () => {
+		const input = await page.evaluateHandle(() => document.querySelector('#inspector [data-prop="Text"] input'));
+		await input.click({ clickCount: 3 });
+		await input.type('OK');
+		await page.keyboard.press('Tab');
+	});
+	assert.match(fs.readFileSync(designer, 'utf8'), /button1\.Text = "OK";/);
+	assert.equal(await page.evaluate(() => document.activeElement.tagName !== 'BODY' && !!document.activeElement.closest('#inspector')), true, 'the focus stays in the grid');
+
+	assert.deepEqual(errors, [], 'no script errors in the webview');
+});
+
 test('in Russian, the chrome speaks Russian', { skip, timeout: 60000 }, async (t) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-ru-'));
 	for (const f of ['GalleryForm.cs', 'GalleryForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'Gallery', f), path.join(dir, f));
