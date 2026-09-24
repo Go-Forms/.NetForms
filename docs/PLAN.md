@@ -1960,30 +1960,66 @@ Windows и Linux CI; процент собравшихся без ручной �
 
 ## С чего начать следующую сессию
 
-0. **Публикация (Ф7, решения 127–132) подготовлена**, но не выполнена: нужны разовые действия владельца из
-   `docs/RELEASING.md` (секреты `NUGET_API_KEY`, `VSCE_PAT`, `OVSX_PAT`, publisher `netforms`, Pages), затем тег
-   `v0.1.0-preview.1`. После изменений API — `NetForms.ApiDiff --markdown docs/api` и цифры в `docs/compatibility.md`,
-   `README.md`, `site/`.
-1. Прочитать этот план и журнал решений: Ф4 (33–50), Ф5.0 (51–59), Ф5.1 (60–66), Ф5.2 (67–78), Ф5.3 (79–86),
-   Ф5.4–Ф5.7 (87–98), остаток Ф5.5 (99–104).
-2. **Ф6.К (решения 111–126) — перевод реальных проектов «по кнопке».** Корпус: `tests/corpus/corpus.json`
-   (6 проектов заказчика на .NET Framework 4.8/4.8.1 + открытые), тест `CorpusTests` (`NETFORMS_CORPUS=1`,
-   сеть), CI-задача `corpus`. Покрытие API — `dotnet run --project tools/NetForms.ApiDiff` (на Linux тоже;
-   `--show <Type>` — эталонная поверхность типа (полное имя: `System.Windows.Forms.RichTextBox`), `--forwards` —
-   фасад Drawing, `--forwards-winforms` — фасад WinForms). Дальше: провалы корпуса по списку «Открытые вопросы Ф6»
-   (печать — MDBEditor, `Binding` — tetris-oop, `GetStockIcon`), затем метрика ApiDiff по частоте использования.
-   Новый API на Windows сразу сверять оракулами (решение 126); эталонные исходники dotnet/winforms — `curl` с
-   raw.githubusercontent.com в scratchpad (сеть на Windows-машине стабильна).
-   Внимание: `grep` в этой среде — ugrep и молча пропускает часть файлов (`TextBox.cs`); искать `grep -a` или Python.
-3. **Ф5.0–Ф5.6 закрыты, Ф5.7 — в малом.** Дизайнер работает: `designer/` (VS Code), хост
-   `tools/NetFormsDesigner.Host`, шаблоны `templates/`, конвертер `tools/NetForms.Convert`. Дальше, по
-   порядку: **Ф6** (сделаны: герметичные golden и Linux — 105–106, чтение `.resx` — 107–108, расхождения с WinForms —
-   109–110): запись `.resx`, DPI/AutoScale, темы (+ `Edit Theme` в расширении), недостающие контролы по метрике
-   покрытия (сделаны `RichTextBox`, `CheckedListBox`, `DateTimePicker`, `MaskedTextBox`, `MonthCalendar`,
-   `NotifyIcon`, `ErrorProvider`, `TaskDialog`; дальше — печать, `WebBrowser`-заглушка, …), доступность,
-   AOT/single-file.
-4. Держать рядом `../GoForms/GoFormsDesigner/README.md` — он служит списком приёмки:
-   каждый пункт оттуда должен найтись в нашем расширении.
+Промт для запуска (скопировать в Claude Code в этой папке):
+
+> Прочитай `CLAUDE.md`, в `docs/PLAN.md` — раздел «С чего начать следующую сессию» и решения 127–138. Работай сразу
+> в `main` (разрешено заказчиком). Начни с пункта 1: баг `cellStyle.Font`, затем привязка к `DataSet`/`DataTable`,
+> затем редактирование в `DataGridView`. Каждое изменение — тест, сценарий оракула, `docs/compatibility.md` (англ. и
+> рус.), `NetForms.ApiDiff --markdown docs/api`; пуш — после зелёных `dotnet test NetForms.slnx` и `designer: npm test`.
+> Решения, которых нет в плане, записывай в журнал (со 139).
+
+**Состояние на 2026-09-24.** Вышел `0.1.0-preview.1` (решение 138): семь пакетов на nuget.org, GitHub Release с тегом,
+сайт <https://go-forms.github.io/.NetForms/>. Путь пользователя проверен с чистого кэша: шаблоны → проект → сборка из
+пакетов, `netforms-convert --apply` → сборка. Расширение собрано (шесть платформенных `.vsix` + универсальный), в
+Marketplace **не опубликовано**: нет `VSCE_PAT`. CI и сайт зелёные.
+
+Порядок работ:
+
+0. **Проверить, что `main` зелёный** (CI на Ubuntu и Windows, Site), и прочитать решения 127–138.
+1. **Пробелы, найденные при проверке выпуска** — самое заметное пользователю (подробности —
+   `docs/compatibility.md`, строки `DataGridView`, `BindingSource`, `Control.DataBindings`):
+   1. **Баг:** в `Paint` своей ячейки (`DataGridViewCell` с переопределённым `Paint`) `cellStyle.Font == null` —
+      должен приходить унаследованный стиль (`InheritedStyle`, шрифт сетки). Тест на офскрин-рендер.
+   2. **Привязка к данным ADO.NET** — наша часть (адаптеры СУБД — SqlClient, Npgsql — отдельные пакеты, заказчик их
+      отложил): `BindingSource` над `DataSet` с `DataMember = "Table"` даёт 0 строк; master-detail через `DataRelation`
+      как `DataMember` пуст; `ComboBox`/`ListBox` с `DisplayMember`/`ValueMember` над `DataTable` показывают пустой
+      текст; связь `DataRelation` лишней колонкой в сетке; нет `BindingContext`/`CurrencyManager`. Эталон —
+      `dotnet/winforms` (`ListBindingHelper`, `CurrencyManager`, `BindingContext`, `RelatedCurrencyManager`),
+      можно вендорить (MIT, в `THIRD-PARTY-NOTICES.md`).
+   3. **Редактирование в `DataGridView`:** `EditingControl`, `EditingControlShowing`, `CellValidating`/`CellValidated`,
+      `CellParsing`, `CurrentCellDirtyStateChanged`, `IDataGridViewEditingControl` (приёмка — колонка-календарь из
+      документации Microsoft «How to: Host Controls in DataGridView Cells»), затем `VirtualMode`.
+2. **Ранжировать недостающее по востребованности** (заказчик спрашивал «что переносить в первую очередь» —
+   ответ не дан): частота использования каждого недостающего типа и члена по корпусу `tests/corpus` плюс выборке
+   популярных открытых WinForms-проектов (новый режим ApiDiff, например `--usage <каталог>`: веса по исходникам). Результат — таблица в
+   `docs/compatibility.md` («что дальше») и порядок следующих работ.
+3. **Корпус Ф6.К** — оставшиеся провалы по списку «Открытые вопросы Ф6»: печать (`PrintDocument`,
+   `PrintPreviewDialog`), `Binding` (tetris-oop), `GetStockIcon`/`Icon`, автодополнение в `TextBox`/`ComboBox`.
+4. **Ф6 — полировка:** запись `.resx` дизайнером, DPI/AutoScale (per-monitor), темы и тёмная тема (+ `Edit Theme` в
+   расширении), доступность (automation peers Avalonia), drag-and-drop, AOT/single-file. Дизайнер: свойства-
+   расширители в панели свойств (`IExtenderProviderService`).
+5. **Выпуск и инфраструктура.**
+   - Владелец добавляет `VSCE_PAT` (действует до 30.11.2026), по желанию `OVSX_PAT` → *Actions → Release → Run
+     workflow* с *publish*. Проверить: задача `vscode-publish` прошла, расширение видно в Marketplace, VS Code ставит
+     сборку своей платформы.
+   - **До 1.12.2026** Marketplace перестанет принимать `VSCE_PAT`. Варианты: подписка Azure + managed identity
+     (`docs/RELEASING.md`, вариант B; у заказчика подписки сейчас нет) или `vsce publish --oidc`, если Marketplace
+     включит Trusted Publishing (следить за microsoft/vsmarketplace#1422), — тогда добавить этот путь в `release.yml`.
+     App registration не подходит (Marketplace отклоняет, microsoft/vscode-vsce#976).
+   - Зарезервировать префикс `NetForms.` на nuget.org (заявка владельца).
+   - Следующий выпуск `0.1.0-preview.2`: версия в `Directory.Build.props`, `templates/netforms-app/NetFormsApp1.csproj`,
+     `designer/package.json` (`netformsVersion`), `CHANGELOG.md`, `designer/CHANGELOG.md`, ApiDiff и цифры покрытия;
+     пуш в `main` выпускает сам.
+6. **Решения заказчика — без ответа не делать:** public signing фасадов открытым ключом Microsoft (решение 136),
+   чтобы компилировались сторонние пакеты контролов (ZedGraph, OxyPlot, ScottPlot, FastColoredTextBox,
+   ObjectListView); для DockPanelSuite ещё и снятие `FrameworkReference` WindowsDesktop.
+7. Держать рядом `../GoForms/GoFormsDesigner/README.md` — список приёмки дизайнера.
+
+Особенности облачной среды (Linux): .NET SDK — `apt-get update && apt-get install -y dotnet-sdk-10.0` (`dot.net`
+закрыт прокси); `azuresearch-*.nuget.org` и `marketplace.visualstudio.com` закрыты — `dotnet new install <id>` из
+nuget.org здесь не работает, `.nupkg` брать с `api.nuget.org/v3-flatcontainer/…` и ставить файлом; `grep` — ugrep,
+молча пропускает часть файлов (`TextBox.cs`) — искать `grep -a` или Python; окончания строк сохранять пофайлово
+(часть файлов в CRLF).
 
 Дифф-прогон против настоящего WinForms (решение 34) остаётся главным инструментом проверки.
 Теперь их три, все запускаются локально на Windows:
