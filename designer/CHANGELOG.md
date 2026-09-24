@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Events tab: a **+** button creates the handler with the default name in one click (no need to type the
+  name and press Enter) and opens it; **✕** unbinds a handler, the method stays in the code.
+
 ## 0.1.0 — first preview
 
 - Visual designer for `*.Designer.cs`: canvas painted by NetForms, toolbox, component tray,

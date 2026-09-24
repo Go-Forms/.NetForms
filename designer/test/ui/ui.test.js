@@ -141,6 +141,26 @@ test('the canvas edits the form with the mouse', { skip, timeout: 120000 }, asyn
 	await new Promise((r) => setTimeout(r, 1500));
 	assert.match(file(), /label1\.Click \+= label1_Click;/);
 	assert.match(fs.readFileSync(code, 'utf8'), /private void label1_Click\(object sender, EventArgs e\)/);
+
+	// The Events tab: "+" creates a handler with the default name in one click, "✕" unbinds it
+	// (the method stays in the code, as in VS).
+	const eventRow = (name) => page.evaluateHandle((n) => [...document.querySelectorAll('.row')].find((r) => r.querySelector('.name')?.textContent === n), name);
+	await gesture(async () => {
+		const tab = await page.evaluateHandle(() => [...document.querySelectorAll('.insp-tabs button')].find((b) => b.textContent === 'Events'));
+		await tab.click();
+	});
+	await page.waitForFunction(() => [...document.querySelectorAll('.row .name')].some((n) => n.textContent === 'MouseEnter'));
+	assert.equal(await (await eventRow('MouseEnter')).evaluate((r) => r.querySelector('.create')?.title), 'Create the handler label1_MouseEnter');
+	await gesture(async () => { await (await (await eventRow('MouseEnter')).evaluateHandle((r) => r.querySelector('.create'))).click(); });
+	await new Promise((r) => setTimeout(r, 500));
+	assert.match(file(), /label1\.MouseEnter \+= label1_MouseEnter;/);
+	assert.match(fs.readFileSync(code, 'utf8'), /private void label1_MouseEnter\(object sender, EventArgs e\)/);
+	await page.waitForFunction(() => [...document.querySelectorAll('.row')].some((r) => r.querySelector('.name')?.textContent === 'MouseEnter' && r.querySelector('.unbind')));
+	await shot('5-event');
+	await gesture(async () => { await (await (await eventRow('MouseEnter')).evaluateHandle((r) => r.querySelector('.unbind'))).click(); });
+	assert.doesNotMatch(file(), /label1\.MouseEnter/);
+	assert.match(fs.readFileSync(code, 'utf8'), /private void label1_MouseEnter\(object sender, EventArgs e\)/);
+	await page.waitForFunction(() => [...document.querySelectorAll('.row')].some((r) => r.querySelector('.name')?.textContent === 'MouseEnter' && r.querySelector('.create')));
 	await shot('5-final');
 
 	assert.deepEqual(errors, [], 'no script errors in the webview');

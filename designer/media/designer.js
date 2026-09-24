@@ -851,21 +851,29 @@
 		const value = el('div', 'value');
 		const input = textInput(r.handler || '', (v) => apply([{ op: 'setEvent', id, event: r.name, handler: v.trim() }], state.selection));
 		input.placeholder = '';
-		input.addEventListener('dblclick', () => {
+		// VS: double-click creates the handler with the default name (or goes to the existing one).
+		const createOrGo = () => {
 			if (r.handler) post({ type: 'gotoHandler', handler: r.handler });
 			else apply([{ op: 'setEvent', id, event: r.name, handler: r.defaultHandler }], state.selection);
-		});
+		};
+		input.addEventListener('dblclick', createOrGo);
 		value.append(input);
 		if (r.handler) {
-			const go = el('button', 'mini', '→');
+			const go = el('button', 'mini go', '→');
 			go.title = T('Go to the handler');
-			go.addEventListener('click', () => post({ type: 'gotoHandler', handler: r.handler }));
-			value.append(go);
+			go.addEventListener('click', createOrGo);
+			const unbind = el('button', 'mini unbind', '✕');
+			unbind.title = T('Remove the binding (the method stays in the code)');
+			unbind.addEventListener('click', () => apply([{ op: 'setEvent', id, event: r.name, handler: '' }], state.selection));
+			value.append(go, unbind);
+		} else {
+			// One click instead of typing a name and pressing Enter: the stub is written and opened.
+			const create = el('button', 'mini create', '+');
+			create.title = T('Create the handler {0}', r.defaultHandler);
+			create.addEventListener('click', createOrGo);
+			value.append(create);
 		}
-		name.addEventListener('dblclick', () => {
-			if (r.handler) post({ type: 'gotoHandler', handler: r.handler });
-			else apply([{ op: 'setEvent', id, event: r.name, handler: r.defaultHandler }], state.selection);
-		});
+		name.addEventListener('dblclick', createOrGo);
 		row.append(name, value);
 		return row;
 	}

@@ -20,6 +20,10 @@ Installing it and VS Code: [Install and set up](install.md#4-vs-code-and-the-des
   saved here opens in Visual Studio unchanged and vice versa. The file is the only source of truth: edit
   it as text or switch branches, and the canvas reloads.
 - Renaming a control renames its field, its event handlers and their uses in your code.
+- **Events tab:** **+** next to an event writes a handler with the default name (`button1_Click`) into `MainForm.cs`
+  and opens it — the same as a double-click on the event, or on the control for its default event; typing a name
+  and pressing Enter binds a handler of your own name. **→** goes to the handler, **✕** unbinds it (the method stays
+  in the code, as in Visual Studio).
 
 ## Creating projects and forms
 

@@ -19,8 +19,9 @@ unchanged.
   (Timer, ToolTip, ImageList, menus, dialogs) go to the component tray.
 - **Properties and Events** by category, with an editor per type: booleans, enums, flags, colours,
   string collections one per line, `ListView` items with sub-items, `TreeView` nodes as an indented
-  outline; reset to default. Double-click an event (or the control) to get a handler stub in
-  `MainForm.cs` and jump to it.
+  outline; reset to default. **+** next to an event (or a double-click on it, or on the control) writes a
+  handler stub with the default name (`button1_Click`) in `MainForm.cs` and jumps to it; **→** goes to an
+  existing handler, **✕** unbinds it (the method stays in the code).
 - **Code ↔ designer**: F7 View Code, Shift+F7 View Designer. Renaming a control renames it in your code too.
 - **Undo/redo** of canvas edits. Editing the file as text (or `git checkout`) reloads the canvas.
 - **New Project, New Form, New User Control** with `dotnet new` and the **NetForms.Templates** package from
