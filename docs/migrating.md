@@ -66,7 +66,7 @@ Options:
 | `--apply` | Write the changes (without it, only the report). |
 | `--target cross` (default) | `net10.0`: builds and runs on Windows and Linux. |
 | `--target windows` | `net10.0-windows`: Windows only, but with NetForms instead of the Windows Desktop runtime. Windows-only API is then reported for information, not as a warning. |
-| `--framework-path <dir>` | Reference a NetForms checkout (`ProjectReference`) instead of the package — for NetForms development. |
+| `--framework-path <dir>` | For work on NetForms itself only: reference a NetForms checkout (`ProjectReference`) instead of the package. |
 | `--json` | The report as JSON. |
 
 The argument may be a project, a solution (`.sln`, `.slnx`) or a folder.
@@ -119,6 +119,6 @@ to the real letter case.
 | `NU1202: Package NetForms … is not compatible with net8.0` | The project still targets an older .NET. NetForms needs `net10.0`. |
 | `NETSDK1100` | `UseWindowsForms` or a `-windows` TFM is still there. |
 | `NETSDK1136` / a package brings `Microsoft.WindowsDesktop.App` | A dependency is built for the Windows Desktop runtime. Find a cross-platform version. |
-| `CS0012: The type 'Control' is defined in an assembly that is not referenced … System.Windows.Forms` | A library compiled against WinForms. With the NetForms **package** this is resolved by its `System.Windows.Forms` facade; with a `ProjectReference` to a NetForms checkout it is not. |
+| `CS0012: The type 'Control' is defined in an assembly that is not referenced … System.Windows.Forms, Version=4.0.0.0, PublicKeyToken=b77a5c561934e089` | A control library compiled against the real WinForms (ZedGraph, OxyPlot, ScottPlot, FastColoredTextBox…). Not supported yet: NetForms' `System.Windows.Forms` facade does not carry Microsoft's strong-name identity, so the compiler does not accept it in place of the real assembly. Use the library's source instead of the package, or wait for the facade to change (see the compatibility guide). |
 | `DllNotFoundException: libSkiaSharp` / `libX11` on Linux | Missing system libraries — see [Compatibility § 1](compatibility.md#operating-systems). |
 | The window opens but text looks different | No Segoe UI on Linux; a substitute font is used. Install the font or set `Font` explicitly. |

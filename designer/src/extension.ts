@@ -6,7 +6,7 @@ import * as vscode from 'vscode';
 import { convertProject } from './convert';
 import { companionOf, DesignerEditorProvider } from './designerEditorProvider';
 import { findHost } from './hostClient';
-import { newForm, newProject } from './scaffold';
+import { installedTemplates, netformsVersion, newForm, newProject } from './scaffold';
 
 export function activate(context: vscode.ExtensionContext) {
 	const log = vscode.window.createOutputChannel('NetForms');
@@ -55,8 +55,8 @@ export function activate(context: vscode.ExtensionContext) {
 		if (!session) throw new Error(vscode.l10n.t('Open the file in the NetForms Designer to tidy it.'));
 		await session.tidy();
 	});
-	command('netforms.newProject', () => newProject(context.extensionPath));
-	command('netforms.newForm', (uri?: vscode.Uri) => newForm(context.extensionPath, uri));
+	command('netforms.newProject', () => newProject(context, log));
+	command('netforms.newForm', (uri?: vscode.Uri) => newForm(context, log, uri));
 	command('netforms.convertProject', (uri?: vscode.Uri) => convertProject(context.extensionPath, uri));
 	command('netforms.setHostPath', async () => {
 		const picked = await vscode.window.showOpenDialog({ canSelectMany: false, filters: { [vscode.l10n.t('Designer host')]: ['dll', 'exe'] }, title: 'NetFormsDesigner.Host.dll' });
@@ -70,7 +70,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const lines = [
 			`dotnet: ${version}`,
 			vscode.l10n.t('designer host: {0}', host ?? vscode.l10n.t('not found — build tools/NetFormsDesigner.Host or set netforms.designerHostPath')),
-			vscode.l10n.t('framework path: {0}', vscode.workspace.getConfiguration('netforms').get<string>('frameworkPath') || vscode.l10n.t('(the NetForms package)')),
+			vscode.l10n.t('templates: {0} installed, {1} expected (installed from NuGet on the first New Project / New Form)', (await installedTemplates()) ?? vscode.l10n.t('none'), netformsVersion(context)),
 		];
 		log.appendLine('--- NetForms: Check Setup ---');
 		for (const l of lines) log.appendLine(l);

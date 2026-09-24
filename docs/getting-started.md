@@ -7,10 +7,11 @@ getting the tools and creating the project.
 ## 1. Install
 
 - **.NET 10 SDK** — <https://dotnet.microsoft.com/download>. On Ubuntu 24.04+: `sudo apt install dotnet-sdk-10.0`.
-- **Linux only**: the run-time libraries listed in [Compatibility § 1](compatibility.md#operating-systems)
-  (a desktop distribution already has them).
+- **Linux only**: a few system libraries (a desktop distribution already has them).
 - Optional, for the visual designer: **VS Code** with the **NetForms Designer** extension
   (Marketplace / Open VSX: `netforms.netforms-designer`) and the C# extension.
+
+Step by step for Windows and each Linux family: [Install and set up](install.md).
 
 ## 2. Create a project
 
@@ -71,7 +72,8 @@ namespace HelloForms
 
 Add forms and user controls with `dotnet new netforms-form -n SettingsForm` and
 `dotnet new netforms-usercontrol -n ColorPicker` (inside the project folder, after the first
-`dotnet build` or `dotnet restore`), or **NetForms: New Form…** in VS Code.
+`dotnet build` or `dotnet restore`; in a subfolder pass the namespace: `--Namespace HelloForms.Views`),
+or **NetForms: New Form…** in VS Code. VS Code installs the same template package from NuGet itself.
 
 ## 3. Write code as in WinForms
 

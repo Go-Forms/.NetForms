@@ -1,7 +1,31 @@
 # Выпуск версии
 
-Что публикуется, откуда и что нужно сделать руками один раз. Всё остальное делает
-`.github/workflows/release.yml` по тегу `v<версия>`.
+Для разработчиков NetForms: что публикуется, как это запускается и что владелец репозитория настраивает
+один раз. Всё остальное делают workflow `.github/workflows/ci.yml` и `release.yml`.
+
+## Как выходит версия
+
+**Выпуск — это смена версии в `main`.** Поднимите `<Version>` в `Directory.Build.props`, влейте в `main`, и
+после зелёных тестов CI сам:
+
+1. видит, что тега `v<Version>` ещё нет (задача `release-check`);
+2. вызывает `release.yml`: собирает все пакеты, публикует NuGet-пакеты в nuget.org, расширение — в VS Code
+   Marketplace и Open VSX;
+3. создаёт GitHub Release с файлами пакетов и текстом `CHANGELOG.md` — вместе с ним появляется тег `v<Version>`.
+
+Следующие пуши в `main` с той же версией ничего не публикуют: тег уже есть.
+
+Если учётных данных NuGet нет, `release-check` пишет предупреждение и ничего не выпускает (и тег не
+создаётся). Добавьте их — и следующий пуш в `main` (или ручной запуск CI) выпустит эту версию.
+
+Другие способы запустить `release.yml`:
+
+- **вручную**: *Actions → Release → Run workflow*. Без галочки *publish* — сухой прогон: собирает все пакеты
+  как артефакты и ничего не публикует. С галочкой — настоящий выпуск текущей версии;
+- **тегом**: `git tag v0.1.0-preview.1 && git push origin v0.1.0-preview.1` (тег обязан совпадать с версией).
+
+Повторная публикация безопасна: `dotnet nuget push --skip-duplicate`, `vsce publish --skip-duplicate`,
+`ovsx publish --skip-duplicate`, существующий GitHub Release пропускается.
 
 ## Что выходит
 
@@ -10,47 +34,77 @@
 | nuget.org | `NetForms`, `NetForms.Drawing`, `NetForms.Drawing.Common`, `NetForms.Platform`, `NetForms.Platform.Avalonia` (+ `.snupkg` с символами и Source Link) | `dotnet pack NetForms.slnx -c Release -o artifacts/pkg` |
 | nuget.org | `NetForms.Templates` — `dotnet new netforms`, `netforms-form`, `netforms-usercontrol` | `dotnet pack templates/NetForms.Templates.csproj -c Release -o artifacts/pkg` |
 | nuget.org | `NetForms.Convert` — .NET tool `netforms-convert` (~42 МБ: натив Skia только для настольных платформ) | входит в `dotnet pack NetForms.slnx` |
-| VS Code Marketplace, Open VSX | `netforms.netforms-designer`, по пакету на платформу (`win32-x64`, `win32-arm64`, `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`, ~13 МБ каждый) | `cd designer && npm run package:targets` |
+| VS Code Marketplace, Open VSX | `netforms.netforms-designer`, по пакету на платформу (`win32-x64`, `win32-arm64`, `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`, ~13 МБ каждый); версия NetForms с дефисом → pre-release | `cd designer && npm run package:targets` |
 | GitHub Releases | всё перечисленное + универсальный `.vsix` (41 МБ) | задача `github-release` |
-| GitHub Pages | сайт `site/` | `.github/workflows/pages.yml` при изменении `site/` в `main` |
+| GitHub Pages | сайт: `site/` + документация из `docs/` | `.github/workflows/pages.yml` при изменении `site/` или `docs/` в `main` |
 
 Не публикуются (`IsPackable=false` по умолчанию в `Directory.Build.props`): `NetForms.Design`,
 `NetForms.Design.Serialization` (едут внутри расширения), тесты, сэмплы, `ApiDiff`, `Markup`, хост дизайнера.
 
 ## Один раз, руками (владелец репозитория)
 
-1. **nuget.org.** Войти, проверить, что id свободны (на 2026-09-24 `NetForms` свободен), создать API-ключ
-   с правом *Push new packages and package versions* и шаблоном `NetForms*`. В GitHub: *Settings → Secrets and
-   variables → Actions* → секрет `NUGET_API_KEY`. После первой публикации — зарезервировать префикс `NetForms.`
-   (ID prefix reservation, заявка на account@nuget.org), чтобы чужие пакеты не выглядели нашими.
-2. **VS Code Marketplace.** Создать publisher `netforms` на <https://marketplace.visualstudio.com/manage>
-   (id должен совпасть с `"publisher"` в `designer/package.json`; если занят — поменять там). Personal Access
-   Token в Azure DevOps: *Organization: All accessible organizations*, scope *Marketplace → Manage*. Секрет
-   `VSCE_PAT`.
-3. **Open VSX** (VSCodium, Cursor, Gitpod и др.): аккаунт на <https://open-vsx.org> через GitHub, подписать
-   Publisher Agreement, `npx ovsx create-namespace netforms -p <token>`, секрет `OVSX_PAT`. Без секрета шаг
-   пропускается.
-4. **GitHub Pages.** *Settings → Pages → Source: GitHub Actions*. Адрес сайта:
-   `https://go-forms.github.io/.NetForms/`. Имя репозитория с точкой в начале Pages обслуживает, но если
-   адрес не откроется — переименовать репозиторий (например, `NetForms`) или подключить свой домен
-   (файл `site/CNAME`).
-5. **Лицензия.** `LICENSE` — MIT, правообладатель «NetForms contributors» (как `Authors` в
-   `Directory.Build.props`). Если правообладатель другой — поменять в `LICENSE` и `Copyright` там же.
+### nuget.org — один из двух способов
+
+**A. Trusted Publishing, без хранимого ключа (рекомендуется).**
+
+1. Войдите на nuget.org под учётной записью, которая будет владельцем пакетов.
+2. *Username → Trusted Publishing → Create*: Repository Owner `Go-Forms`, Repository `.NetForms`,
+   Workflow File `release.yml` (если публикация упадёт с ошибкой политики, добавьте вторую политику с
+   `ci.yml` — CI вызывает `release.yml` как reusable workflow).
+3. В GitHub: *Settings → Secrets and variables → Actions → Variables* → переменная `NUGET_USER` = имя
+   пользователя nuget.org (не e-mail).
+
+Workflow получает от GitHub OIDC-токен, обменивает его на ключ, живущий час (`NuGet/login@v1`), и публикует.
+Самой первой публикацией нового id на nuget.org владельцем становится эта учётная запись.
+
+**B. API-ключ.**
+
+1. nuget.org → *API Keys → Create*: scope *Push new packages and package versions*, Glob Pattern `NetForms*`,
+   срок — до года.
+2. В GitHub: *Settings → Secrets and variables → Actions → Secrets* → `NUGET_API_KEY`.
+3. Поставьте напоминание продлить ключ до истечения срока.
+
+После первой публикации зарезервируйте префикс `NetForms.` (*ID prefix reservation*, заявка на
+account@nuget.org): чужие пакеты с этим префиксом не смогут выглядеть нашими.
+
+### VS Code Marketplace
+
+1. Создайте publisher `netforms` на <https://marketplace.visualstudio.com/manage> (id должен совпадать с
+   `"publisher"` в `designer/package.json`; если занят — поменяйте там).
+2. Personal Access Token в Azure DevOps: *Organization: All accessible organizations*, scope
+   *Marketplace → Manage*. Секрет `VSCE_PAT`.
+
+Без секрета шаг публикации в Marketplace пропускается с предупреждением, остальной выпуск идёт.
+
+### Open VSX (VSCodium, Cursor и др.) — по желанию
+
+Аккаунт на <https://open-vsx.org> через GitHub, подписать Publisher Agreement,
+`npx ovsx create-namespace netforms -p <token>`, секрет `OVSX_PAT`. Без секрета шаг пропускается.
+
+### GitHub Pages — сделано
+
+*Settings → Pages → Source: GitHub Actions* включено 2026-09-24, сайт — <https://go-forms.github.io/.NetForms/>.
+Свой домен задаётся там же (*Custom domain*) плюс запись `CNAME` у регистратора на `go-forms.github.io`; файл
+`CNAME` в репозитории при публикации через Actions не нужен.
+
+### Лицензия
+
+`LICENSE` — MIT, правообладатель «NetForms contributors» (как `Authors` в `Directory.Build.props`). Если
+правообладатель другой — поменяйте в `LICENSE` и `Copyright` там же.
 
 ## Каждый выпуск
 
-1. Версия — одна на всё: `<Version>` в `Directory.Build.props` и `Version` пакета NetForms в
-   `templates/netforms-app/NetFormsApp1.csproj` (их равенство держит `TemplateTests`; конвертер берёт версию
-   из своей сборки). Версия расширения — `designer/package.json` (Marketplace понимает только `x.y.z`; превью
-   помечается флагом `--pre-release`, его ставит workflow для тегов с дефисом).
-2. `CHANGELOG.md` (корень) и `designer/CHANGELOG.md` — что вошло. Текст корневого идёт в GitHub Release.
-3. `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api` — обновить таблицы покрытия; цифры в
-   `docs/compatibility.md` и `README.md` — по ним.
-4. Прогон: `dotnet test NetForms.slnx`, `cd designer && npm test`; на Windows — с оракулами (см. PLAN.md).
-5. Сухой прогон: *Actions → Release → Run workflow* на ветке — соберёт все пакеты как артефакты, ничего не
-   опубликует.
-6. Тег: `git tag v0.1.0-preview.1 && git push origin v0.1.0-preview.1`. Workflow проверит, что тег равен
-   версии, соберёт, прогонит тесты, опубликует и создаст GitHub Release (превью — как pre-release).
+1. **Версия.** `<Version>` в `Directory.Build.props`, `Version` пакета NetForms в
+   `templates/netforms-app/NetFormsApp1.csproj` и `netformsVersion` в `designer/package.json` — одинаковые
+   (их равенство держат `TemplateTests` и `designer/test/version.test.js`; конвертер берёт версию из своей
+   сборки). Версия самого расширения — `version` в `designer/package.json` (Marketplace понимает только `x.y.z`),
+   поднимайте её, когда меняется расширение.
+2. **Что вошло**: `CHANGELOG.md` (его текст идёт в GitHub Release) и `designer/CHANGELOG.md`.
+3. **Покрытие API**: `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`; цифры в
+   `docs/compatibility.md`, `docs/ru/compatibility.md`, `README.md`, `README.ru.md` и на главных страницах сайта — по нему.
+4. **Прогон**: `dotnet test NetForms.slnx`, `cd designer && npm test`; на Windows — с оракулами (см. PLAN.md).
+5. **Сухой прогон** (по желанию): *Actions → Release → Run workflow* без *publish*.
+6. **PR в `main`** со сменой версии → после зелёного CI выпуск идёт сам.
 
 ## Проверить пакеты локально
 
@@ -70,8 +124,10 @@ netforms-convert path/to/WinFormsApp.csproj --apply
 cd designer && node scripts/package-targets.js linux-x64
 unzip -q netforms-designer-linux-x64.vsix -d /tmp/vsix
 NETFORMS_TEST_HOST=/tmp/vsix/extension/host/NetFormsDesigner.Host.dll node --test test/protocol.test.js
+
+# сайт с документацией
+cd site && npm ci && npm run build && npm run serve
 ```
 
-Так проверен 0.1.0-preview.1 (2026-09-24, Linux): все семь пакетов собираются; проект из шаблона и
-проект «как из Visual Studio» (`net10.0-windows` + `UseWindowsForms`) после `netforms-convert --apply`
-собираются из пакетов и открывают окно под X11; хост из `linux-x64.vsix` проходит protocol-тест.
+Тот же путь «пакеты → шаблоны из `.nupkg` → новый проект собирается из пакетов» каждый раз проходит тест
+`TemplateTests.ANewProjectFromTheTemplatePackageBuildsFromTheNetFormsPackages`.

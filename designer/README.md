@@ -23,11 +23,13 @@ unchanged.
   `MainForm.cs` and jump to it.
 - **Code ↔ designer**: F7 View Code, Shift+F7 View Designer. Renaming a control renames it in your code too.
 - **Undo/redo** of canvas edits. Editing the file as text (or `git checkout`) reloads the canvas.
-- **New Project, New Form, New User Control** from the same templates as `dotnet new netforms`.
+- **New Project, New Form, New User Control** with `dotnet new` and the **NetForms.Templates** package from
+  NuGet (installed on first use, the version this extension is made for). New projects reference the
+  **NetForms** package.
 - **Convert WinForms Project…** on any `.csproj`: shows what will not carry over to Linux, then switches
   the project from `UseWindowsForms` to the NetForms package. The original is kept as `.csproj.winforms.bak`.
 - **Run Project** (`dotnet run`).
-- **Offline.** Nothing is downloaded; the webview has no network access.
+- **Offline editing.** The canvas needs no network; the webview has no network access.
 - English and Russian interface, following the VS Code display language.
 
 ## Requirements
@@ -35,8 +37,10 @@ unchanged.
 - [.NET 10 SDK](https://dotnet.microsoft.com/download). The designer host bundled with the extension
   runs on it. **NetForms: Check Setup** tells you whether it was found.
 - Windows 10+ or Linux (x64, arm64).
-- Projects that reference NetForms (the package or a checkout). A WinForms project is one command
-  away: **NetForms: Convert WinForms Project…**.
+- Projects that reference the NetForms package. A WinForms project is one command away:
+  **NetForms: Convert WinForms Project…**.
+- Network access to NuGet the first time you create a project or form (the templates and the packages come
+  from there). Editing forms needs no network.
 
 ## Commands
 
@@ -60,7 +64,6 @@ unchanged.
 |---|---|
 | `netforms.dotnetPath` | The `dotnet` executable. |
 | `netforms.designerHostPath` | Use another designer host (a NetForms checkout you are working on). |
-| `netforms.frameworkPath` | New and converted projects reference this NetForms checkout instead of the package. |
 | `netforms.snapToLines` | Snap while dragging (hold Alt to move freely). |
 
 ## Not in this preview
@@ -69,6 +72,11 @@ Writing `.resx` (new images from the property grid, localizable forms), extender
 ("ToolTip on toolTip1") in the property grid, a theme editor. See the
 [compatibility guide](https://github.com/Go-Forms/.NetForms/blob/main/docs/compatibility.md) for the
 state of NetForms itself.
+
+## Documentation
+
+<https://go-forms.github.io/.NetForms/docs/designer.html> (English) ·
+<https://go-forms.github.io/.NetForms/ru/docs/designer.html> (по-русски).
 
 ## License
 

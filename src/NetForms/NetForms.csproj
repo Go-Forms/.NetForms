@@ -38,8 +38,10 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(WinFormsFacadeOutput)" Link="System.Windows.Forms.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" Pack="false" />
-    <!-- In the package the facade sits next to NetForms.dll in lib/: it is a compile reference too, so a library
-         built against WinForms that an application references compiles (no CS0012), and it is copied to the output. -->
+    <!-- In the package the facade sits next to NetForms.dll in lib/, so it is copied to every application's output:
+         types named "..., System.Windows.Forms" (.resx, BinaryFormatter data) resolve at run time. It is a compile
+         reference too, but libraries compiled against the real WinForms still get CS0012: they name the strong-named
+         System.Windows.Forms (PublicKeyToken=b77a5c561934e089), which this unsigned facade is not (docs/PLAN.md, decision 136). -->
     <None Include="$(WinFormsFacadeOutput)" Pack="true" PackagePath="lib/$(TargetFramework)/System.Windows.Forms.dll" Visible="false" />
   </ItemGroup>
   <Target Name="BuildWinFormsFacade" AfterTargets="CoreCompile" BeforeTargets="CopyFilesToOutputDirectory" Condition="'$(DesignTimeBuild)' != 'true'">

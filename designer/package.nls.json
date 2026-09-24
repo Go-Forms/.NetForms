@@ -15,6 +15,5 @@
 	"editor.displayName": "NetForms Designer",
 	"config.designerHostPath": "Path to NetFormsDesigner.Host.dll (or the executable). Empty: the host bundled with the extension, then a NetForms checkout found above the opened file.",
 	"config.dotnetPath": "The dotnet executable used to run the designer host and new projects.",
-	"config.snapToLines": "Snap controls to the edges, centres and margins of their neighbours while dragging (hold Alt to move freely).",
-	"config.frameworkPath": "A NetForms checkout (the folder with NetForms.slnx) that new and converted projects reference instead of the NetForms package."
+	"config.snapToLines": "Snap controls to the edges, centres and margins of their neighbours while dragging (hold Alt to move freely)."
 }

@@ -19,3 +19,15 @@ document.querySelectorAll('button.copy').forEach((button) => {
     setTimeout(() => { button.textContent = label; }, 2000);
   });
 });
+
+// The EN/RU switch: remember the choice, so index.html stops sending a Russian-language browser to ru/.
+document.querySelectorAll('[data-lang-choice]').forEach((link) => {
+  link.addEventListener('click', () => {
+    try { localStorage.setItem('netforms-lang', link.dataset.langChoice); } catch { /* storage blocked: no memory, no harm */ }
+  });
+});
+
+// Documentation pages on a phone: the contents list starts folded, so the page itself is on the first screen.
+if (window.matchMedia('(max-width: 760px)').matches) {
+  document.querySelectorAll('.docs-nav details[open]').forEach((d) => d.removeAttribute('open'));
+}

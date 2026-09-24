@@ -1,90 +1,90 @@
-// New projects and forms, from the same template files `dotnet new netforms` uses (../templates).
-// The extension does the substitution itself, so it works without the templates being installed.
+// New projects and forms, made by `dotnet new` from the NetForms.Templates package on NuGet - the same
+// templates a user gets on the command line. The extension ships no copy of them: the package version it
+// asks for is `netformsVersion` in package.json (kept equal to Directory.Build.props by test/version.test.js),
+// and a new project references the NetForms package of that version.
+import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-/** The templates folder: packaged with the extension, or the repository's when run from a checkout. */
-export function templatesDir(extensionPath: string): string {
-	for (const candidate of [path.join(extensionPath, 'templates'), path.join(extensionPath, '..', 'templates')]) {
-		if (fs.existsSync(path.join(candidate, 'netforms-app'))) return candidate;
-	}
-	throw new Error(vscode.l10n.t('The NetForms templates were not found next to the extension.'));
-}
-
 const identifier = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const templatesPackage = 'NetForms.Templates';
 
-/**
- * Copies a template folder, renaming `sourceName` in file names and contents and replacing the
- * other tokens; `<!--#if (HasFrameworkPath) -->` blocks are resolved the way dotnet new resolves them.
- */
-export function instantiate(templateDir: string, targetDir: string, replacements: Record<string, string>, frameworkPath: string | undefined): string[] {
-	const written: string[] = [];
-	const walk = (dir: string) => {
-		for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-			if (entry.name === '.template.config' || entry.name === 'bin' || entry.name === 'obj') continue;
-			const source = path.join(dir, entry.name);
-			if (entry.isDirectory()) { walk(source); continue; }
-			let rel = path.relative(templateDir, source);
-			let text = fs.readFileSync(source, 'utf8');
-			for (const [from, to] of Object.entries(replacements)) {
-				rel = rel.split(from).join(to);
-				text = text.split(from).join(to);
-			}
-			text = resolveConditionals(text, !!frameworkPath);
-			const target = path.join(targetDir, rel);
-			if (fs.existsSync(target)) throw new Error(`${target} already exists.`);
-			fs.mkdirSync(path.dirname(target), { recursive: true });
-			fs.writeFileSync(target, text, 'utf8');
-			written.push(target);
-		}
-	};
-	walk(templateDir);
-	return written;
+function dotnetPath(): string {
+	return vscode.workspace.getConfiguration('netforms').get<string>('dotnetPath') || 'dotnet';
 }
 
-function resolveConditionals(text: string, hasFrameworkPath: boolean): string {
-	return text.replace(/<!--#if \(HasFrameworkPath\) -->\r?\n([\s\S]*?)<!--#else -->\r?\n([\s\S]*?)<!--#endif -->\r?\n/g,
-		(_, yes: string, no: string) => (hasFrameworkPath ? yes : no));
+/** Runs dotnet with the CLI's first-run noise off; resolves with the exit code and all output. */
+export function dotnet(args: string[], cwd: string): Promise<{ code: number; output: string }> {
+	return new Promise((resolve) => {
+		// English output whatever the OS language: installedTemplates() reads it.
+		const env = { ...process.env, DOTNET_NOLOGO: '1', DOTNET_CLI_TELEMETRY_OPTOUT: '1', DOTNET_CLI_UI_LANGUAGE: 'en' };
+		cp.execFile(dotnetPath(), args, { cwd, env, maxBuffer: 16 * 1024 * 1024 }, (err, stdout, stderr) => {
+			const code = err ? (typeof (err as any).code === 'number' ? (err as any).code : -1) : 0;
+			resolve({ code, output: `${stdout}${stderr}${err && code === -1 ? err.message : ''}` });
+		});
+	});
 }
 
-async function askFrameworkPath(): Promise<string | undefined | null> {
-	const configured = vscode.workspace.getConfiguration('netforms').get<string>('frameworkPath');
-	if (configured) return configured;
-	const choice = await vscode.window.showQuickPick([
-		{ label: vscode.l10n.t('NetForms package'), description: 'PackageReference Include="NetForms"', value: 'package' },
-		{ label: vscode.l10n.t('A local NetForms checkout…'), description: 'ProjectReference → src/NetForms/NetForms.csproj', value: 'checkout' },
-	], { title: vscode.l10n.t('Reference NetForms from') });
-	if (!choice) return null;
-	if (choice.value === 'package') return undefined;
-	const picked = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, title: vscode.l10n.t('The NetForms checkout (the folder with NetForms.slnx)') });
-	if (!picked) return null;
-	const dir = picked[0].fsPath;
-	if (!fs.existsSync(path.join(dir, 'src', 'NetForms', 'NetForms.csproj'))) throw new Error(vscode.l10n.t('{0} has no src/NetForms/NetForms.csproj.', dir));
-	await vscode.workspace.getConfiguration('netforms').update('frameworkPath', dir, vscode.ConfigurationTarget.Global);
-	return dir;
+/** The NetForms version this extension creates projects for. */
+export function netformsVersion(context: vscode.ExtensionContext): string {
+	return context.extension.packageJSON.netformsVersion as string;
 }
 
-export async function newProject(extensionPath: string) {
+/** The installed version of the templates package, from `dotnet new uninstall` (which lists what is installed). */
+export async function installedTemplates(): Promise<string | undefined> {
+	const { output } = await dotnet(['new', 'uninstall'], process.cwd());
+	const lines = output.split(/\r?\n/);
+	const at = lines.findIndex((l) => l.trim() === templatesPackage);
+	if (at < 0) return undefined;
+	for (const line of lines.slice(at + 1, at + 4)) {
+		const m = /^\s*Version:\s*(\S+)/.exec(line);
+		if (m) return m[1];
+	}
+	return undefined;
+}
+
+/** Makes sure `dotnet new` has NetForms.Templates of this extension's version, installing it from NuGet. */
+async function ensureTemplates(context: vscode.ExtensionContext, log: vscode.OutputChannel): Promise<boolean> {
+	const wanted = netformsVersion(context);
+	if (await installedTemplates() === wanted) return true;
+	const result = await vscode.window.withProgress(
+		{ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Installing the NetForms templates {0} from NuGet…', wanted) },
+		() => dotnet(['new', 'install', `${templatesPackage}::${wanted}`], process.cwd()));
+	log.appendLine(`dotnet new install ${templatesPackage}::${wanted}\n${result.output}`);
+	if (result.code === 0) return true;
+	log.show(true);
+	void vscode.window.showErrorMessage(vscode.l10n.t('Could not install {0} from NuGet. Check the network and your NuGet sources (details in the NetForms output).', `${templatesPackage} ${wanted}`));
+	return false;
+}
+
+async function runNew(args: string[], cwd: string, log: vscode.OutputChannel): Promise<boolean> {
+	const result = await dotnet(['new', ...args], cwd);
+	log.appendLine(`dotnet new ${args.join(' ')}\n${result.output}`);
+	if (result.code === 0) return true;
+	log.show(true);
+	void vscode.window.showErrorMessage(vscode.l10n.t('dotnet new {0} failed (details in the NetForms output).', args[0]));
+	return false;
+}
+
+export async function newProject(context: vscode.ExtensionContext, log: vscode.OutputChannel) {
 	const parent = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, title: vscode.l10n.t('Where to create the project'), openLabel: vscode.l10n.t('Create here') });
 	if (!parent) return;
 	const name = await vscode.window.showInputBox({
 		title: vscode.l10n.t('Project name'), value: 'NetFormsApp1',
-		validateInput: (v) => identifier.test(v) ? undefined : vscode.l10n.t('A C# identifier: letters, digits and _, not starting with a digit.'),
+		validateInput: (v) => !identifier.test(v) ? vscode.l10n.t('A C# identifier: letters, digits and _, not starting with a digit.')
+			: fs.existsSync(path.join(parent[0].fsPath, v)) ? vscode.l10n.t('{0} already exists.', v) : undefined,
 	});
 	if (!name) return;
-	const framework = await askFrameworkPath();
-	if (framework === null) return;
+	if (!await ensureTemplates(context, log)) return;
 	const dir = path.join(parent[0].fsPath, name);
-	const replacements: Record<string, string> = { NetFormsApp1: name };
-	if (framework) replacements['NETFORMS_FRAMEWORK_PATH'] = path.relative(dir, framework).split(path.sep).join('/');
-	instantiate(path.join(templatesDir(extensionPath), 'netforms-app'), dir, replacements, framework ?? undefined);
+	if (!await runNew(['netforms', '-n', name, '-o', dir], parent[0].fsPath, log)) return;
 	const openHere = vscode.l10n.t('Open Folder'), openNew = vscode.l10n.t('Open in New Window');
 	const open = await vscode.window.showInformationMessage(vscode.l10n.t('Created {0}.', name), openHere, openNew);
 	if (open) await vscode.commands.executeCommand('vscode.openFolder', vscode.Uri.file(dir), open === openNew);
 }
 
-/** The RootNamespace of the nearest project above a folder, else the project's name. */
+/** The RootNamespace of the nearest project above a folder, plus the folders below it - as Visual Studio names new items. */
 function namespaceFor(folder: string): string {
 	for (let dir = folder; ; dir = path.dirname(dir)) {
 		const project = fs.existsSync(dir) ? fs.readdirSync(dir).find((f) => f.endsWith('.csproj')) : undefined;
@@ -99,7 +99,7 @@ function namespaceFor(folder: string): string {
 	}
 }
 
-export async function newForm(extensionPath: string, folderUri?: vscode.Uri) {
+export async function newForm(context: vscode.ExtensionContext, log: vscode.OutputChannel, folderUri?: vscode.Uri) {
 	let folder = folderUri?.fsPath;
 	if (!folder) {
 		const picked = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, title: vscode.l10n.t('Folder for the new form') });
@@ -107,19 +107,26 @@ export async function newForm(extensionPath: string, folderUri?: vscode.Uri) {
 		folder = picked[0].fsPath;
 	}
 	const kind = await vscode.window.showQuickPick([
-		{ label: vscode.l10n.t('Form'), value: 'netforms-form', source: 'Form1', stem: 'Form', nameTitle: vscode.l10n.t('Form name') },
-		{ label: vscode.l10n.t('User Control'), value: 'netforms-usercontrol', source: 'UserControl1', stem: 'UserControl', nameTitle: vscode.l10n.t('User control name') },
+		{ label: vscode.l10n.t('Form'), value: 'netforms-form', stem: 'Form', nameTitle: vscode.l10n.t('Form name') },
+		{ label: vscode.l10n.t('User Control'), value: 'netforms-usercontrol', stem: 'UserControl', nameTitle: vscode.l10n.t('User control name') },
 	], { title: vscode.l10n.t('New') });
 	if (!kind) return;
 	let n = 1;
 	while (fs.existsSync(path.join(folder, `${kind.stem}${n}.cs`))) n++;
+	const exists = (v: string) => fs.existsSync(path.join(folder!, v + '.cs')) || fs.existsSync(path.join(folder!, v + '.Designer.cs'));
 	const name = await vscode.window.showInputBox({
 		title: kind.nameTitle, value: `${kind.stem}${n}`,
-		validateInput: (v) => !identifier.test(v) ? vscode.l10n.t('A C# identifier.') : fs.existsSync(path.join(folder!, v + '.cs')) ? vscode.l10n.t('{0}.cs already exists.', v) : undefined,
+		validateInput: (v) => !identifier.test(v) ? vscode.l10n.t('A C# identifier.') : exists(v) ? vscode.l10n.t('{0}.cs already exists.', v) : undefined,
 	});
 	if (!name) return;
-	const files = instantiate(path.join(templatesDir(extensionPath), kind.value), folder,
-		{ [kind.source]: name, NetFormsNamespace: namespaceFor(folder) }, undefined);
-	const designer = files.find((f) => f.endsWith('.Designer.cs'));
-	if (designer) await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(designer), 'netforms.designer');
+	if (!await ensureTemplates(context, log)) return;
+	// The namespace is passed, so the item template does not need the project restored to read it; a project
+	// that has never been restored does not meet the template's C#-project constraint yet, hence --force
+	// (safe: both files were checked not to exist).
+	const args = [kind.value, '-n', name, '-o', folder, '--Namespace', namespaceFor(folder)];
+	const first = await dotnet(['new', ...args], folder);
+	log.appendLine(`dotnet new ${args.join(' ')}\n${first.output}`);
+	if (first.code !== 0 && !await runNew([...args, '--force'], folder, log)) return;
+	const designer = path.join(folder, `${name}.Designer.cs`);
+	if (fs.existsSync(designer)) await vscode.commands.executeCommand('vscode.openWith', vscode.Uri.file(designer), 'netforms.designer');
 }

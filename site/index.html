@@ -10,6 +10,10 @@
 <meta property="og:image" content="assets/gallery-controls.png">
 <link rel="icon" href="assets/favicon.png" type="image/png">
 <link rel="alternate" hreflang="ru" href="ru/">
+<script>
+  // First visit from a Russian-language browser: the Russian page. A click on EN/RU is remembered (assets/site.js).
+  try { if (!localStorage.getItem('netforms-lang') && /^ru\b/i.test(navigator.language || '')) location.replace('ru/' + location.hash); } catch (e) { }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
@@ -24,9 +28,9 @@
     <a href="#story">Why</a>
     <a href="#status">Status</a>
     <a href="#start">Get started</a>
-    <a href="https://github.com/Go-Forms/.NetForms/tree/main/docs">Docs</a>
+    <a href="docs/index.html">Docs</a>
     <a href="https://github.com/Go-Forms/.NetForms">GitHub</a>
-    <a class="lang" href="ru/" hreflang="ru" lang="ru">RU</a>
+    <a class="lang" href="ru/" hreflang="ru" lang="ru" data-lang-choice="ru">RU</a>
   </nav>
 </header>
 
@@ -40,7 +44,7 @@
         <code>InitializeComponent()</code>. You change the project file, not the code.</p>
       <div class="cta-row">
         <a class="btn primary" href="#start">Get started</a>
-        <a class="btn" href="https://github.com/Go-Forms/.NetForms/blob/main/docs/migrating.md">Move an existing app</a>
+        <a class="btn" href="docs/migrating.html">Move an existing app</a>
       </div>
     </div>
 
@@ -103,7 +107,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
         <p>A project exactly as Visual Studio creates it, after <code>netforms-convert --apply</code>, built from the NuGet
           packages and started under X11. Not one line of C# changed. <code>netforms-convert</code> also moves
           .NET Framework 4.x projects and tells you up front what will not carry over, with file and line.</p>
-        <p><a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/story/angry-csproj.md">“The angry .csproj”</a> — this story as a short film script (in Russian).</p>
+        <p><a href="ru/docs/angry-csproj.html">“The angry .csproj”</a> — this story as a short film script (in Russian).</p>
       </div>
       <figure class="shot">
         <img src="assets/hello-linux.png" alt="HelloForms window with a label and a Click me button, running on Linux" width="284" height="140">
@@ -141,7 +145,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
     </div>
     <div class="stats">
       <div class="stat"><span class="n">633<small> / 1254</small></span><span class="l">WinForms and System.Drawing types with the complete API; 164 more partial</span></div>
-      <div class="stat"><span class="n">380<small> / 380</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
+      <div class="stat"><span class="n">381<small> / 381</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
       <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">.NET Framework 4.8 business apps convert and build with no manual edit</span></div>
       <div class="stat"><span class="n">27<small> / 45</small></span><span class="l">open-source WinForms projects convert and build with no manual edit</span></div>
     </div>
@@ -172,8 +176,8 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
         </table>
       </div>
     </div>
-    <p style="margin-top:18px"><a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/compatibility.md">Full compatibility guide</a> ·
-      <a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/api/README.md">API coverage, type by type</a></p>
+    <p style="margin-top:18px"><a href="docs/compatibility.html">Full compatibility guide</a> ·
+      <a href="docs/api/index.html">API coverage, type by type</a></p>
   </section>
 
   <section id="start">
@@ -203,7 +207,8 @@ dotnet run</pre>
         <button class="copy" type="button">Copy</button>
       </div>
     </div>
-    <p style="margin-top:20px">Visual designer: install <b>NetForms Designer</b> from the VS Code Marketplace or Open VSX
+    <p style="margin-top:20px">Step by step for Windows, Ubuntu, Debian, Fedora, Astra Linux, RED OS and ALT, VS Code and closed networks: <a href="docs/install.html">Install and set up</a>.</p>
+    <p style="margin-top:12px">Visual designer: install <b>NetForms Designer</b> from the VS Code Marketplace or Open VSX
       (<code>netforms.netforms-designer</code>) and open any <code>*.Designer.cs</code>.</p>
   </section>
 </main>
@@ -213,7 +218,7 @@ dotnet run</pre>
   <nav aria-label="Footer">
     <a href="https://github.com/Go-Forms/.NetForms">GitHub</a>
     <a href="https://www.nuget.org/packages/NetForms">NuGet</a>
-    <a href="https://github.com/Go-Forms/.NetForms/tree/main/docs">Documentation</a>
+    <a href="docs/index.html">Documentation</a>
     <a href="https://github.com/Go-Forms/.NetForms/blob/main/CHANGELOG.md">Changelog</a>
   </nav>
 </footer>

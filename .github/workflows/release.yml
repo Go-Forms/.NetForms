@@ -1,105 +1,151 @@
 name: Release
 
-# A tag v<Version> (Directory.Build.props, e.g. v0.1.0-preview.1) builds, tests and packs everything, then
-# publishes: the NuGet packages to nuget.org, the VS Code extension to the Marketplace and Open VSX, and a
-# GitHub release with all the files. Run by hand (workflow_dispatch) it only builds the packages, as a
-# dry run. Checklist and the secrets it needs: docs/RELEASING.md.
+# Builds every package and publishes it: the NuGet packages to nuget.org, the VS Code extension to the
+# Marketplace and Open VSX, and a GitHub release (which creates the tag v<Version>).
+#
+# How it starts (docs/RELEASING.md):
+#   - from CI (workflow_call): a push to main whose <Version> in Directory.Build.props has no tag yet,
+#     after the tests passed - bumping the version is the release;
+#   - a tag v<Version> pushed by hand;
+#   - by hand (workflow_dispatch): a dry run that only builds the packages, or a real one with "publish".
 
 on:
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        default: true
+      tested:
+        description: The caller already ran the tests on this commit.
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to nuget.org, the Marketplace and GitHub (otherwise a dry run that only builds the packages)
+        type: boolean
+        default: false
   push:
     tags: ['v*']
-  workflow_dispatch:
 
 permissions:
   contents: write
+  id-token: write
+
+env:
+  PUBLISH: ${{ inputs.publish || startsWith(github.ref, 'refs/tags/v') }}
 
 jobs:
   nuget:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
-      - name: The tag is the version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Version
+        id: version
         run: |
           version=$(dotnet msbuild src/NetForms/NetForms.csproj -getProperty:Version)
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "v$version" != "$GITHUB_REF_NAME" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME, but Directory.Build.props says $version"; exit 1
           fi
 
       - run: dotnet build NetForms.slnx -c Release
-      - run: dotnet test NetForms.slnx --no-build -c Release
+      - if: ${{ !inputs.tested }}
+        run: dotnet test NetForms.slnx --no-build -c Release
       - run: dotnet pack NetForms.slnx --no-build -c Release -o artifacts/pkg
       - run: dotnet pack templates/NetForms.Templates.csproj -c Release -o artifacts/pkg
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: nuget
           path: artifacts/pkg/
 
+      # Trusted publishing (no stored key): a policy on nuget.org for this repository and release.yml, and
+      # the repository variable NUGET_USER. Otherwise the secret NUGET_API_KEY.
+      - name: NuGet login (trusted publishing)
+        id: nuget-login
+        if: env.PUBLISH == 'true' && vars.NUGET_USER != ''
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       # The .snupkg symbol packages go with their .nupkg.
       - name: Push to nuget.org
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: env.PUBLISH == 'true'
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: dotnet nuget push "artifacts/pkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY || secrets.NUGET_API_KEY }}
+        run: |
+          if [ -z "$NUGET_API_KEY" ]; then
+            echo "::error::No NuGet credentials: set the repository variable NUGET_USER (trusted publishing) or the secret NUGET_API_KEY (docs/RELEASING.md)."
+            exit 1
+          fi
+          dotnet nuget push "artifacts/pkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
   vscode:
     runs-on: ubuntu-latest
     env:
-      # Open VSX is optional: without the secret that step is skipped.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
     defaults:
       run:
         working-directory: designer
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
       - run: npm ci
       - run: npm run typecheck
       - run: dotnet build ../tools/NetFormsDesigner.Host -c Release
-      - run: npm test
-      # One .vsix per platform (only that platform's SkiaSharp natives), plus the universal one. Previews
-      # (a version with a dash) go out as Marketplace pre-releases.
-      - run: npm run package:targets -- ${{ contains(github.ref_name, '-') && '--pre-release' || '' }}
-      - run: npm run package
-      - uses: actions/upload-artifact@v4
+      - if: ${{ !inputs.tested }}
+        run: npm test
+      # One .vsix per platform (only that platform's SkiaSharp natives), plus the universal one. A NetForms
+      # preview (a version with a dash) goes out as a Marketplace pre-release.
+      - name: Package
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' ../Directory.Build.props | head -1)
+          if [[ "$version" == *-* ]]; then npm run package:targets -- --pre-release; else npm run package:targets; fi
+          npm run package
+      - uses: actions/upload-artifact@v7
         with:
           name: vscode
           path: designer/*.vsix
 
       - name: Publish to the VS Code Marketplace
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        if: env.PUBLISH == 'true'
         run: |
-          for f in netforms-designer-*.vsix; do npx vsce publish --packagePath "$f"; done
+          if [ -z "$VSCE_PAT" ]; then echo "::warning::No VSCE_PAT secret: the extension is not published to the Marketplace."; exit 0; fi
+          for f in netforms-designer-*.vsix; do npx vsce publish --packagePath "$f" --skip-duplicate; done
 
       - name: Publish to Open VSX
-        if: startsWith(github.ref, 'refs/tags/v') && env.OVSX_PAT != ''
+        if: env.PUBLISH == 'true'
         run: |
-          for f in netforms-designer-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT"; done
+          if [ -z "$OVSX_PAT" ]; then echo "No OVSX_PAT secret: Open VSX skipped."; exit 0; fi
+          for f in netforms-designer-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT" --skip-duplicate; done
 
   github-release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: inputs.publish || startsWith(github.ref, 'refs/tags/v')
     needs: [nuget, vscode]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           path: dist
-      - name: Create the release
+      - name: Create the release (and the tag)
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.nuget.outputs.version }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/nuget/* dist/vscode/* \
-            --title "NetForms $GITHUB_REF_NAME" --notes-file CHANGELOG.md \
-            $([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease)
+          if gh release view "v$VERSION" >/dev/null 2>&1; then echo "v$VERSION is already released."; exit 0; fi
+          gh release create "v$VERSION" dist/nuget/* dist/vscode/* --target "$GITHUB_SHA" \
+            --title "NetForms $VERSION" --notes-file CHANGELOG.md \
+            $([[ "$VERSION" == *-* ]] && echo --prerelease)

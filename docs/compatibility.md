@@ -47,13 +47,10 @@ You need the **.NET 10 SDK** to build and the **.NET 10 runtime** to run (or pub
 | Windows 7 / 8.1, 32-bit Windows, Linux x86/ARM32 | ❌ .NET 10 does not run there, or the natives are not shipped. |
 | Browser (WebAssembly), Android, iOS | ❌ Not a target. WinForms is a desktop API. |
 
-**Linux packages** an application needs at run time: the .NET 10 runtime (with `libicu`), `libfontconfig1`,
-`libx11-6`, `libice6`, `libsm6` (Avalonia's X11 backend) and at least one TrueType font family. A
-desktop distribution has all of them. On a server or in a container:
-
-```sh
-sudo apt install libicu74 libfontconfig1 libx11-6 libice6 libsm6 fonts-dejavu-core
-```
+**Linux packages** an application needs at run time: the .NET 10 runtime (with ICU), fontconfig, `libX11`,
+`libICE`, `libSM` (Avalonia's X11 backend) and at least one TrueType font family. A desktop distribution has
+all of them; the commands for Debian/Ubuntu/Astra, Fedora/RED OS and ALT are in
+[Install and set up](install.md#2-system-libraries-linux).
 
 When `Segoe UI` (WinForms' default font) is not installed, the closest installed sans-serif family is
 used; text metrics then differ slightly from Windows (see §4, Text).
@@ -73,6 +70,7 @@ used; text metrics then differ slightly from Windows (see §4, Text).
 | Project that uses a NuGet package with `FrameworkReference Microsoft.WindowsDesktop.App` | ❌ That package demands the real Windows Desktop runtime (`NETSDK1136`). Look for a cross-platform version of the package. |
 | Project using `BinaryFormatter` (directly, or in `.resx` other than `ImageList` images) | ❌ `BinaryFormatter` was removed from .NET 9+ — on every OS, not only in NetForms. `ImageList.ImageStream` from the VS designer is read by NetForms itself. |
 | Project using WebView2, CefSharp, ActiveX (`AxHost`), COM references | ❌ Windows-only native components. The converter reports `COMReference` as an error. |
+| Third-party WinForms control packages from NuGet (ZedGraph, OxyPlot.WindowsForms, ScottPlot.WinForms, FastColoredTextBox, ObjectListView, DockPanelSuite…) | ❌ Not yet. Checked with those six on 2026-09-24: packages built for .NET Framework compile against the strong-named `System.Windows.Forms, PublicKeyToken=b77a5c561934e089`, which NetForms' facade is not, so the build stops with `CS0012`; packages built for `net*-windows` demand the Windows Desktop runtime (`NETSDK1136`, DockPanelSuite). Controls whose source you include in your project compile like your own code. |
 
 The converter never guesses: before `--apply` it prints what it would change and every place that will
 not work on Linux (with file and line), and after it the original project is kept next to the new one
@@ -145,10 +143,11 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 
 | Control | Status | Notes |
 |---|---|---|
-| `DataGridView` | ✅ Works · 292 missing | Columns of every kind (text, check box, combo box, button, link, image), editing, sorting, selection modes, auto-size policies, `DataSource` binding, frozen columns, virtual scrolling. The large missing count is mostly the protected `Process*Key`/`On*Changed` hooks and the `AutoResize*` methods. |
-| `BindingSource` | ✅ Works · 10 missing | Missing: `ApplySort`, `AllowNew`, `CurrencyManager`. |
+| `DataGridView` | ✅ Works · 292 missing | Columns of every kind (text, check box, combo box, button, link, image) and per-cell types (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, editing, sorting, selection modes, auto-size policies, `DataSource` binding (lists, `DataTable`), frozen columns, virtual scrolling. Custom cells (a `DataGridViewCell` subclass overriding `Paint`) work; in their `Paint` the `cellStyle.Font` is `null` for now (a bug: use `DataGridView.Font`). Missing: `EditingControl` and `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, custom editing controls (`IDataGridViewEditingControl`, e.g. a date-picker column), `VirtualMode`; the rest of the missing count is mostly protected `Process*Key`/`On*Changed` hooks and `AutoResize*` methods. |
+| `BindingSource` | ✅ Works · 10 missing | Over lists and a `DataTable`: `Position`, `Filter`, `Sort`, `AddNew`. Missing: `ApplySort`, `AllowNew`, `CurrencyManager`; a `DataSet` with `DataMember = "Table"` gives no rows yet, and a `BindingSource` over another one with a `DataRelation` as `DataMember` (master-detail) is empty. |
 | `BindingNavigator` | ❌ Missing | |
-| `Control.DataBindings` (`Binding`) | ⚠️ Partial | Simple property binding works; `BindingContext`/`CurrencyManager` are missing. |
+| ADO.NET itself (`DataSet`, `DataTable`, `DataAdapter`, providers) | Part of .NET, not of WinForms: works on Linux as it is. Edits made in a bound grid set `RowState`, so `adapter.Update(table)` saves them. The provider decides the platform: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle run on Linux; **Access through `System.Data.OleDb` is Windows-only** (`PlatformNotSupportedException` on Linux, the converter warns). |
+| `Control.DataBindings` (`Binding`) | ⚠️ Partial | Simple property binding works, over objects and `DataTable` rows, following `Position`; `BindingContext`/`CurrencyManager` are missing. `ComboBox`/`ListBox` with `DisplayMember`/`ValueMember` over a `DataTable` show empty text for now. |
 | `PropertyGrid` | ✅ Works · 31 missing | Categories, type editors, expandable objects. Missing: the command pane and its colours. |
 
 ### Components and dialogs
@@ -234,7 +233,7 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **380/380** (379/379 with all three oracles on Windows before this release's version test was added; 380/380 on Linux).
+  attributes and what the designer serializes are compared. The suite: **381/381**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
   regenerates [the tables](api/README.md). Today: **633** of 1254 types complete, **164** partial,

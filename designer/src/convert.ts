@@ -91,9 +91,8 @@ export async function convertProject(extensionPath: string, uri?: vscode.Uri) {
 		vscode.l10n.t('Convert {0} to NetForms? The original .csproj is kept as a backup.', path.basename(project)), { modal: true },
 		cross, windowsOnly);
 	if (!choice) return;
-	const framework = vscode.workspace.getConfiguration('netforms').get<string>('frameworkPath');
+	// The converted project references the NetForms package from NuGet, like a new one.
 	const args = [project, '--apply', '--target', choice === windowsOnly ? 'windows' : 'cross'];
-	if (framework) args.push('--framework-path', framework);
 	const applied = await run(converter, args);
 	const done = await vscode.workspace.openTextDocument({ language: 'markdown', content: markdown(applied) });
 	await vscode.commands.executeCommand('markdown.showPreview', done.uri).then(undefined, () => vscode.window.showTextDocument(done));

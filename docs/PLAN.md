@@ -1672,9 +1672,51 @@ MSBuild молча оставила устаревшие сборки — тес
     множество таких шрифтов, `\fN`/`\pnfN` заменены именем, переключение на уже действующий шрифт (с учётом групп и
     `\deff`) выброшено. Другое начертание, другой charset, текст и прочие свойства по-прежнему считаются различием —
     это закреплено тестом `RtfCompareIgnoresOnlyHowTheFontTableIsWritten` на всех семи парах из лога CI.
+134. **Шаблоны и расширение — только из NuGet.** Режим `--FrameworkPath` (ссылка на копию NetForms) убран из шаблона
+    `netforms`: новый проект всегда ссылается на пакет `NetForms`. Шаблоны формы и пользовательского контрола получили
+    параметр `--Namespace` (coalesce с `msbuild:RootNamespace`). Расширение больше не везёт копию шаблонов и не
+    спрашивает «пакет или копия»: **Create New Project / New Form** ставят `NetForms.Templates::<netformsVersion>` из
+    NuGet (`dotnet new install`, если установлена другая версия или никакой; установленная версия читается из
+    `dotnet new uninstall` при `DOTNET_CLI_UI_LANGUAGE=en`) и зовут `dotnet new`; форма получает пространство имён
+    проекта плюс папки (как VS) через `--Namespace`, а в проекте без restore — с `--force` (ограничение
+    «C#-проект» иначе не выполнено; файлы проверены на отсутствие заранее). `netformsVersion` в
+    `designer/package.json` равен `<Version>` (тест `designer/test/version.test.js`). Настройка
+    `netforms.frameworkPath` удалена; у конвертера `--framework-path` остался для работы над самим NetForms и
+    корпуса. Сквозной тест `TemplateTests` проходит путь пользователя: пять пакетов и шаблоны пакуются из копии
+    исходников (чтобы не делить bin/obj с параллельными тестами) под своей версией, шаблоны ставятся из `.nupkg`,
+    проект восстанавливает NetForms из этого фида и собирается, фасады в выводе; версии за собой удаляются из кэша.
+135. **Выпуск — это смена версии в `main`.** `ci.yml`: задача `release-check` после зелёных `build-test` и
+    `designer` на пуше в `main` проверяет, есть ли тег `v<Version>`; нет — вызывает `release.yml` как reusable
+    workflow (`publish`, `tested` — тесты не гоняются второй раз). `release.yml` собирает, пакует, публикует в
+    nuget.org (**Trusted Publishing** через `NuGet/login@v1` при переменной `NUGET_USER`, иначе секрет
+    `NUGET_API_KEY`), в Marketplace (`VSCE_PAT`) и Open VSX (`OVSX_PAT`, по желанию) с `--skip-duplicate`, затем
+    GitHub Release, который и создаёт тег. Без учётных данных NuGet выпуск не начинается и тег не создаётся —
+    иначе версия считалась бы выпущенной. Ручной запуск — сухой прогон или настоящий выпуск; ручной тег тоже
+    работает. Actions обновлены до версий на Node 24 (checkout v7, setup-dotnet v6, setup-node v7, cache v6,
+    upload-artifact v7, download-artifact v8, configure-pages v6, upload-pages-artifact v5, deploy-pages v5);
+    все workflow проверены `actionlint`.
+136. **Сторонние пакеты контролов WinForms из NuGet не работают — проверено.** ZedGraph, OxyPlot.WindowsForms,
+    ScottPlot.WinForms, FastColoredTextBox, ObjectListView (сборки .NET Framework, берутся через AssetTargetFallback
+    с NU1701) компилируются против `System.Windows.Forms, Version=4.0.0.0, PublicKeyToken=b77a5c561934e089`; фасад
+    NetForms не подписан, Roslyn не считает его той же сборкой — `CS0012`. DockPanelSuite (сборка под .NET Core) несёт
+    `FrameworkReference Microsoft.WindowsDesktop.App.WindowsForms` — `NETSDK1136`. Во время выполнения .NET строгие
+    имена не проверяет, так что дело только в компиляции. Возможный путь — public signing фасадов открытыми ключами
+    Microsoft (ECMA-ключ `00000000000000000400000000000000` даёт токен `b77a5c561934e089`; так подписывают сборки
+    dotnet/runtime и так делал Mono) плюс снятие WindowsDesktop-FrameworkReference у пакетов buildTransitive-целью —
+    **решение заказчика**, не принято. Утверждение решения 128 «фасад в lib/ устраняет CS0012» было неверным и
+    исправлено в коде и документации.
+137. **Документация на сайте.** `site/build.mjs` (Node, `marked`) рендерит `docs/*.md` (англ.), `docs/ru/*.md` (рус.)
+    и `docs/api/*.md` в оформление сайта: меню разделов, оглавление страницы, якоря заголовков (как у GitHub, с
+    кириллицей), таблицы с прокруткой; ссылки между `.md` становятся ссылками между страницами, остальное в
+    репозитории — на GitHub. Markdown остаётся источником и так же читается на GitHub. `pages.yml` собирает и
+    публикует `_site`. Новые страницы: `install.md` (установка по ОС: Windows, Ubuntu, Debian, Fedora, Astra/РЕД
+    ОС/ALT через скрипт; системные библиотеки по семействам; шаблоны и конвертер; VS Code; закрытые сети; поставка
+    на Linux) и русские переводы всех страниц. Главная страница отправляет русскоязычный браузер на `ru/` при первом
+    заходе; выбор EN/RU запоминается. Проверено: 0 битых ссылок и якорей на 32 страницах, нет горизонтальной
+    прокрутки на 390 px. README разделён на `README.md` и `README.ru.md` со ссылками на сайт.
 
-**Состояние тестов на конец сессии (Ф7, 2026-09-24, Linux):** .NET — **380/380** (+1: версия шаблона); оракулы WinForms
-не запускались (нужен Windows), код библиотеки не менялся. Расширение — 20/20, плюс protocol-тест на хосте из
+**Состояние тестов на конец сессии (Ф7, 2026-09-24, Linux):** .NET — **381/381** (в т.ч. `TemplateTests` через пакеты, решение 134, и нормализация RTF, решение 133);
+оракулы WinForms — в CI на Windows (решение 133). Расширение — 21/21 (+ тест версии), плюс protocol-тест на хосте из
 `linux-x64.vsix`.
 
 ---

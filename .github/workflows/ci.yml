@@ -1,5 +1,8 @@
 name: CI
 
+# Tests on both OSes; on main, a <Version> (Directory.Build.props) that has no tag yet is released right after
+# the tests pass: release.yml publishes to nuget.org, the VS Code Marketplace and GitHub (docs/RELEASING.md).
+
 on:
   push:
   pull_request:
@@ -12,8 +15,8 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
       - run: dotnet restore
@@ -37,7 +40,7 @@ jobs:
       # golden images on both OSes, no display needed.
       - run: dotnet test --no-build -c Release --logger "trx"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: render-out-${{ matrix.os }}
@@ -57,17 +60,17 @@ jobs:
       NETFORMS_CORPUS: "1"
       NETFORMS_CORPUS_DIR: ${{ github.workspace }}/../corpus-cache
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/../corpus-cache
           key: corpus-${{ hashFiles('tests/corpus/corpus.json') }}
       - run: dotnet build tests/NetForms.Tests -c Release
       - run: dotnet test tests/NetForms.Tests --no-build -c Release --filter "FullyQualifiedName~CorpusTests" --logger "console;verbosity=normal"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: corpus-${{ matrix.os }}
@@ -85,19 +88,59 @@ jobs:
       run:
         working-directory: designer
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
       - run: dotnet build ../tools/NetFormsDesigner.Host -c Release
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: designer-ui-${{ matrix.os }}
           path: designer/test/ui/out/
+
+  # Is the version on main new? Then it is released now. Without NuGet credentials nothing is released (and no
+  # tag is made), so adding them later and pushing again still publishes this version.
+  release-check:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [build-test, designer]
+    runs-on: ubuntu-latest
+    outputs:
+      release: ${{ steps.check.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: check
+        env:
+          HAS_NUGET_API_KEY: ${{ secrets.NUGET_API_KEY != '' }}
+          NUGET_USER: ${{ vars.NUGET_USER }}
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "v$version is already released."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          elif [ "$HAS_NUGET_API_KEY" != "true" ] && [ -z "$NUGET_USER" ]; then
+            echo "::warning::$version is not released: no NuGet credentials (the variable NUGET_USER or the secret NUGET_API_KEY, docs/RELEASING.md)."
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Releasing $version."
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: release-check
+    if: needs.release-check.outputs.release == 'true'
+    concurrency: release
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/release.yml
+    with:
+      publish: true
+      tested: true
+    secrets: inherit
