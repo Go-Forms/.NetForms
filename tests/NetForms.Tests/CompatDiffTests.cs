@@ -75,7 +75,7 @@ public class CompatDiffTests
                 continue;
             }
             if (expected == actual) continue;
-            if (IsRtf(expected) && IsRtf(actual) && NormalizeRtfFonts(expected) == NormalizeRtfFonts(actual))
+            if (SameRtfDocument(expected, actual))
             {
                 _output.WriteLine($"rtf equal up to the font table: {key}");
                 continue;
@@ -127,7 +127,15 @@ public class CompatDiffTests
                 @"{\rtf1\ansi\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset Arial;}}|{\colortbl ;\red255\green0\blue0;}|\uc1 |\pard\cf1\b\fs20 el}|",
                 @"{\rtf1\ansi\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset Arial;}}|{\colortbl ;\red255\green0\blue0;}|\uc1 |\pard\cf1\b\f0\fs20 el}|"),
         };
-        foreach (var (key, winForms, netForms) in pairs) Assert.True(R(winForms) == R(netForms), key);
+        // As the scenario JSON holds them (CompatScenarios' Esc), through the same comparison the oracle test uses.
+        static string Esc(string s) => s.Replace("|", "\r\n").Replace("\\", "\\\\").Replace("\r", "\\r").Replace("\n", "\\n");
+        foreach (var (key, winForms, netForms) in pairs)
+        {
+            Assert.True(R(winForms) == R(netForms), key);
+            Assert.True(SameRtfDocument(Esc(winForms), Esc(netForms)), key + " (escaped)");
+            Assert.Equal(winForms.Replace("|", "\r\n"), Unescape(Esc(winForms)));
+        }
+        Assert.False(SameRtfDocument(Esc(pairs[1].NetForms), Esc(pairs[1].NetForms.Replace("world", "World"))));
 
         var boldRedNetForms = pairs[1].NetForms;
         // What still counts: another face, another charset, other text or formatting.
@@ -140,7 +148,30 @@ public class CompatDiffTests
             R(@"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil Arial;}{\f1\fnil Calibri;}}\pard a b\par}"));
     }
 
-    private static bool IsRtf(string s) => s.StartsWith(@"{\rtf", StringComparison.Ordinal);
+    /// <summary>
+    /// Scenario values hold RTF escaped by CompatScenarios' Esc (backslashes doubled, CR and LF as \r and \n):
+    /// the same document, once its font table is normalized.
+    /// </summary>
+    internal static bool SameRtfDocument(string expected, string actual) =>
+        IsEscapedRtf(expected) && IsEscapedRtf(actual) && NormalizeRtfFonts(Unescape(expected)) == NormalizeRtfFonts(Unescape(actual));
+
+    private static bool IsEscapedRtf(string s) => s.StartsWith(@"{\\rtf", StringComparison.Ordinal);
+
+    /// <summary>The inverse of CompatScenarios' Esc: "\\" is a backslash, "\r" and "\n" are CR and LF.</summary>
+    internal static string Unescape(string s)
+    {
+        var sb = new StringBuilder(s.Length);
+        for (int i = 0; i < s.Length; i++)
+        {
+            if (s[i] == '\\' && i + 1 < s.Length)
+            {
+                var next = s[++i];
+                sb.Append(next switch { 'r' => '\r', 'n' => '\n', _ => next });
+            }
+            else sb.Append(s[i]);
+        }
+        return sb.ToString();
+    }
 
     private static readonly Regex s_fontEntry = new(@"\{\\f(\d+)((?:\\[a-z]+-?\d*\s?)*)([^;{}]*);\}", RegexOptions.Compiled);
     private static readonly Regex s_token = new(@"\\'[0-9a-fA-F]{2}|\\([a-z]+)(-?\d+)? ?|\\[^a-z]|[{}]|[^\\{}]+", RegexOptions.Compiled);
