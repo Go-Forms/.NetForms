@@ -68,11 +68,13 @@ SCENES.s0 = (t, f, sc) => {
 };
 
 /* ═══ 1. Офис, понедельник, утро ═════════════════════════════════════════════════════════ */
-function genaWalk(t, t0, t1, x0, x1) {
-  const k = easeIO(seg(t, t0, t1));
-  const x = lerp(x0, x1, k);
-  const walking = t > t0 && t < t1;
-  return { x, walking, walk: Math.abs(x - x0) / 38 };
+/** Гена с тележкой в профиль: руки на ручке, тележка впереди. */
+function genaPushing(w, extra = {}) {
+  const cartX = w.x + w.dir * 213;
+  return {
+    cartX,
+    gena: { x: w.x, y: 640, side: w.dir, phase: w.phase, S: w.S, amp: w.amp, near: [79, 0], far: [73, 4], ...extra },
+  };
 }
 
 SCENES.s1 = (t, f, sc) => {
@@ -89,44 +91,52 @@ SCENES.s1 = (t, f, sc) => {
     return;
   }
 
-  // Гена с тележкой
-  let g;
-  if (t < g3 + 0.2) g = genaWalk(t, pull, stop, 2350, 760);
-  else g = genaWalk(t, g3 + 0.2, g3 + 3.4, 760, -520);
-  const cartX = g.x - 200;
-  const place = seg(t, stop, stop + 0.9);
-  const placed = t >= stop + 0.9;
-  // ноутбук с тележки — на стол Марине Петровне
-  let slab = null;
-  if (t >= stop && !placed) {
-    const k = easeIO(place);
-    slab = [lerp(cartX, 440, k), lerp(740, 682, k) - Math.sin(k * Math.PI) * 120];
+  const GX = 763;
+  const mouth = mouthOf('gena', t);
+  let gena, cartX, carried = '', slabs = [], cartN = 3;
+  if (t < stop) {
+    // въезжает справа, толкая тележку
+    const w = walkSeg(t, pull, stop, 2020, GX, 150);
+    ({ gena, cartX } = genaPushing(w, { mouth }));
+  } else if (t < g3 + 0.1) {
+    // стоит анфас; правой рукой (слева в кадре) переносит верхний ноутбук с тележки на стол Марины Петровны
+    cartX = GX - 213;
+    const k = easeIO(seg(t, stop + 0.1, stop + 0.95));
+    const lift = Math.sin(k * Math.PI) * 50;
+    const slabAt = [lerp(cartX, 575, k), lerp(790 - 138, 682, k) - lift];
+    const moving = t >= stop + 0.1 && t < stop + 0.95;
+    if (t >= stop + 0.1) cartN = 2;
+    if (moving) carried = slab(slabAt[0], slabAt[1]);
+    if (t >= stop + 0.95) slabs = [[575, 682]];
+    const hand = moving ? [slabAt[0] + 52 - GX, slabAt[1] - 640, 40] : t < stop + 0.1 ? [-79, 0, 20] : [-72, 36, 12];
+    const genaTurn = t < M('s1.m1') ? -0.25 : t < turn ? -0.55 : keys(t, [[turn, -0.55], [turn + 0.9, 0.85]]);
+    gena = {
+      x: GX, y: 640, turn: genaTurn, handL: hand, handR: null,
+      lean: moving ? -9 * Math.sin(k * Math.PI) : 0,
+      mouth, smile: t < turn ? 0.35 : 0.15, brow: t >= turn ? 0.25 : 0,
+    };
+  } else {
+    // «Ну собери» — уходит, толкая тележку
+    const w = walkSeg(t, g3 + 0.1, g3 + 4.1, GX, -420, 150);
+    ({ gena, cartX } = genaPushing(w, { mouth }));
+    cartN = 2;
+    slabs = [[575, 682]];
   }
-  const handCart = [-72, 78];
-  const genaTurn = t < M('s1.m1') ? -0.2 : t < turn ? -0.55 : t < g3 ? keys(t, [[turn, -0.55], [turn + 0.9, 0.85]]) : 0.8;
-  const gena = {
-    x: g.x, y: 640, walking: g.walking, walk: g.walk, turn: genaTurn,
-    handL: slab ? [slab[0] - g.x + 20, slab[1] - 640] : handCart, handR: [-56, 84],
-    mouth: mouthOf('gena', t), smile: t < turn ? 0.35 : 0.15, brow: t >= turn && t < g3 ? 0.25 : 0,
-    lean: slab ? -8 * Math.sin(place * Math.PI) : 0,
-  };
   const marinaUp = t >= m2 && t < l2;
   const marina = {
-    lookDown: marinaUp ? 0 : 1, turn: marinaUp ? 0.25 : 0.1, mouth: mouthOf('marina', t),
-    handL: [-46, -74], handR: [72, -76], smile: marinaUp ? -0.1 : 0, brow: marinaUp ? -0.1 : 0,
+    lookDown: marinaUp ? 0 : 0.8, turn: marinaUp ? 0.25 : -0.15, mouth: mouthOf('marina', t),
+    handL: [-46, -74], handR: [96, -72], smile: marinaUp ? -0.1 : 0, brow: marinaUp ? -0.1 : 0,
   };
   const lesha = {
-    turn: t < turn ? 0.7 : t < l1 - 0.3 ? keys(t, [[turn + 0.4, 0.7], [turn + 1.0, -0.2]]) : -0.55,
-    mouth: mouthOf('lesha', t), handL: [-40, -72], handR: [44, -72],
+    turn: t < l1 - 0.2 ? 0 : -0.55, lookDown: t < l1 - 0.2 ? 0.35 : 0,
+    mouth: mouthOf('lesha', t), handL: [-40, -64, 70], handR: [44, -64, 70],
     eyes: t >= M('s1.g2') && t < l1 ? 1.25 : 1, brow: t >= l2 ? 0.35 : t >= l1 ? 0.1 : 0,
     worried: t >= l1 && t < l2 ? 0.6 : 0, smile: t >= l2 ? 0.55 : 0,
   };
   f.world = office({
-    t, mood: 'day', marina, lesha, gena,
-    cartAt: [cartX, 790], cartN: placed || slab ? 2 : 3, cartRolling: g.walking,
-    laptopMarinaClosed: placed || false,
-  }) + (slab ? `<g transform="translate(${slab[0]},${slab[1]})"><rect x="-78" y="-6" width="156" height="12" rx="3" fill="#B8BDC5"/>${penguin(-30, 0, 5)}</g>` : '')
-    + (placed ? `<g transform="translate(440,682)"><rect x="-78" y="-6" width="156" height="12" rx="3" fill="#B8BDC5"/>${penguin(-30, 0, 5)}</g>` : '');
+    t, mood: 'day', marina, lesha, gena, leshaSetup: 'pc', slabs, carried,
+    cartAt: [cartX, 790], cartN, cartRolling: !!gena.side,
+  });
 
   // камера
   if (t < pull) f.view = keys(t, [[sc.start, [1265, 272, 3.4]], [pull, [1265, 276, 3.0]]], k => k);
@@ -211,8 +221,8 @@ SCENES.s2 = (t, f, sc) => {
     const push = t > sc.start + 0.7 && t < sc.start + 0.85 ? 10 : 0;
     f.world = office({
       t, mood: 'day', marina: { lookDown: 1, handL: [-46, -74], handR: [72, -76] },
-      lesha: { turn: 0, smile: 0.5, brow: 0.25, handL: [lerp(-40, -14, crack), lerp(-40, -176 - push, crack)], handR: [lerp(44, 14, crack), lerp(-40, -176 - push, crack)] },
-      leshaLaptopBack: true, laptopGlow: '#9ad0ff',
+      lesha: { turn: 0, smile: 0.5, brow: 0.25, handL: [lerp(-40, -10, crack), lerp(-60, -112 - push, crack), 70], handR: [lerp(44, 10, crack), lerp(-60, -112 - push, crack), 70] },
+      leshaSetup: 'laptop', laptopGlow: '#9ad0ff',
     });
     f.view = keys(t, [[sc.start, [1540, 540, 2.0]], [term, [1540, 545, 2.15]]], k => k);
     f.fade = 1 - seg(t, sc.start, sc.start + 0.25);
@@ -221,13 +231,13 @@ SCENES.s2 = (t, f, sc) => {
   if (t >= lean && t < term2) {
     // откинулся, победная улыбка, глоток кофе
     const grab = lean + 0.3, lift = lean + 0.9, sip = lean + 1.15, down = lean + 1.7;
-    const hand = keys(t, [[lean, [-40, -40]], [grab, [-100, -76]], [lift, [-26, -200]], [down + 0.1, [-26, -200]], [down + 0.6, [-66, -178]]]);
+    const hand = keys(t, [[lean, [-40, -60, 70]], [grab, [-150, -64, 40]], [lift, [-25, -185, 60]], [down + 0.1, [-25, -185, 60]], [down + 0.6, [-46, -150, 60]]]);
     const holding = t >= grab;
     f.world = office({
       t, mood: 'day', marina: { lookDown: 1, handL: [-46, -74], handR: [72, -76] },
       lesha: { turn: -0.1, tilt: -6, smile: t > sip && t < down ? 0 : 0.85, brow: 0.35, eyes: t > sip && t < down ? 0.2 : 1,
-               handL: hand, holdL: holding ? 'mug' : null, mugColor: '#2F6F8F', handR: [60, -30], y: 752 },
-      leshaLaptopBack: true, leshaMug: holding ? false : undefined,
+               handL: hand, holdL: holding ? 'mug' : null, mugColor: LESHA_MUG, handR: [44, -60, 70], y: 752 },
+      leshaSetup: 'laptop', leshaMug: holding ? false : undefined,
     });
     f.view = keys(t, [[lean, [1540, 520, 2.25]], [term2, [1540, 520, 2.4]]], k => k);
     return;
@@ -235,8 +245,8 @@ SCENES.s2 = (t, f, sc) => {
   if (t >= freeze && t < term3) {
     f.world = office({
       t: freeze, mood: 'day', marina: { lookDown: 1, handL: [-46, -74], handR: [72, -76] },
-      lesha: { turn: -0.1, tilt: -3, eyes: 1.35, o: true, brow: 0.9, handL: [-66, -178], holdL: 'mug', mugColor: '#2F6F8F', handR: [60, -30], y: 752 },
-      leshaLaptopBack: true, leshaMug: false,
+      lesha: { turn: -0.1, tilt: -3, eyes: 1.35, o: true, brow: 0.9, handL: [-46, -150, 60], holdL: 'mug', mugColor: LESHA_MUG, handR: [44, -60, 70], y: 752 },
+      leshaSetup: 'laptop', leshaMug: false,
     });
     f.view = keys(t, [[freeze, [1532, 505, 2.9]], [term3, [1532, 505, 3.15]]], k => k);
     f.worldFilter = 'saturate(.25) contrast(1.15) brightness(.95)';
@@ -259,6 +269,44 @@ SCENES.s2 = (t, f, sc) => {
     if (t > c - 1.2) f.cursor = cursorPath(t, [[c - 1.2, 1500, 520], [c - 0.1, 700, 818]], [c]);
   }
 };
+
+/* ─── доска: текст пишется рукой с маркером; маркер ведёт конец строки ───────────────────── */
+let _measure = null;
+function textWidth(str, size) {
+  if (!_measure) _measure = document.createElement('canvas').getContext('2d');
+  _measure.font = `700 ${size}px Caveat`;
+  return _measure.measureText(str).width;
+}
+
+function boardShot(t, items, from, to, wipeAt = null) {
+  const shown = items.map(it => ({ ...it, k: seg(t, it.t0, it.t0 + it.dur) }));
+  let pen = null;
+  for (const it of shown) {
+    if (t < it.t0 - 0.35 || t > it.t0 + it.dur + 0.25) continue;
+    const n = Math.round(it.text.length * it.k);
+    const lines = it.text.slice(0, n).split('\n');
+    const li = lines.length - 1;
+    const x = it.x + textWidth(lines[li], it.size);
+    const y = it.y + li * it.size * 1.05 - it.size * 0.22;
+    pen = [x + 6, y];
+  }
+  let wipe = 0, arm = '';
+  if (wipeAt !== null && t >= wipeAt) {
+    // стирает рукавом: предплечье идёт слева направо и трёт вверх-вниз по обеим строкам
+    const k = seg(t, wipeAt, wipeAt + 1.0);
+    const px = lerp(200, 1760, easeIO(k));
+    wipe = clamp((px - 128) / 1664);
+    if (k < 1) arm = armFromBelow(CAST.lesha, px, 470 + 190 * Math.sin(t * 22), null, 1.25);
+  } else if (pen) {
+    arm = armFromBelow(CAST.lesha, pen[0], pen[1] + 8 * Math.sin(t * 40));
+  } else {
+    // между строками рука отходит вниз, к краю кадра
+    const last = [...items].reverse().find(it => t >= it.t0 + it.dur) || items[0];
+    const k = seg(t, last.t0 + last.dur + 0.25, last.t0 + last.dur + 0.7);
+    if (k < 1) arm = armFromBelow(CAST.lesha, lerp(700, 420, k), lerp(600, 1160, k));
+  }
+  return whiteboardSvg(shown, wipe) + arm;
+}
 
 /* ═══ 3. Пять стадий ═════════════════════════════════════════════════════════════════════ */
 const FORUM_TABS = ['winforms linux — Поиск', 'Can I run WinForms on Linux?', 'Mono WinForms (2008)', 'Wine + .NET 8 ???',
@@ -300,43 +348,33 @@ SCENES.s3 = (t, f, sc) => {
   } else if (t < dep) {
     label = 'Торг.'; cups = 5;
     const items = [
-      { x: 430, y: 300, text: 'Wine?', k: seg(t, M('s3.b0'), M('s3.b0') + 0.55) },
-      { x: 430, y: 430, text: 'Mono?', k: seg(t, M('s3.b1'), M('s3.b1') + 0.55) },
-      { x: 430, y: 560, text: 'Виртуалка с Windows\nна каждом рабочем месте?', k: seg(t, M('s3.b2'), M('s3.b2') + 1.5), size: 92 },
+      { x: 330, y: 330, text: 'Wine?', t0: M('s3.b0'), dur: 0.8, size: 104 },
+      { x: 330, y: 470, text: 'Mono?', t0: M('s3.b1'), dur: 0.8, size: 104 },
+      { x: 330, y: 620, text: 'Виртуалка с Windows\nна каждом рабочем месте?', t0: M('s3.b2'), dur: 2.4, size: 96 },
     ];
     let shake = 0;
-    for (let i = 0; i < 3; i++) {
-      const tb = M(`s3.b${i}`) + (i === 2 ? 1.5 : 0.55) + 0.1;
-      if (t >= tb && t < tb + 0.9) shake = Math.sin((t - tb) * 17) * (1 - (t - tb) / 0.9);
+    for (const it of items) {
+      const tb = it.t0 + it.dur + 0.05;
+      if (t >= tb && t < tb + 0.8) shake = Math.sin((t - tb) * 18) * (1 - (t - tb) / 0.8);
     }
-    f.world = whiteboardSvg(items) +
-      person('lesha', { t, x: 230, y: 880, standing: true, turn: 0.5, handR: [150, -300], handL: [-40, 40], brow: 0.3, smile: 0.2, worried: 0.3 }) +
-      `<g transform="translate(${230 + 70 + 70},${880 - 135 - 160})"><rect x="-6" y="-26" width="12" height="40" rx="4" fill="#2C63C9"/></g>` +
-      person('gena', { t, x: 1680, y: 880, standing: true, turn: shake * 0.9, tilt: shake * 5, handL: [34, -70], handR: [-34, -66], brow: -0.1 });
+    f.world = boardShot(t, items, bar, dep) +
+      person('gena', { t, x: 1665, y: 1000, scale: 1.25, standing: true, turn: shake * 0.9, tilt: shake * 5,
+        handL: [34, -70, 45], handR: [-34, -66, 50], brow: -0.15, lookDown: 0.1 });
     f.view = [960, 540, 1];
   } else if (t < acc) {
     label = 'Депрессия.'; cups = 7;
     const w = M('s3.wipe');
-    const wipe = easeIO(seg(t, w, w + 0.8));
     const items = [
-      { x: 360, y: 320, text: 'Переписать на Avalonia — 43 формы —\nоценка: 4 месяца', k: seg(t, M('s3.d0'), M('s3.d0') + 1.3), size: 84, color: '#1F4FB5' },
-      { x: 360, y: 640, text: 'Переписать на веб — 3 квартала', k: seg(t, M('s3.d1'), M('s3.d1') + 1.0), size: 84, color: '#C0392B' },
+      { x: 300, y: 330, text: 'Переписать на Avalonia — 43 формы —\nоценка: 4 месяца', t0: M('s3.d0'), dur: 2.0, size: 86 },
+      { x: 300, y: 640, text: 'Переписать на веб — 3 квартала', t0: M('s3.d1'), dur: 1.4, size: 86, color: '#C0392B' },
     ];
-    const lx = lerp(200, 1720, wipe);
-    const rubbing = t >= w && t < w + 0.8;
-    const handR = rubbing ? [150, -300 - 150 * (0.5 + 0.5 * Math.sin(t * 26))] : [40, 30];
-    const handX = lx + (rubbing ? 150 : 0);
-    const wipeK = t < w ? 0 : clamp((handX - 128) / 1664);
-    f.world = whiteboardSvg(items, wipeK) +
-      person('lesha', { t, x: lx, y: 900, standing: true, walking: rubbing, walk: lx / 40, turn: rubbing ? 0.6 : -0.3, worried: 1, brow: -0.3,
-        eyes: 0.7, lookDown: rubbing ? 0 : 0.3, handL: [-40, 30], handR });
+    f.world = boardShot(t, items, dep, acc, w);
     f.view = [960, 540, 1];
   } else {
     label = 'Принятие?'; cups = 7;
     f.world = office({
-      t, mood: 'night', clock: clock, lesha: { turn: 0.55, lookDown: 0.2, eyes: 0.9, handL: [-40, -72], handR: [44, -72] },
-      leshaMonitor: `<rect width="150" height="108" fill="#1b1a24"/>` + [0, 1, 2, 3, 4, 5].map(i => `<rect x="10" y="${10 + i * 15}" width="${40 + (i * 37) % 80}" height="6" fill="#7fb4ff" opacity=".7"/>`).join(''),
-      screenGlow: 0.12,
+      t, mood: 'night', clock: clock, lesha: { turn: 0, lookDown: 0.3, eyes: 0.9, handL: [-40, -60, 70], handR: [44, -60, 70] },
+      leshaSetup: 'laptop', laptopGlow: '#9ad0ff', screenGlow: 0.12,
     });
     f.view = keys(t, [[acc, [1500, 520, 1.45]], [sc.end, [1540, 530, 1.9]]], k => k);
   }
@@ -514,6 +552,17 @@ function marinaBackFg() {
   </svg>`;
 }
 
+function genaBackFg() {
+  const c = CAST.gena;
+  return `<svg viewBox="0 0 1920 1080" width="1920" height="1080" style="position:absolute;inset:0">
+    <path d="M1380,1100 Q1400,960 1540,930 L1820,930 Q1960,960 1980,1100Z" fill="${c.top}"/>
+    ${[1470, 1560, 1650, 1740].map(x => `<path d="M${x},940 L${x - 20},1090" stroke="${c.topD}" stroke-width="10" opacity=".6"/>`).join('')}
+    <ellipse cx="1680" cy="840" rx="112" ry="128" fill="${c.hair}"/>
+    <ellipse cx="1566" cy="850" rx="16" ry="26" fill="${c.skinD}"/><ellipse cx="1794" cy="850" rx="16" ry="26" fill="${c.skinD}"/>
+    <path d="M1600,960 Q1680,990 1760,960 L1760,1000 L1600,1000Z" fill="${c.skinD}"/>
+  </svg>`;
+}
+
 SCENES.s5 = (t, f, sc) => {
   const gIn = M('s5.genaIn'), look = M('s5.look'), roll = M('s5.roll'), g2 = M('s5.g2'), check = M('s5.check');
   const two = M('s5.two'), cof = M('s5.coffee');
@@ -560,65 +609,95 @@ SCENES.s5 = (t, f, sc) => {
     return;
   }
 
-  // Гена: входит с кофе, берёт ноутбук, катит к Марине Петровне, потом возвращается к Лёше
-  let gx, walking = false, walk = 0;
-  const w1 = genaWalk(t, gIn, gIn + 2.4, 820, 1240);
-  const w2 = genaWalk(t, roll + 0.8, roll + 3.1, 1240, 780);
-  const w3 = genaWalk(t, cof + 0.3, cof + 1.9, 780, 1255);
-  if (t < roll + 0.8) ({ x: gx, walking, walk } = w1);
-  else if (t < cof + 0.3) ({ x: gx, walking, walk } = w2);
-  else ({ x: gx, walking, walk } = w3);
-  if (t < gIn) gx = -400;
+  // Врезки: экран ноутбука Лёши (уснул на клавише «s») и второй монитор со «Складом» из-за плеча Гены
+  if (t < gIn) {
+    const n = 60 + Math.floor((t - sc.start) * 14);
+    const L = ['<span class="pr">$</span> dotnet run', '', '<span class="pr">$</span> ' + 's'.repeat(n) + '<span class="cur"></span>'];
+    f.screen = `<div style="position:absolute;inset:0;background:#0d0c12"></div>` +
+      terminal({ x: 110, y: 70, w: 1700, h: 940, title: 'lesha@sklad-laptop: ~/sklad', lines: L, font: 34 }) +
+      `<div style="position:absolute;inset:0;background:radial-gradient(80% 70% at 30% 20%, rgba(255,190,120,.10), transparent 70%)"></div>`;
+    f.screenTransform = `scale(${1.04 - 0.04 * seg(t, sc.start, gIn)})`;
+    f.fade = 1 - seg(t, sc.start, sc.start + 0.5);
+    return;
+  }
+  const g1 = M('s5.g1');
+  if (t >= look && t < g1) {
+    const meta = FILM();
+    const u = 1.18;
+    f.screen = `<div style="position:absolute;inset:0;background:#15161a"><div style="position:absolute;left:60px;top:30px;right:60px;bottom:30px;border-radius:24px;background:#23262c"></div>
+      <div style="position:absolute;left:90px;top:60px;right:90px;bottom:60px;background:radial-gradient(90% 90% at 40% 30%, #4d6f9a, #253754)"></div>
+      <div style="position:absolute;left:90px;top:60px;right:90px;height:34px;background:#101114;color:#e8e8e8;font:600 19px/34px 'Noto Sans';text-align:center">вт 22 сен 08:51</div></div>`;
+    f.win = { src: 'main-back', title: meta.mainTitle, x: 210, y: 130, s: u };
+    f.fg = genaBackFg();
+    f.screenTransform = `scale(${1 + 0.03 * seg(t, look, g1)})`;
+    return;
+  }
 
-  const cartX = t < roll + 0.8 ? 1060 : t < cof + 0.3 ? gx - 180 : 600;
-  // ноутбук со «Складом»: стол Лёши → тележка → стол Марины Петровны
-  let lap = [1310, 580], lapOn = 'lesha';
-  const toCart = seg(t, roll, roll + 0.7);
-  if (toCart > 0) { lapOn = 'air'; lap = [lerp(1310, cartX - 70, easeIO(toCart)), lerp(580, 668, easeIO(toCart)) - Math.sin(toCart * Math.PI) * 80]; }
-  if (toCart >= 1) { lapOn = 'cart'; lap = [cartX - 70, 668]; }
-  const toDesk = seg(t, g2 + 0.3, g2 + 0.9);
-  if (toDesk > 0) { lapOn = 'air'; lap = [lerp(cartX - 70, 360, easeIO(toDesk)), lerp(668, 584, easeIO(toDesk)) - Math.sin(toDesk * Math.PI) * 70]; }
-  if (toDesk >= 1) { lapOn = 'marina'; lap = [360, 584]; }
-
-  const mugPut = seg(t, cof + 1.95, cof + 2.35);
-  const holdMug = mugPut < 1;
-  const genaHandR = mugPut > 0 ? [lerp(40, 1402 - gx, easeIO(mugPut)), lerp(-40, 684 - 640 - 20, easeIO(mugPut))] : [44, -40];
-  let genaHandL = [-40, 60];
-  if (lapOn === 'air') genaHandL = [lap[0] + 70 - gx, lap[1] + 40 - 640];
-  else if (t >= roll + 0.7 && t < cof + 0.3) genaHandL = [-52, 80];
-  const genaTurn = t < look ? 0.2 : t < roll ? 0.6 : t < two ? -0.4 : t < cof ? -0.45 : 0.4;
-  const gena = {
-    x: gx, y: 640, walking, walk, turn: genaTurn, lookDown: t >= look && t < roll ? 0.5 : t >= cof + 1.9 ? 0.4 : 0,
-    handR: genaHandR, holdR: holdMug ? 'mug' : null, steam: true, handL: genaHandL,
-    mouth: mouthOf('gena', t), smile: t >= cof + 2 ? 0.35 : 0.1, brow: t >= look && t < roll ? 0.3 : 0,
-  };
+  // Гена: входит с кофе, смотрит, берёт ноутбук, несёт Марине Петровне, потом ставит кофе рядом с Лёшей
+  const GA = 1195, GB = 735;
+  const mouth = mouthOf('gena', t);
+  let gena, lap = null, lapCarried = '', marinaLaptop = null, mugOnDesk = null;
+  const pickK = easeIO(seg(t, roll, roll + 0.8));
+  if (t < look) {
+    const w = walkSeg(t, gIn, gIn + 2.5, 560, GA, 150);
+    gena = w.moving ? { x: w.x, y: 640, side: 1, phase: w.phase, S: w.S, amp: w.amp, near: [56, -60], holdNear: 'mug', steam: true, mouth }
+                    : { x: GA, y: 640, handL: [-44, -60, 50], holdL: 'mug', steam: true, turn: 0.55, lookDown: 0.3, mouth };
+    lap = [1296, 594];
+  } else if (t < roll + 0.95) {
+    // «Хм.» — и левой рукой (справа в кадре) берёт ноутбук со стола Лёши
+    lap = [lerp(1296, 1212, pickK), lerp(594, 540, pickK) - Math.sin(pickK * Math.PI) * 20];
+    const hand = t >= roll ? [lap[0] + 22 - GA, lap[1] + 48 - 640, 35] : null;
+    gena = { x: GA, y: 640, handL: [-44, -60, 50], holdL: 'mug', steam: true, handR: hand, turn: t < roll ? 0.55 : 0.3,
+             lookDown: t < roll ? 0.35 : 0.2, brow: 0.3, mouth };
+    if (t >= roll) { lapCarried = laptopBack(lap[0], lap[1], 150, 84); lap = null; }
+  } else if (t < g2) {
+    // несёт ноутбук к Марине Петровне и ставит ей на стол, не останавливаясь
+    const w = walkSeg(t, roll + 1.0, roll + 3.4, GA, GB, 150);
+    const pk = easeIO(seg(t, roll + 3.4, roll + 3.95));
+    const put = t >= roll + 3.4;
+    const lean = put ? 18 * Math.sin(Math.min(pk, 1) * Math.PI * 0.5) * (1 - seg(t, roll + 3.95, g2)) : 0;
+    const near = put ? [lerp(62, 150, pk), lerp(-40, 30, pk)] : [62, -40];
+    gena = { x: w.x, y: 640, side: -1, phase: w.phase, S: w.S, amp: w.amp, near, holdNear: t < roll + 3.95 ? 'laptop' : null,
+             far: [52, -60], holdFar: 'mug', steam: true, lean, mouth };
+    if (t >= roll + 3.95) marinaLaptop = [500, 594];
+  } else if (t < cof + 0.3) {
+    marinaLaptop = [500, 594];
+    gena = { x: GB, y: 640, handL: [-44, -60, 50], holdL: 'mug', steam: true, turn: t < two ? -0.45 : -0.5,
+             mouth, smile: t >= M('s5.m2') ? 0.2 : 0.05, brow: t >= M('s5.g3') && t < M('s5.m2') ? 0.2 : 0 };
+  } else {
+    // к Лёше, ставит кофе рядом — наклонившись к столу
+    marinaLaptop = [500, 594];
+    const w = walkSeg(t, cof + 0.3, cof + 2.2, GB, 1200, 150);
+    const pk = easeIO(seg(t, cof + 2.2, cof + 2.75));
+    const back = seg(t, cof + 2.9, cof + 3.4);
+    const lean = 24 * pk * (1 - back);
+    const th = lean * Math.PI / 180;
+    const wx = 1300 - 1200 - 12, wy = 684 - 640 - 6;           // куда встанет кружка, от таза
+    const tgt = [wx * Math.cos(th) + wy * Math.sin(th), -wx * Math.sin(th) + wy * Math.cos(th)];
+    const placed = t >= cof + 2.75;
+    const near = placed ? [lerp(tgt[0], 30, back), lerp(tgt[1], 40, back)] : [lerp(56, tgt[0], pk), lerp(-60, tgt[1], pk)];
+    gena = { x: w.x, y: 640, side: 1, phase: w.phase, S: w.S, amp: w.amp, near, holdNear: placed ? null : 'mug', steam: true, lean,
+             far: null, mouth, smile: back > 0 ? 0.4 : 0, lookDown: 0.3 };
+    if (placed) mugOnDesk = [1300, 684];
+  }
   const marinaTalk = t >= two && t < cof;
   const marina = {
-    lookDown: marinaTalk || (t >= g2 && t < check) ? 0 : 0.8, turn: marinaTalk || (t >= g2 && t < check) ? 0.6 : 0.1,
-    mouth: mouthOf('marina', t), handL: [-46, -74], handR: [72, -76], brow: t >= M('s5.m2') && t < cof ? 0.1 : 0,
+    lookDown: marinaTalk || (t >= g2 && t < check) ? 0 : 0.5, turn: marinaTalk || (t >= g2 && t < check) ? 0.6 : 0.3,
+    mouth: mouthOf('marina', t), handL: [-46, -74], handR: [120, -70, 60], brow: t >= M('s5.m2') && t < cof ? 0.1 : 0,
     smile: t >= M('s5.m2') && t < cof ? 0.25 : 0,
   };
-  const sss = 's'.repeat(40 + Math.floor((t - sc.start) * 9));
-  const termLines = [{ t: '$ dotnet run', c: '#7ee2a8' }];
-  for (let i = 0; i < 6; i++) termLines.push({ t: sss.slice(i * 20, i * 20 + 20) });
-  let w = office({
-    t, mood: 'morning', clock: 9 * 3600 + (t - sc.start) * 60,
-    marina, lesha: { hidden: true, sleepHead: true }, gena,
-    leshaMonitor: miniTerminal(150, 108, termLines.filter(l => l.t)),
-    leshaLaptopFront: lapOn === 'lesha' ? lap : null, leshaMug: false,
-    laptopMarina: lapOn === 'marina' ? lap : null, laptopSel: 0,
-    cartAt: [cartX, 790], cartN: 0, cartRolling: walking && t > roll,
-    genaMugOnDesk: mugPut >= 1 ? [1402, 684] : null,
+  f.world = office({
+    t, mood: 'morning', clock: 8 * 3600 + 50 * 60 + (t - sc.start) * 60,
+    marina, lesha: { hidden: true, sleepHead: true }, gena, leshaSetup: 'morning', leshaLaptop: lap, leshaMug: false,
+    marinaLaptop, genaMugOnDesk: mugOnDesk, carried: lapCarried,
   });
-  if (lapOn === 'air' || lapOn === 'cart') w += laptopFront(lap[0], lap[1], 140, 88, miniSklad(140, 88, { wall: '#3A6EA5' }));
-  f.world = w;
 
-  if (t < gIn + 1.2) f.view = [1470, 540, 1.95];
-  else if (t < roll + 0.8) f.view = keys(t, [[gIn + 1.2, [1470, 540, 1.95]], [gIn + 2.6, [1330, 540, 1.6]]]);
-  else if (t < check) f.view = keys(t, [[roll + 0.8, [1330, 540, 1.6]], [roll + 3.1, [640, 540, 1.6]]]);
+  if (t < gIn + 1.4) f.view = [1470, 540, 1.9];
+  else if (t < roll + 1.0) f.view = keys(t, [[gIn + 1.4, [1470, 540, 1.9]], [gIn + 2.6, [1320, 540, 1.6]]]);
+  else if (t < check) f.view = keys(t, [[roll + 1.0, [1320, 540, 1.6]], [roll + 3.4, [660, 540, 1.6]]]);
   else if (t < cof + 0.3) f.view = keys(t, [[two, [600, 530, 1.7]], [cof, [610, 530, 1.75]]], k => k);
-  else f.view = keys(t, [[cof + 0.3, [610, 530, 1.75]], [cof + 2.0, [1420, 540, 1.8]]]);
-  f.fade = Math.max(1 - seg(t, sc.start, sc.start + 0.6), seg(t, sc.end - 0.7, sc.end));
+  else f.view = keys(t, [[cof + 0.3, [610, 530, 1.75]], [cof + 2.3, [1340, 540, 1.8]]]);
+  f.fade = seg(t, sc.end - 0.7, sc.end);
 };
 
 /* ═══ 6. Эпилог ══════════════════════════════════════════════════════════════════════════ */

@@ -61,194 +61,6 @@ function blink(t, phase) {
   return x < 0.12 ? Math.abs(x - 0.06) / 0.06 : 1;
 }
 
-/* ─── персонажи ─────────────────────────────────────────────────────────────────────────── */
-const CAST = {
-  lesha: { skin: '#F1C6A4', skinD: '#DDA887', hair: '#3A2A20', top: '#2F6F8F', topD: '#245872', pants: '#3B4252',
-           style: 'hoodie', hairStyle: 'messy', phase: 0.1 },
-  marina: { skin: '#EFC5A6', skinD: '#D9A98A', hair: '#9C4128', top: '#8B2F4B', topD: '#6F2239', pants: '#3E3A4A',
-            style: 'cardigan', hairStyle: 'bun', glasses: true, phase: 0.55 },
-  gena: { skin: '#E2AE8A', skinD: '#C99373', hair: '#6B5A4B', top: '#557A5B', topD: '#40604A', pants: '#4A5263',
-          style: 'flannel', hairStyle: 'short', beard: true, phase: 0.9 },
-};
-
-/** Двухзвенная рука: плечо (sx,sy) → кисть (hx,hy), bend = ±1 — куда сгибается локоть. */
-function limb(sx, sy, hx, hy, L1, L2, bend) {
-  let dx = hx - sx, dy = hy - sy, d = Math.hypot(dx, dy);
-  const max = L1 + L2 - 0.5;
-  if (d > max) { hx = sx + dx / d * max; hy = sy + dy / d * max; dx = hx - sx; dy = hy - sy; d = max; }
-  const a = Math.atan2(dy, dx);
-  const A = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1));
-  const ea = a + bend * A;
-  return { ex: sx + L1 * Math.cos(ea), ey: sy + L1 * Math.sin(ea), hx, hy };
-}
-
-/**
- * Персонаж анфас. Начало координат — середина таза (сидит на стуле или стоит).
- * s: { x, y, scale, turn(-1..1), tilt(°), lean(°), look:[x,y], eyes(0..1.4), brow(-1..1 — вверх/вниз),
- *      angry(0..1), smile(-1..1), mouth(0..1), teeth, puff, red, lookDown(0..1), handL:[x,y]|null, handR,
- *      standing, walk(фаза), holdL/holdR ('mug'), sleep }
- */
-function person(who, s) {
-  const c = CAST[who];
-  const sc = s.scale || 1;
-  const turn = s.turn || 0;
-  const fx = turn * 17;
-  const out = [];
-  out.push(`<g transform="translate(${s.x},${s.y}) scale(${sc * (s.flip ? -1 : 1)},${sc}) rotate(${s.lean || 0})">`);
-
-  // ноги (если стоит)
-  if (s.standing) {
-    const ph = s.walk || 0;
-    const sw = s.walking ? Math.sin(ph) * 22 : 0;
-    for (const [side, ang] of [[-1, sw], [1, -sw]]) {
-      const hx = side * 28, rad = ang * Math.PI / 180;
-      const kx = hx + Math.sin(rad) * 125, ky = Math.cos(rad) * 125;
-      const fxx = kx + Math.sin(rad * 0.6) * 125, fyy = ky + 125;
-      out.push(`<path d="M${hx},4 L${kx},${ky} L${fxx},${fyy}" stroke="${c.pants}" stroke-width="44" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`);
-      out.push(`<ellipse cx="${fxx + side * 8}" cy="${fyy + 18}" rx="32" ry="15" fill="#2B2B30"/>`);
-    }
-  }
-
-  const bob = s.walking ? Math.abs(Math.sin(s.walk || 0)) * -6 : Math.sin((s.t || 0) * 1.7 + c.phase * 5) * 1.5;
-  out.push(`<g transform="translate(0,${bob})">`);
-
-  // руки сзади тела не рисуем; сначала капюшон
-  if (c.style === 'hoodie') {
-    out.push(`<path d="M-58,-150 Q0,-120 58,-150 Q70,-185 0,-190 Q-70,-185 -58,-150Z" fill="${c.topD}"/>`);
-  }
-  // туловище
-  out.push(`<path d="M-66,6 L-78,-128 Q-78,-156 -46,-160 L46,-160 Q78,-156 78,-128 L66,6 Z" fill="${c.top}"/>`);
-  if (c.style === 'cardigan') {
-    out.push(`<path d="M-24,-160 L0,-96 L24,-160 Z" fill="#F6EFE6"/>`);
-    out.push(`<path d="M-4,-96 L-4,6 M4,-96 L4,6" stroke="${c.topD}" stroke-width="3"/>`);
-    out.push(`<circle cx="0" cy="-70" r="4" fill="#E8D8B0"/><circle cx="0" cy="-40" r="4" fill="#E8D8B0"/><circle cx="0" cy="-10" r="4" fill="#E8D8B0"/>`);
-    out.push(`<circle cx="-40" cy="-120" r="6" fill="#D8B45A"/>`);
-  } else if (c.style === 'flannel') {
-    out.push(`<path d="M-30,-160 L-30,6 L30,6 L30,-160 Z" fill="#2E3238"/>`);
-    // пингвин на футболке
-    out.push(`<g transform="translate(0,-98) scale(0.9)"><ellipse cx="0" cy="0" rx="13" ry="17" fill="#15161A"/><ellipse cx="0" cy="4" rx="8" ry="11" fill="#F4F4F4"/><circle cx="-4" cy="-7" r="2" fill="#F4F4F4"/><circle cx="4" cy="-7" r="2" fill="#F4F4F4"/><path d="M-4,-3 L4,-3 L0,1Z" fill="#F2B233"/><ellipse cx="-6" cy="17" rx="5" ry="2.5" fill="#F2B233"/><ellipse cx="6" cy="17" rx="5" ry="2.5" fill="#F2B233"/></g>`);
-    for (const x of [-60, -45, 45, 60]) out.push(`<path d="M${x},-150 L${x * 0.9},6" stroke="${c.topD}" stroke-width="4" opacity=".6"/>`);
-    for (const y of [-130, -95, -60, -25]) out.push(`<path d="M-76,${y} L-30,${y} M30,${y} L76,${y}" stroke="${c.topD}" stroke-width="4" opacity=".6"/>`);
-  } else if (c.style === 'hoodie') {
-    out.push(`<path d="M-14,-150 L-18,-100 M14,-150 L18,-100" stroke="#E9E6DF" stroke-width="4" stroke-linecap="round"/>`);
-    out.push(`<path d="M-42,-40 Q0,-30 42,-40 L38,0 L-38,0 Z" fill="${c.topD}" opacity=".55"/>`);
-  }
-  // шея
-  out.push(`<rect x="-15" y="-182" width="30" height="30" rx="8" fill="${c.skinD}"/>`);
-
-  // руки: опущенные — за головой, поднятые к лицу (кружка, хруст пальцами) — перед ней
-  const shoulder = { L: [-70, -135], R: [70, -135] };
-  const arms = { low: [], high: [] };
-  for (const side of ['L', 'R']) {
-    const h = s['hand' + side];
-    const def = side === 'L' ? [-50, 30] : [50, 30];
-    const [hx, hy] = h || def;
-    const [sx, sy] = shoulder[side];
-    const bend = side === 'L' ? 1 : -1;
-    const a = limb(sx, sy, hx, hy, 88, 82, bend);
-    const dst = a.hy < -160 ? arms.high : arms.low;
-    dst.push(`<path d="M${sx},${sy} L${a.ex},${a.ey} L${a.hx},${a.hy}" stroke="${c.top}" stroke-width="30" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`);
-    dst.push(`<circle cx="${a.hx}" cy="${a.hy}" r="14" fill="${c.skin}"/>`);
-    if (s['hold' + side] === 'mug') dst.push(mug(a.hx + (side === 'L' ? 6 : -6), a.hy - 6, s.mugColor || '#F4F1EA', 1, s.t, s.steam));
-  }
-  out.push(...arms.low);
-
-  // голова
-  const tilt = s.tilt || 0;
-  out.push(`<g transform="rotate(${tilt} 0 -180)">`);
-  out.push(head(c, s, fx));
-  out.push('</g>');
-  out.push(...arms.high);
-  out.push('</g></g>');
-  return out.join('');
-}
-
-function head(c, s, fx) {
-  const o = [];
-  const ld = s.lookDown || 0;
-  const hy = -236;
-  // волосы сзади
-  if (c.hairStyle === 'bun') {
-    o.push(`<circle cx="${fx * 0.3}" cy="${hy - 70}" r="30" fill="${c.hair}"/>`);
-    o.push(`<path d="M-60,${hy + 10} Q-66,${hy - 60} 0,${hy - 66} Q66,${hy - 60} 60,${hy + 10} L56,${hy + 34} L-56,${hy + 34}Z" fill="${c.hair}"/>`);
-  } else if (c.hairStyle === 'short') {
-    o.push(`<path d="M-56,${hy} Q-58,${hy - 58} 0,${hy - 64} Q58,${hy - 58} 56,${hy}Z" fill="${c.hair}"/>`);
-  } else {
-    o.push(`<path d="M-58,${hy + 6} Q-64,${hy - 62} 0,${hy - 68} Q64,${hy - 62} 58,${hy + 6}Z" fill="${c.hair}"/>`);
-  }
-  // уши и лицо
-  o.push(`<ellipse cx="${-52 + fx * 0.3}" cy="${hy + 4}" rx="10" ry="15" fill="${c.skinD}"/>`);
-  o.push(`<ellipse cx="${52 + fx * 0.3}" cy="${hy + 4}" rx="10" ry="15" fill="${c.skinD}"/>`);
-  const puff = s.puff || 0;
-  o.push(`<ellipse cx="${fx * 0.25}" cy="${hy}" rx="${52 + puff * 6}" ry="60" fill="${c.skin}"/>`);
-  if (s.red) o.push(`<ellipse cx="${fx * 0.25}" cy="${hy}" rx="52" ry="60" fill="#E0463A" opacity="${0.45 * s.red}"/>`);
-  if (c.style === 'hoodie') o.push(`<path d="M${fx - 26},${hy + 40} Q${fx},${hy + 58} ${fx + 26},${hy + 40} Q${fx},${hy + 50} ${fx - 26},${hy + 40}Z" fill="${c.skinD}" opacity=".5"/>`);
-  if (puff) {
-    o.push(`<circle cx="${fx - 30}" cy="${hy + 26}" r="${12 * puff}" fill="#F0A58E" opacity=".7"/>`);
-    o.push(`<circle cx="${fx + 30}" cy="${hy + 26}" r="${12 * puff}" fill="#F0A58E" opacity=".7"/>`);
-  }
-  // борода
-  if (c.beard) {
-    o.push(`<path d="M${fx - 46},${hy + 4} Q${fx - 44},${hy + 70} ${fx},${hy + 72} Q${fx + 44},${hy + 70} ${fx + 46},${hy + 4} Q${fx + 30},${hy + 30} ${fx},${hy + 28} Q${fx - 30},${hy + 30} ${fx - 46},${hy + 4}Z" fill="${c.hair}"/>`);
-  }
-
-  // глаза
-  const lx = (s.look ? s.look[0] : turn0(s)) * 4, ly = (s.look ? s.look[1] : 0) * 3 + ld * 4;
-  const open = (s.eyes === undefined ? 1 : s.eyes) * blink(s.t || 0, c.phase) * (1 - ld * 0.55);
-  const ey = hy - 4 + ld * 5;
-  for (const side of [-1, 1]) {
-    const ex = fx + side * 20;
-    if (s.sleep) {
-      o.push(`<path d="M${ex - 8},${ey} Q${ex},${ey + 6} ${ex + 8},${ey}" stroke="#2A2220" stroke-width="3.5" fill="none" stroke-linecap="round"/>`);
-      continue;
-    }
-    if ((s.eyes || 1) > 1.15) o.push(`<ellipse cx="${ex}" cy="${ey}" rx="10" ry="${11 * open}" fill="#FFFFFF"/>`);
-    o.push(`<ellipse cx="${ex + lx}" cy="${ey + ly}" rx="5.5" ry="${Math.max(0.8, 7.5 * Math.min(open, 1.1))}" fill="#2A2220"/>`);
-    // брови
-    const b = s.brow || 0, ang = s.angry || 0;
-    const by = ey - 17 - b * 9 + ld * 3;
-    const inner = by + ang * 7 - (s.worried || 0) * 6, outer = by - ang * 3 + (s.worried || 0) * 3;
-    const xi = ex - side * 4, xo = ex + side * 13;
-    o.push(`<path d="M${xi - side * 6},${inner} L${xo},${outer}" stroke="${c.hair === '#9C4128' ? '#7A3322' : c.hair}" stroke-width="5" stroke-linecap="round"/>`);
-  }
-  // очки
-  if (c.glasses) {
-    const gy = ey + 1;
-    o.push(`<g fill="none" stroke="#6B4E2E" stroke-width="3"><rect x="${fx - 34}" y="${gy - 10}" width="27" height="20" rx="7"/><rect x="${fx + 7}" y="${gy - 10}" width="27" height="20" rx="7"/><path d="M${fx - 7},${gy - 2} L${fx + 7},${gy - 2}"/></g>`);
-    o.push(`<path d="M${fx - 34},${gy} Q-62,${hy + 40} -52,${hy + 96} M${fx + 34},${gy} Q62,${hy + 40} 52,${hy + 96}" stroke="#C9A45A" stroke-width="1.4" fill="none" opacity=".45"/>`);
-  }
-  // нос
-  o.push(`<path d="M${fx * 1.25 + 1},${hy + 4 + ld * 4} Q${fx * 1.25 + 7},${hy + 18 + ld * 4} ${fx * 1.25},${hy + 20 + ld * 4}" stroke="${c.skinD}" stroke-width="3.5" fill="none" stroke-linecap="round"/>`);
-  // рот
-  const my = hy + 36 + ld * 6;
-  const m = clamp(s.mouth || 0);
-  const smile = s.smile || 0;
-  const mx = fx * 1.1;
-  if (s.sleep) {
-    o.push(`<ellipse cx="${mx}" cy="${my}" rx="6" ry="4" fill="#7A2E2E"/>`);
-  } else if (m > 0.06 || s.o) {
-    const rx = s.o ? 7 : 13 - m * 2, ry = s.o ? 9 : 2 + m * 10;
-    o.push(`<path d="M${mx - rx},${my - smile * 3} Q${mx},${my + ry * 2 + smile * 4} ${mx + rx},${my - smile * 3} Q${mx},${my - ry * 0.4} ${mx - rx},${my - smile * 3}Z" fill="#7A2E2E"/>`);
-    if (s.teeth) o.push(`<rect x="${mx - rx + 3}" y="${my - 2}" width="${2 * rx - 6}" height="5" rx="2" fill="#FFFFFF"/>`);
-  } else if (s.teeth) {
-    o.push(`<rect x="${mx - 14}" y="${my - 5}" width="28" height="10" rx="4" fill="#FFFFFF" stroke="#7A2E2E" stroke-width="2.5"/><path d="M${mx - 14},${my} L${mx + 14},${my}" stroke="#C9C1B8" stroke-width="1.5"/>`);
-  } else {
-    o.push(`<path d="M${mx - 13},${my} Q${mx},${my + smile * 12} ${mx + 13},${my - (s.smirk || 0) * 6}" stroke="#7A2E2E" stroke-width="4" fill="none" stroke-linecap="round"/>`);
-  }
-  // волосы спереди
-  if (c.hairStyle === 'messy') {
-    o.push(`<path d="M-56,${hy - 12} Q-60,${hy - 66} -6,${hy - 70} Q40,${hy - 76} 58,${hy - 30} L54,${hy - 14} Q40,${hy - 40} 20,${hy - 36} L24,${hy - 26} Q0,${hy - 44} -20,${hy - 34} L-18,${hy - 22} Q-40,${hy - 34} -56,${hy - 12}Z" fill="${c.hair}"/>`);
-    o.push(`<path d="M-10,${hy - 70} L-2,${hy - 86} L8,${hy - 70} M14,${hy - 70} L30,${hy - 80} L30,${hy - 64}" fill="${c.hair}" stroke="${c.hair}" stroke-width="6" stroke-linejoin="round"/>`);
-  } else if (c.hairStyle === 'bun') {
-    o.push(`<path d="M-56,${hy - 4} Q-54,${hy - 62} 4,${hy - 64} Q58,${hy - 60} 56,${hy - 4} Q46,${hy - 46} 10,${hy - 40} Q-30,${hy - 50} -56,${hy - 4}Z" fill="${c.hair}"/>`);
-    o.push(`<path d="M-20,${hy - 62} Q0,${hy - 40} 26,${hy - 58}" stroke="#B9B2AA" stroke-width="3" fill="none" opacity=".7"/>`);
-  } else if (c.hairStyle === 'short') {
-    o.push(`<path d="M-54,${hy - 6} Q-54,${hy - 56} 0,${hy - 62} Q54,${hy - 56} 54,${hy - 6} Q44,${hy - 34} 26,${hy - 42} Q0,${hy - 50} -26,${hy - 42} Q-44,${hy - 34} -54,${hy - 6}Z" fill="${c.hair}"/>`);
-  }
-  return o.join('');
-}
-const turn0 = s => (s.turn || 0) * 1.2;
-
 /** Кружка с паром. */
 function mug(x, y, color = '#F4F1EA', sc = 1, t = 0, steam = false, label = '') {
   const o = [`<g transform="translate(${x},${y}) scale(${sc})">`];
@@ -278,6 +90,26 @@ function monitor(x, y, w, h, screenSvg, opts = {}) {
   return o.join('');
 }
 
+const LESHA_MUG = '#E9573F';
+
+/** Монитор задником к камере; skew — повёрнут к сидящему сбоку. Подставка стоит на столе (y = 690). */
+function monitorBack(x, y, w, h, opts = {}) {
+  const cx = x + w / 2;
+  const tr = opts.skew ? ` transform="translate(${cx},${y + h}) skewY(${opts.skew}) scale(0.82,1) translate(${-cx},${-(y + h)})"` : '';
+  return `<g${tr}><rect x="${cx - 13}" y="${y + h - 8}" width="26" height="${690 - (y + h) + 4}" fill="#4A4F58"/>
+    <rect x="${cx - 44}" y="682" width="88" height="9" rx="4" fill="#3E434C"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#3A3F48"/>
+    <rect x="${x + 7}" y="${y + 7}" width="${w - 14}" height="${h - 14}" rx="7" fill="#454B55"/>
+    <rect x="${cx - 22}" y="${y + h / 2 - 13}" width="44" height="26" rx="5" fill="#3A3F48"/>
+    ${[0, 1, 2, 3].map(i => `<rect x="${x + 16}" y="${y + 16 + i * 8}" width="${w * 0.22}" height="3" rx="1.5" fill="#353A43"/>`).join('')}
+    ${opts.glow ? `<path d="M${x + 10},${y - 1} L${x + w - 10},${y - 1}" stroke="${opts.glow}" stroke-width="3" opacity=".8"/>` : ''}</g>`;
+}
+
+/** Закрытый ноутбук лежит на столе или тележке. */
+function slab(x, y) {
+  return `<g transform="translate(${x},${y})"><rect x="-78" y="-6" width="156" height="12" rx="3" fill="#B8BDC5"/>${penguin(-30, 0, 5)}</g>`;
+}
+
 /** Ноутбук экраном к камере. */
 function laptopFront(x, y, w, h, screenSvg, opts = {}) {
   const o = [];
@@ -302,23 +134,23 @@ function penguin(x, y, r) {
   return `<g transform="translate(${x},${y}) scale(${r / 20})"><circle r="22" fill="#FFFFFF"/><ellipse cx="0" cy="1" rx="12" ry="16" fill="#17181C"/><ellipse cx="0" cy="5" rx="7.5" ry="10" fill="#F6F6F6"/><circle cx="-3.5" cy="-7" r="1.8" fill="#FFF"/><circle cx="3.5" cy="-7" r="1.8" fill="#FFF"/><path d="M-3.5,-3 L3.5,-3 L0,1Z" fill="#F2B233"/><ellipse cx="-5" cy="16" rx="4.5" ry="2" fill="#F2B233"/><ellipse cx="5" cy="16" rx="4.5" ry="2" fill="#F2B233"/></g>`;
 }
 
-/** Тележка сисадмина. withLaptops — сколько ноутбуков сверху. */
+/** Тележка сисадмина: верхняя полка на высоте стола (y − 100), ручка справа на уровне пояса. */
 function cart(x, y, n = 3, t = 0, rolling = false) {
   const o = [`<g transform="translate(${x},${y})">`];
-  o.push(`<ellipse cx="0" cy="118" rx="110" ry="12" fill="#000" opacity=".12"/>`);
-  o.push(`<rect x="-100" y="-10" width="200" height="12" rx="4" fill="#8E96A3"/>`);
-  o.push(`<rect x="-100" y="70" width="200" height="12" rx="4" fill="#8E96A3"/>`);
-  o.push(`<rect x="-96" y="-10" width="8" height="112" fill="#6E7682"/><rect x="88" y="-10" width="8" height="112" fill="#6E7682"/>`);
-  o.push(`<path d="M92,-10 L110,-70 L128,-70" stroke="#6E7682" stroke-width="8" fill="none" stroke-linecap="round"/>`);
+  o.push(`<ellipse cx="0" cy="120" rx="112" ry="11" fill="#000" opacity=".12"/>`);
+  o.push(`<rect x="-96" y="-100" width="8" height="202" fill="#6E7682"/><rect x="88" y="-100" width="8" height="202" fill="#6E7682"/>`);
+  o.push(`<rect x="-102" y="-106" width="204" height="12" rx="4" fill="#8E96A3"/>`);
+  o.push(`<rect x="-102" y="40" width="204" height="12" rx="4" fill="#8E96A3"/>`);
+  o.push(`<path d="M92,-100 L112,-150 L134,-150" stroke="#6E7682" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`);
   for (const wx of [-80, 80]) {
     const a = rolling ? t * 600 : 0;
     o.push(`<g transform="translate(${wx},110) rotate(${a})"><circle r="11" fill="#2E3238"/><path d="M-6,0 L6,0" stroke="#8E96A3" stroke-width="3"/></g>`);
   }
   for (let i = 0; i < n; i++) {
-    o.push(`<rect x="-78" y="${-24 - i * 13}" width="156" height="12" rx="3" fill="${i % 2 ? '#A9AEB7' : '#B8BDC5'}"/>`);
-    o.push(penguin(-40 + (i % 2) * 30, -18 - i * 13, 5));
+    o.push(`<rect x="-78" y="${-118 - i * 13}" width="156" height="12" rx="3" fill="${i % 2 ? '#A9AEB7' : '#B8BDC5'}"/>`);
+    o.push(penguin(-40 + (i % 2) * 30, -112 - i * 13, 5));
   }
-  for (let i = 0; i < 2; i++) o.push(`<rect x="-70" y="${56 - i * 13}" width="140" height="12" rx="3" fill="#B0B5BE"/>`);
+  for (let i = 0; i < 2; i++) o.push(`<rect x="-70" y="${26 - i * 13}" width="140" height="12" rx="3" fill="#B0B5BE"/>`);
   o.push('</g>');
   return o.join('');
 }
@@ -379,7 +211,8 @@ function miniTerminal(w, h, lines) {
 /* ─── офис ─────────────────────────────────────────────────────────────────────────────── */
 /**
  * Офис целиком. st: { t, mood:'day'|'night'|'morning', gena:{...}|null, marina:{...}, lesha:{...},
- *   cartAt:[x,y]|null, cartN, laptopMarina, leshaLaptopBack, leshaMonitor(svg), marinaMonitor(svg), lamp, ... }
+ *   leshaSetup:'pc'|'laptop'|'morning', leshaLaptop:[x,y], marinaLaptop:[x,y], slabs:[[x,y]], carried(svg),
+ *   cartAt:[x,y]|null, cartN, genaMugOnDesk, screenGlow, ... }
  */
 function office(st) {
   const t = st.t;
@@ -420,36 +253,39 @@ function office(st) {
   o.push(`<rect x="60" y="170" width="220" height="150" rx="6" fill="#C9A67A"/><rect x="72" y="182" width="196" height="126" fill="#D8BC93"/>`);
   o.push(`<rect x="88" y="196" width="60" height="44" fill="#FFF6B8" transform="rotate(-4 118 218)"/><rect x="170" y="200" width="70" height="52" fill="#FFFFFF" transform="rotate(3 205 226)"/><rect x="110" y="252" width="80" height="40" fill="#BFE3F5" transform="rotate(-2 150 272)"/>`);
 
-  // Марина: стул, персонаж, стол, предметы
+  // Марина Петровна. Её монитор — задником к нам, экраном к ней: что на экранах, показывают врезки.
   const mar = st.marina;
   if (mar) {
     o.push(chair(390, 760));
     o.push(person('marina', { t, x: 390, y: 760, ...mar }));
   }
   o.push(desk(130, 690, 520));
-  o.push(monitor(170, 540, 150, 100, st.marinaMonitor || miniSklad(150, 100, { sel: 2 }), { stand: 42 }));
-  o.push(`<g transform="translate(560,690) rotate(-4)"><rect x="-40" y="-14" width="80" height="14" fill="#FFFFFF"/><rect x="-36" y="-26" width="76" height="12" fill="#F4F0E6"/><rect x="-38" y="-36" width="78" height="10" fill="#FFFFFF"/></g>`);
-  o.push(`<g transform="translate(470,686)"><rect x="-22" y="-6" width="44" height="8" rx="2" fill="#3A3E47"/><rect x="-18" y="-30" width="36" height="26" rx="3" fill="#5D6470"/><rect x="-14" y="-26" width="28" height="7" fill="#B8D88C"/></g>`);
-  o.push(mug(610, 684, '#FFFFFF', 0.9, t, false, 'БУХ'));
-  o.push(`<g transform="translate(150,690)"><rect x="-14" y="-24" width="28" height="24" rx="4" fill="#E08A5B"/><path d="M0,-24 Q-8,-50 0,-60 Q8,-50 0,-24" fill="#6BA36B"/></g>`);
-  if (st.laptopMarina) o.push(laptopFront(st.laptopMarina[0], st.laptopMarina[1], 150, 94, miniSklad(150, 94, { wall: '#3A6EA5', sel: st.laptopSel ?? 1 })));
+  o.push(`<g transform="translate(160,690)"><rect x="-14" y="-24" width="28" height="24" rx="4" fill="#E08A5B"/><path d="M0,-24 Q-8,-50 0,-60 Q8,-50 0,-24" fill="#6BA36B"/></g>`);
+  o.push(monitorBack(212, 600, 172, 90));
+  o.push(mug(430, 684, '#FFFFFF', 0.9, t, false, 'БУХ'));
+  o.push(`<g transform="translate(486,686)"><rect x="-22" y="-6" width="44" height="8" rx="2" fill="#3A3E47"/><rect x="-18" y="-30" width="36" height="26" rx="3" fill="#5D6470"/><rect x="-14" y="-26" width="28" height="7" fill="#B8D88C"/></g>`);
+  if (st.marinaLaptop) o.push(laptopBack(st.marinaLaptop[0], st.marinaLaptop[1], 150, 84));
 
-  // Лёша
+  // Лёша: 'pc' — старый компьютер (сцена 1), 'laptop' — новый ноутбук, 'morning' — ноутбук слева и второй монитор справа
   const le = st.lesha;
+  const setup = st.leshaSetup || 'pc';
   if (le) o.push(chair(1540, 760));
   if (le && !le.hidden) o.push(person('lesha', { t, x: 1540, y: le.y || 760, ...le }));
   o.push(desk(1290, 690, 500));
-  o.push(monitor(1640, 530, 150, 108, st.leshaMonitor || miniDesktop(150, 108), { stand: 44 }));
-  if (st.leshaLaptopFront) o.push(laptopFront(st.leshaLaptopFront[0], st.leshaLaptopFront[1], 140, 88, miniSklad(140, 88, { wall: '#3A6EA5' })));
-  o.push(`<g transform="translate(1340,690)"><path d="M-12,0 Q-14,-20 0,-22 Q16,-22 14,-8 L22,-10 L14,0Z" fill="#F4C531"/><circle cx="4" cy="-14" r="2" fill="#222"/></g>`);
-  if (st.leshaMug !== false) o.push(mug(st.leshaMug ? st.leshaMug[0] : 1440, st.leshaMug ? st.leshaMug[1] : 684, '#2F6F8F', 0.9, t, false));
+  o.push(`<g transform="translate(1322,690)"><path d="M-12,0 Q-14,-20 0,-22 Q16,-22 14,-8 L22,-10 L14,0Z" fill="#F4C531"/><circle cx="4" cy="-14" r="2" fill="#222"/></g>`);
+  if (setup === 'pc') o.push(monitorBack(1455, 588, 172, 96));
+  if (setup === 'morning') o.push(monitorBack(1650, 566, 132, 96, { skew: -9, glow: '#9ad0ff' }));
+  if (st.leshaMug !== false) o.push(mug(st.leshaMug ? st.leshaMug[0] : 1384, st.leshaMug ? st.leshaMug[1] : 684, LESHA_MUG, 0.9, t, false));
+  if (setup === 'morning' && st.leshaLaptop) o.push(laptopBack(st.leshaLaptop[0], st.leshaLaptop[1], 150, 84, { glow: '#9ad0ff' }));
   if (le && le.sleepHead) o.push(sleepyLesha(t, le));
   if (st.genaMugOnDesk) o.push(mug(st.genaMugOnDesk[0], st.genaMugOnDesk[1], '#F4F1EA', 0.95, t, true));
-  if (st.leshaLaptopBack) o.push(laptopBack(1450, 596, 180, 100, { glow: st.laptopGlow }));
+  if (setup === 'laptop') o.push(laptopBack(1450, 618, 180, 78, { glow: st.laptopGlow }));
+  for (const [x, y] of st.slabs || []) o.push(slab(x, y));
 
   // Гена и тележка
   if (st.cartAt) o.push(cart(st.cartAt[0], st.cartAt[1], st.cartN ?? 3, t, st.cartRolling));
   if (st.gena) o.push(person('gena', { t, standing: true, ...st.gena }));
+  if (st.carried) o.push(st.carried);
 
   // свет
   if (mood === 'night') {

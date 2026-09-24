@@ -159,8 +159,9 @@ def build():
     S.fx("typewriter", dur=1.6)
     S.wait(3.4)
     S.mark("s1.pull")
-    S.fx("cart", dur=3.0)
-    S.wait(3.0)
+    S.fx("cart", dur=4.4)
+    S.fx("steps", dur=4.3, gain=0.6)
+    S.wait(4.4)
     S.mark("s1.cartStop")
     S.fx("thunk", dt=0.55)
     S.wait(0.95)
@@ -180,7 +181,9 @@ def build():
     S.say("lesha", "Ну… это же .NET. .NET теперь кроссплатформенный. Соберу.",
           say="Ну... это же дотнет. Дотнет теперь кроссплатформенный. Соберу.", lid="s1.l2", gap=0.2)
     S.say("gena", "Ну собери.", lid="s1.g3")
-    S.wait(1.3)
+    S.fx("steps", dur=2.4, gain=0.5)
+    S.fx("cart", dt=0.2, dur=2.4)
+    S.wait(1.6)
     S.fx("whoosh")
 
     # ── 2. Рабочее место Лёши, день ────────────────────────────────────────────────────────────
@@ -244,21 +247,21 @@ def build():
     S.wait(3.9)
     S.mark("s3.bargain")
     S.wait(0.3)
-    for i, dur in enumerate([0.55, 0.55, 1.5]):
+    for i, dur in enumerate([0.8, 0.8, 2.4]):
         S.mark(f"s3.b{i}")
         S.fx("marker", dur=dur)
-        S.wait(dur + 0.45)
-    S.wait(0.7)
+        S.wait(dur + 0.6)
+    S.wait(0.5)
     S.mark("s3.depr")
     S.wait(0.25)
-    for i, dur in enumerate([1.3, 1.0]):
+    for i, dur in enumerate([2.0, 1.4]):
         S.mark(f"s3.d{i}")
         S.fx("marker", dur=dur)
-        S.wait(dur + 0.4)
-    S.wait(0.3)
+        S.wait(dur + 0.35)
+    S.wait(0.2)
     S.mark("s3.wipe")
     S.fx("wipe")
-    S.wait(1.5)
+    S.wait(1.7)
     S.mark("s3.accept")
     S.wait(3.3)
 
@@ -321,16 +324,19 @@ def build():
 
     # ── 5. Утро ────────────────────────────────────────────────────────────────────────────────
     S.scene("s5")
-    S.wait(0.5)
+    S.mark("s5.insert")          # врезка: экран ноутбука, «ssssss…»
+    S.wait(1.8)
     S.mark("s5.genaIn")
-    S.fx("steps", dur=2.4)
-    S.wait(2.6)
-    S.mark("s5.look")
-    S.wait(0.8)
+    S.fx("steps", dur=2.5)
+    S.wait(2.8)
+    S.mark("s5.look")            # врезка: второй монитор, «Склад» на Linux
+    S.wait(1.6)
     S.say("gena", "Хм.", say="Хм.", lid="s5.g1", gap=0.4)
     S.mark("s5.roll")
-    S.fx("cart", dt=0.9, dur=2.3)
-    S.wait(3.3)
+    S.fx("cart", dt=1.0, dur=2.6)
+    S.fx("steps", dt=1.0, dur=2.4, gain=0.6)
+    S.fx("thunk", dt=3.9, gain=0.5)
+    S.wait(4.2)
     S.say("gena", "Марина Петровна, проверьте.", lid="s5.g2", gap=0.3)
     S.mark("s5.check")
     S.wait(0.9)
@@ -354,9 +360,9 @@ def build():
     S.say("gena", "Ничего.", lid="s5.g3", gap=0.35)
     S.say("marina", "Тогда хорошо.", lid="s5.m2", gap=0.3)
     S.mark("s5.coffee")
-    S.fx("steps", dt=0.3, dur=1.6)
-    S.fx("mug", dt=2.3)
-    S.wait(3.6)
+    S.fx("steps", dt=0.3, dur=2.0)
+    S.fx("mug", dt=2.75)
+    S.wait(4.0)
 
     # ── 6. Эпилог ──────────────────────────────────────────────────────────────────────────────
     S.scene("s6")
