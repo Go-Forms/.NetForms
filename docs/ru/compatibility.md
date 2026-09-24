@@ -79,10 +79,9 @@ self-contained, со средой внутри).
 `*.csproj.winforms.bak`. Подробнее — [Перевод WinForms-проекта](migrating.md).
 
 Измерено на корпусе реальных проектов (`tests/corpus/corpus.json`): **7 из 7** проектов заказчика на
-.NET Framework 4.8/4.8.1 и **27 из 45** открытых WinForms-проектов переводятся и собираются без ручных
+.NET Framework 4.8/4.8.1 и **28 из 45** открытых WinForms-проектов переводятся и собираются без ручных
 правок. Остальные не проходят по причинам из последних строк таблицы (8 × BinaryFormatter,
-4 × компоненты только для Windows) или из-за API, которого в NetForms пока нет (печать, часть привязки
-данных).
+4 × компоненты только для Windows) или из-за API, которого в NetForms пока нет (печать, системные значки).
 
 ---
 
@@ -99,11 +98,11 @@ self-contained, со средой внутри).
 | `Button` | ✅ Работает · нет 1 | `Image`, `ImageList`, `TextImageRelation`, `FlatStyle`, `FlatAppearance`, `DialogResult`, `AcceptButton`/`CancelButton`. |
 | `CheckBox` | ✅ Работает · нет 1 | Три состояния, `Appearance.Button`, размеры AutoSize как в VS (`checkBox1` → 83×19). |
 | `CheckedListBox` | ✅ Работает · нет 2 | |
-| `ComboBox` | ✅ Работает · нет 6 | `DropDown`, `DropDownList`, `Simple`; список открывается за пределами формы. `AutoCompleteMode` сохраняется, подсказки пока не показываются. |
+| `ComboBox` | ✅ Работает · нет 4 | `DropDown`, `DropDownList`, `Simple`; список открывается за пределами формы. `DataSource` с `DisplayMember`/`ValueMember` (списки, `DataTable`, пути в `DataSet`), выбор следует за позицией источника данных. `AutoCompleteMode` сохраняется, подсказки пока не показываются. |
 | `DateTimePicker` | ✅ Работает · нет 1 | Свои форматы, правка полей стрелками, выпадающий календарь, `ShowUpDown`, `ShowCheckBox`. |
 | `Label` | ✅ Работает · нет 12 | Нет: `Image`/`ImageList` у надписи, `PreferredWidth/Height`. |
 | `LinkLabel` | ✅ Работает · нет 3 | |
-| `ListBox` | ✅ Работает · нет 10 | Owner draw, множественный выбор. Нет: `CustomTabOffsets`, переопределяемого `Sort()`. |
+| `ListBox` | ✅ Работает · нет 7 | Owner draw, множественный выбор, `DataSource`/`DisplayMember`/`ValueMember`, как у `ComboBox`. Нет: `CustomTabOffsets`, переопределяемого `Sort()`. |
 | `ListView` | ✅ Работает · нет 43 | Все виды (Details, List, SmallIcon, LargeIcon, Tile), группы, флажки, правка подписей, сортировка. Нет: `VirtualMode`, перестановки столбцов мышью, `HotTracking`, метки вставки. |
 | `MaskedTextBox` | ✅ Работает · нет 1 | Маски через тот же `MaskedTextProvider`, что и в WinForms. |
 | `MonthCalendar` | ✅ Работает · нет 8 | Показывается один месяц (`CalendarDimensions` сохраняется). |
@@ -146,11 +145,11 @@ self-contained, со средой внутри).
 
 | Контрол | Состояние | Примечания |
 |---|---|---|
-| `DataGridView` | ✅ Работает · нет 292 | Столбцы всех видов (текст, флажок, список, кнопка, ссылка, картинка) и типы отдельных ячеек (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, правка, сортировка, режимы выделения, политики ширин, привязка `DataSource` (списки, `DataTable`), закреплённые столбцы, виртуальная прокрутка. Свои ячейки (наследник `DataGridViewCell` с переопределённым `Paint`) работают и получают унаследованный стиль вместе со шрифтом; стили по умолчанию несут шрифт сетки и следуют за ним, как в WinForms. Нет: `EditingControl` и `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, собственных редакторов ячеек (`IDataGridViewEditingControl`, например столбца с выбором даты), `VirtualMode`; остальное из недостающего — в основном защищённые `Process*Key`/`On*Changed` и методы `AutoResize*`. |
-| `BindingSource` | ✅ Работает · нет 10 | Над списками и `DataTable`: `Position`, `Filter`, `Sort`, `AddNew`. Нет: `ApplySort`, `AllowNew`, `CurrencyManager`; `DataSet` с `DataMember = "Таблица"` пока даёт ноль строк, а `BindingSource` поверх другого с `DataRelation` в `DataMember` (мастер-деталь) пуст. |
+| `DataGridView` | ✅ Работает · нет 291 | Столбцы всех видов (текст, флажок, список, кнопка, ссылка, картинка) и типы отдельных ячеек (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, правка, сортировка, режимы выделения, политики ширин, привязка `DataSource`/`DataMember` через `BindingContext` формы (списки, `DataTable`, таблица `DataSet`, отношение для мастер-детали; текущая строка и `Position` источника следуют друг за другом; отношения не становятся столбцами), закреплённые столбцы, виртуальная прокрутка. Свои ячейки (наследник `DataGridViewCell` с переопределённым `Paint`) работают и получают унаследованный стиль вместе со шрифтом; стили по умолчанию несут шрифт сетки и следуют за ним, как в WinForms. Нет: `EditingControl` и `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, собственных редакторов ячеек (`IDataGridViewEditingControl`, например столбца с выбором даты), `VirtualMode`; остальное из недостающего — в основном защищённые `Process*Key`/`On*Changed` и методы `AutoResize*`. |
+| `BindingSource` | ✅ Работает · API: полный | Сама реализация WinForms (взята из dotnet/winforms): списки, `DataTable`, `DataSet` с таблицей в `DataMember`, мастер-деталь — второй `BindingSource` с `DataRelation` в `DataMember`, `Position`, `Filter`, `Sort`, `AddNew`, `CurrencyManager`. |
 | `BindingNavigator` | ❌ Нет | |
 | Сам ADO.NET (`DataSet`, `DataTable`, `DataAdapter`, провайдеры) | Часть .NET, а не WinForms: на Linux работает как есть. Правка в привязанной сетке выставляет `RowState`, поэтому `adapter.Update(table)` её сохраняет. Платформу определяет провайдер: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle работают на Linux; **Access через `System.Data.OleDb` — только Windows** (на Linux — `PlatformNotSupportedException`, конвертер предупреждает). |
-| `Control.DataBindings` (`Binding`) | ⚠️ Частично | Простая привязка свойств работает — к объектам и строкам `DataTable`, следуя за `Position`; нет `BindingContext`/`CurrencyManager`. `ComboBox`/`ListBox` с `DisplayMember`/`ValueMember` над `DataTable` пока показывают пустой текст. |
+| `Control.DataBindings`, `Binding`, `BindingContext`, `CurrencyManager` | ✅ Работает · API: полный | Сама реализация WinForms (взята из dotnet/winforms) с её правилами: контрол привязывается, когда он создан и у него есть `BindingContext` (форма даёт и то и другое); по умолчанию `DataSourceUpdateMode.OnValidation` — значение уходит в источник при проверке контрола; `Format`/`Parse`, `FormatString`, `NullValue`, `BindingComplete` (при включённом форматировании), `ErrorProvider` над `IDataErrorInfo`. Дизайнер читает и пишет `DataBindings.Add(new Binding(...))` так же, как Visual Studio. |
 | `PropertyGrid` | ✅ Работает · нет 31 | Категории, редакторы типов, раскрываемые объекты. Нет: панели команд и её цветов. |
 
 ### Компоненты и диалоги
@@ -237,10 +236,10 @@ self-contained, со средой внутри).
 
 - **Дифф-тесты против настоящего WinForms** (`tests/NetForms.Compat`, CI на Windows): одни и те же сценарии
   выполняются в `System.Windows.Forms` и в NetForms; сравниваются положения, размеры, порядок событий,
-  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **381/381**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
+  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **390/390**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
 - **Golden-тесты отрисовки** (без окна, одинаковые картинки на Windows и Linux).
 - **Покрытие API** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api` заново строит
-  [таблицы](../api/README.md). Сейчас: **633** из 1254 типов полные, **164** частично, **457** нет
+  [таблицы](../api/README.md). Сейчас: **652** из 1254 типов полные, **160** частично, **442** нет
   (в основном `EventArgs`, специальные возможности, печать и удалённые контролы 1.x).
 - **Корпус реальных проектов** (`NETFORMS_CORPUS=1`, задача CI `corpus`): проекты переводятся и
   собираются без ручных правок, причина каждого провала записана в `tests/corpus/corpus.json`.

@@ -68,8 +68,7 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
     private bool _initializing;
     private bool _setErrorManagerOnEndInit;
     private bool _inSetErrorManager;
-    private BindingSource? _errorManager;
-    private readonly List<Binding> _wiredBindings = new();
+    private BindingManagerBase? _errorManager;
 
     private EventHandler? _onRightToLeftChanged;
 
@@ -158,7 +157,9 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
         set
         {
             if (_parentControl == value) return;
+            if (_parentControl != null) _parentControl.BindingContextChanged -= ParentControl_BindingContextChanged;
             _parentControl = value;
+            if (_parentControl != null) _parentControl.BindingContextChanged += ParentControl_BindingContextChanged;
             SetErrorManager(DataSource, DataMember, force: true);
         }
     }
@@ -341,7 +342,7 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
         if (disposing)
         {
             Clear();
-            UnwireEvents();
+            UnwireEvents(_errorManager);
             _timer?.Dispose();
             _timer = null;
             _tip?.Dispose();
@@ -369,10 +370,8 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
     public void UpdateBinding() => ErrorManager_CurrentChanged(_errorManager, EventArgs.Empty);
 
     /// <summary>
-    /// WinForms asks <c>ContainerControl.BindingContext[DataSource, DataMember]</c> for a currency manager.
-    /// NetForms has no BindingContext (decision 45): the manager is the <see cref="BindingSource"/> itself -
-    /// the data source when it is one, otherwise one wrapped around it - and the bindings that count are
-    /// those of controls inside <see cref="ContainerControl"/> bound to the same data source.
+    /// The errors come from the current item of <c>ContainerControl.BindingContext[DataSource, DataMember]</c> and
+    /// are shown on the controls whose bindings that manager holds (ported from WinForms' ErrorProvider).
     /// </summary>
     private void SetErrorManager(object? newDataSource, string? newDataMember, bool force)
     {
@@ -390,11 +389,11 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
                 return;
             }
 
-            UnwireEvents();
-            _errorManager = _parentControl != null && _dataSource != null
-                ? _dataSource as BindingSource ?? new BindingSource(_dataSource, _dataMember ?? string.Empty)
+            UnwireEvents(_errorManager);
+            _errorManager = _parentControl is { BindingContext: { } context } && _dataSource != null
+                ? context[_dataSource, _dataMember]
                 : null;
-            WireEvents();
+            WireEvents(_errorManager);
             if (_errorManager != null) UpdateBinding();
         }
         finally
@@ -403,61 +402,52 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
         }
     }
 
-    private void WireEvents()
+    private void WireEvents(BindingManagerBase? listManager)
     {
-        if (_errorManager == null) return;
-        _errorManager.CurrentChanged += ErrorManager_CurrentChanged;
-        _errorManager.ListChanged += ErrorManager_ListChanged;
-    }
-
-    private void UnwireEvents()
-    {
-        if (_errorManager != null)
+        if (listManager == null) return;
+        listManager.CurrentChanged += ErrorManager_CurrentChanged;
+        listManager.BindingComplete += ErrorManager_BindingComplete;
+        if (listManager is CurrencyManager currencyManager)
         {
-            _errorManager.CurrentChanged -= ErrorManager_CurrentChanged;
-            _errorManager.ListChanged -= ErrorManager_ListChanged;
-        }
-        foreach (var b in _wiredBindings) b.BindingComplete -= Binding_BindingComplete;
-        _wiredBindings.Clear();
-    }
-
-    /// <summary>The bindings of controls inside the container that are bound to our data source.</summary>
-    private List<Binding> ErrorBindings()
-    {
-        var result = new List<Binding>();
-        if (_parentControl == null || _dataSource == null) return result;
-        Collect(_parentControl);
-        return result;
-
-        void Collect(Control parent)
-        {
-            foreach (Control c in parent.Controls)
-            {
-                foreach (var b in c.DataBindings)
-                {
-                    if (ReferenceEquals(b.DataSource, _dataSource)) result.Add(b);
-                }
-                Collect(c);
-            }
+            currencyManager.ItemChanged += ErrorManager_ItemChanged;
+            currencyManager.Bindings.CollectionChanged += ErrorManager_BindingsChanged;
         }
     }
 
-    private void Binding_BindingComplete(object? sender, BindingCompleteEventArgs e)
+    private void UnwireEvents(BindingManagerBase? listManager)
+    {
+        if (listManager == null) return;
+        listManager.CurrentChanged -= ErrorManager_CurrentChanged;
+        listManager.BindingComplete -= ErrorManager_BindingComplete;
+        if (listManager is CurrencyManager currencyManager)
+        {
+            currencyManager.ItemChanged -= ErrorManager_ItemChanged;
+            currencyManager.Bindings.CollectionChanged -= ErrorManager_BindingsChanged;
+        }
+    }
+
+    private void ErrorManager_BindingComplete(object? sender, BindingCompleteEventArgs e)
     {
         if (e.Binding?.Control is { } control) SetError(control, e.ErrorText ?? string.Empty);
     }
 
-    private void ErrorManager_ListChanged(object? sender, ListChangedEventArgs e)
+    private void ErrorManager_BindingsChanged(object? sender, CollectionChangeEventArgs e) => ErrorManager_CurrentChanged(_errorManager, e);
+
+    private void ParentControl_BindingContextChanged(object? sender, EventArgs e) => SetErrorManager(DataSource, DataMember, force: true);
+
+    private void ErrorManager_ItemChanged(object? sender, ItemChangedEventArgs e)
     {
         if (_errorManager == null) return;
-        if (e.ListChangedType == ListChangedType.Reset && _errorManager.Count == 0)
+        var bindings = _errorManager.Bindings;
+        if (e.Index == -1 && _errorManager.Count == 0)
         {
-            foreach (var b in ErrorBindings())
+            // The list became empty: no errors.
+            for (int j = 0; j < bindings.Count; j++)
             {
-                if (b.Control is { } control) SetError(control, string.Empty);
+                if (bindings[j].Control is { } control) SetError(control, string.Empty);
             }
         }
-        else if (e.ListChangedType is ListChangedType.ItemChanged or ListChangedType.Reset)
+        else
         {
             ErrorManager_CurrentChanged(sender, e);
         }
@@ -465,29 +455,18 @@ public class ErrorProvider : Component, IExtenderProvider, ISupportInitialize
 
     private void ErrorManager_CurrentChanged(object? sender, EventArgs e)
     {
-        if (_errorManager == null) return;
-
-        // Re-wire BindingComplete: bindings come and go with the controls in the container.
-        var bindings = ErrorBindings();
-        foreach (var b in _wiredBindings) b.BindingComplete -= Binding_BindingComplete;
-        _wiredBindings.Clear();
-        foreach (var b in bindings)
-        {
-            b.BindingComplete += Binding_BindingComplete;
-            _wiredBindings.Add(b);
-        }
-
-        if (_errorManager.Count == 0) return;
+        if (_errorManager == null || _errorManager.Count == 0) return;
         if (_errorManager.Current is not IDataErrorInfo dataErrorInfo) return;
 
         foreach (var item in _items.Values) item.BlinkPhase = 0;
 
         // Several bindings on one control: their errors are joined line by line.
+        var bindings = _errorManager.Bindings;
         var controlError = new Dictionary<Control, string>();
-        foreach (var binding in bindings)
+        for (int j = 0; j < bindings.Count; j++)
         {
-            if (binding.Control is not { } control) continue;
-            string error = dataErrorInfo[binding.BindingMemberInfo.BindingField] ?? string.Empty;
+            if (bindings[j].Control is not { } control) continue;
+            string error = dataErrorInfo[bindings[j].BindingMemberInfo.BindingField] ?? string.Empty;
             controlError.TryGetValue(control, out var output);
             controlError[control] = string.IsNullOrEmpty(output) ? error : output + "\r\n" + error;
         }

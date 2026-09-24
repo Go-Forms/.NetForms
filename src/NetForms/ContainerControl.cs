@@ -25,6 +25,31 @@ public class ContainerControl : ScrollableControl, IContainerControl
         SetStyle(ControlStyles.AllPaintingInWmPaint, false);
     }
 
+    /// <summary>A container has a binding context of its own, made on first use (WinForms).</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public override BindingContext? BindingContext
+    {
+        get
+        {
+            var context = base.BindingContext;
+            if (context == null)
+            {
+                context = new BindingContext();
+                BindingContext = context;
+            }
+            return context;
+        }
+        set => base.BindingContext = value;
+    }
+
+    /// <summary>Once created, the container binds the data bindings of everything in it (WinForms).</summary>
+    protected override void OnCreateControl()
+    {
+        base.OnCreateControl();
+        OnBindingContextChanged(EventArgs.Empty);
+    }
+
     /// <summary>The child that has (or last had) the focus inside this container.</summary>
     [Category("Behavior")]
     [Description("The currently active control.")]

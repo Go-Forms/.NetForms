@@ -214,9 +214,6 @@
     "url": "https://github.com/yudinikita/tetris-oop",
     "commit": "e3a50fc69a3a3a6b0085286708dcd70ee20a3170",
     "group": "open",
-    "license": "MIT",
-    "knownFailures": {
-      "Tetris-OOP/Tetris.csproj": "Binding API gap"
-    }
+    "license": "MIT"
   }
 ]

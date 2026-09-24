@@ -154,6 +154,12 @@ public class ComboBox : ListControl
     {
         base.OnSelectedIndexChanged(e);
         SelectedIndexChanged?.Invoke(this, e);
+        // The data source's current item follows the selection (only when it differs: setting Position ends
+        // the current edit); -1 is a text not from the list and leaves the position alone.
+        if (DataManager != null && DataManager.Position != SelectedIndex && (!FormattingEnabled || SelectedIndex != -1))
+        {
+            DataManager.Position = SelectedIndex;
+        }
     }
 
     // --- properties ----------------------------------------------------------------
@@ -439,17 +445,66 @@ public class ComboBox : ListControl
         Invalidate();
     }
 
+    /// <summary>The items of the data source; the selection takes the data source's position (WinForms).</summary>
     protected override void SetItemsCore(IList items)
     {
+        ArgumentNullException.ThrowIfNull(items);
         _items.SetFromDataSource(items);
-        SelectedIndex = _items.Count > 0 ? 0 : -1;
+        if (DataManager != null)
+        {
+            _selectedIndex = DataManager.Position < _items.Count ? DataManager.Position : -1;
+            SyncTextFromSelection();
+            OnSelectedValueChanged(EventArgs.Empty);
+        }
+        else if (_selectedIndex >= _items.Count)
+        {
+            _selectedIndex = -1;
+            SyncTextFromSelection();
+        }
     }
 
-    protected override object? GetItemCore(int index) => _items[index];
+    protected override void SetItemCore(int index, object value) => _items.SetItemInternal(index, value);
 
-    protected override int GetItemCountCore() => _items.Count;
+    /// <summary>Re-reads the items - from the data source when there is one - and their text (WinForms).</summary>
+    protected override void RefreshItems()
+    {
+        int selectedIndex = SelectedIndex;
+        if (DataManager is { } manager) _items.SetFromDataSource(manager.List);
+        else _items.SetFromDataSource(_items.ToArray());
+        int next = DataManager?.Position ?? selectedIndex;
+        _selectedIndex = -1; // the items were cleared: selecting again notifies, as after WinForms' NativeClear
+        SelectedIndex = next < _items.Count ? next : -1;
+    }
 
-    protected override void RefreshItems() => Invalidate();
+    protected override void RefreshItem(int index) => _items.SetItemInternal(index, _items[index]);
+
+    protected override void OnDataSourceChanged(EventArgs e)
+    {
+        if (Sorted && DataSource != null && Created)
+        {
+            DataSource = null;
+            throw new InvalidOperationException(SR.ComboBoxDataSourceWithSort);
+        }
+        if (DataSource == null)
+        {
+            SelectedIndex = -1;
+            _items.SetFromDataSource(Array.Empty<object>());
+        }
+        // WinForms raises DataSourceChanged only for a created, unsorted combo box.
+        if (!Sorted && Created) base.OnDataSourceChanged(e);
+        RefreshItems();
+    }
+
+    protected override void OnDisplayMemberChanged(EventArgs e)
+    {
+        base.OnDisplayMemberChanged(e);
+        RefreshItems();
+    }
+
+    private void CheckNoDataSource()
+    {
+        if (DataSource != null) throw new ArgumentException(SR.DataSourceLocksItems);
+    }
 
     public int FindString(string s) => FindString(s, -1);
 
@@ -907,14 +962,24 @@ public class ComboBox : ListControl
             get => _items[index];
             set
             {
-                ArgumentNullException.ThrowIfNull(value);
-                _items[index] = value;
-                _owner.ItemsChanged();
+                _owner.CheckNoDataSource();
+                SetItemInternal(index, value);
             }
         }
 
+        internal void SetItemInternal(int index, object value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _items[index] = value;
+            if (index == _owner._selectedIndex) _owner.SyncTextFromSelection();
+            _owner.ItemsChanged();
+        }
+
+        internal object[] ToArray() => _items.ToArray();
+
         public int Add(object item)
         {
+            _owner.CheckNoDataSource();
             ArgumentNullException.ThrowIfNull(item);
             int index;
             if (_owner._sorted)
@@ -949,6 +1014,7 @@ public class ComboBox : ListControl
 
         public void Insert(int index, object item)
         {
+            _owner.CheckNoDataSource();
             ArgumentNullException.ThrowIfNull(item);
             if (_owner._sorted) { Add(item); return; }
             _items.Insert(index, item);
@@ -957,6 +1023,7 @@ public class ComboBox : ListControl
 
         public void Clear()
         {
+            _owner.CheckNoDataSource();
             _items.Clear();
             _owner._selectedIndex = -1;
             _owner.SyncTextFromSelection();
@@ -976,6 +1043,7 @@ public class ComboBox : ListControl
 
         public void RemoveAt(int index)
         {
+            _owner.CheckNoDataSource();
             _items.RemoveAt(index);
             if (_owner._selectedIndex == index) { _owner._selectedIndex = -1; _owner.SyncTextFromSelection(); }
             else if (_owner._selectedIndex > index) _owner._selectedIndex--;

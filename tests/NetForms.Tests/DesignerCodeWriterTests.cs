@@ -373,6 +373,73 @@ public class DesignerCodeWriterTests
         Assert.Throws<ArgumentException>(() => model.BindEvent(model.Find("button1")!, "Clack", "x"));
     }
 
+    [Fact]
+    public void DataBindingsAreWrittenBackAsVisualStudioWritesThem()
+    {
+        // A text box bound through a BindingSource, as the VS designer writes it (formatting enabled; the update
+        // mode only when it is not OnValidation).
+        const string source = """
+            namespace Demo
+            {
+                partial class TestForm
+                {
+                    private System.ComponentModel.IContainer components = null;
+
+                    private void InitializeComponent()
+                    {
+                        components = new System.ComponentModel.Container();
+                        textBox1 = new TextBox();
+                        textBox2 = new TextBox();
+                        bindingSource1 = new BindingSource(components);
+                        ((System.ComponentModel.ISupportInitialize)bindingSource1).BeginInit();
+                        SuspendLayout();
+                        // 
+                        // textBox1
+                        // 
+                        textBox1.DataBindings.Add(new Binding("Text", bindingSource1, "Name", true));
+                        textBox1.Location = new Point(12, 12);
+                        textBox1.Name = "textBox1";
+                        textBox1.Size = new Size(100, 23);
+                        textBox1.TabIndex = 0;
+                        // 
+                        // textBox2
+                        // 
+                        textBox2.DataBindings.Add(new Binding("Text", bindingSource1, "Age", true, DataSourceUpdateMode.OnPropertyChanged));
+                        textBox2.Location = new Point(12, 41);
+                        textBox2.Name = "textBox2";
+                        textBox2.Size = new Size(100, 23);
+                        textBox2.TabIndex = 1;
+                        // 
+                        // TestForm
+                        // 
+                        AutoScaleDimensions = new SizeF(7F, 15F);
+                        AutoScaleMode = AutoScaleMode.Font;
+                        ClientSize = new Size(284, 261);
+                        Controls.Add(textBox2);
+                        Controls.Add(textBox1);
+                        Name = "TestForm";
+                        Text = "TestForm";
+                        ((System.ComponentModel.ISupportInitialize)bindingSource1).EndInit();
+                        ResumeLayout(false);
+                        PerformLayout();
+                    }
+
+                    private TextBox textBox1;
+                    private TextBox textBox2;
+                    private BindingSource bindingSource1;
+                }
+            }
+            """;
+        TestPlatform.Install();
+        var model = new DesignerCodeReader().Read(source, new[] { EmptyFormBase });
+        var box = (TextBox)model.Find("textBox2")!.Instance;
+        Assert.Equal(DataSourceUpdateMode.OnPropertyChanged, box.DataBindings[0].DataSourceUpdateMode);
+        Assert.Same(model.Find("bindingSource1")!.Instance, box.DataBindings[0].DataSource);
+        // The only lines our metrics decide: the height of the auto-sized text boxes.
+        var expected = source.Replace("Size = new Size(100, 23);", $"Size = new Size(100, {box.Height});");
+        Assert.Equal(expected, new DesignerCodeWriter().Write(model, source));
+    }
+
     // --- values ----------------------------------------------------------------------------------
 
     private const string EmptyForm = """

@@ -33,7 +33,70 @@ public static class CompatScenarios
         RichText(r);
         GridHeaders(r);
         GridStyleFonts(r);
+        AdoNetBinding(r);
         return r;
+    }
+
+    /// <summary>
+    /// Binding to ADO.NET data through BindingContext/CurrencyManager (decision 141): a DataSet with a table as the
+    /// DataMember, master-detail through a DataRelation, DisplayMember/ValueMember over a DataTable, a text box
+    /// following the current row, and the grid leaving the relation out of its columns.
+    /// </summary>
+    private static void AdoNetBinding(SortedDictionary<string, string> r)
+    {
+        var ds = new System.Data.DataSet("Shop");
+        var customers = ds.Tables.Add("Customers");
+        customers.Columns.Add("Id", typeof(int));
+        customers.Columns.Add("Name", typeof(string));
+        customers.Rows.Add(1, "Ann");
+        customers.Rows.Add(2, "Bob");
+        customers.Rows.Add(3, "Cid");
+        var orders = ds.Tables.Add("Orders");
+        orders.Columns.Add("Id", typeof(int));
+        orders.Columns.Add("CustomerId", typeof(int));
+        orders.Columns.Add("Item", typeof(string));
+        orders.Rows.Add(10, 1, "Tea");
+        orders.Rows.Add(11, 1, "Jam");
+        orders.Rows.Add(12, 2, "Bread");
+        ds.Relations.Add("CustomerOrders", customers.Columns["Id"]!, orders.Columns["CustomerId"]!);
+
+        using var form = new Form { ClientSize = new Size(600, 400), StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000) };
+        var master = new BindingSource { DataSource = ds, DataMember = "Customers" };
+        var detail = new BindingSource { DataSource = master, DataMember = "CustomerOrders" };
+        var masterGrid = new DataGridView { Bounds = new Rectangle(0, 0, 300, 150), AllowUserToAddRows = false, DataSource = master };
+        var detailGrid = new DataGridView { Bounds = new Rectangle(300, 0, 300, 150), AllowUserToAddRows = false, DataSource = detail };
+        var memberGrid = new DataGridView { Bounds = new Rectangle(0, 150, 300, 100), AllowUserToAddRows = false, DataSource = ds, DataMember = "Customers" };
+        var name = new TextBox { Bounds = new Rectangle(0, 260, 100, 20) };
+        name.DataBindings.Add("Text", master, "Name", true);
+        var combo = new ComboBox { Bounds = new Rectangle(110, 260, 100, 20), DropDownStyle = ComboBoxStyle.DropDownList };
+        var list = new ListBox { Bounds = new Rectangle(220, 260, 100, 80) };
+        form.Controls.AddRange(new Control[] { masterGrid, detailGrid, memberGrid, name, combo, list });
+        combo.DataSource = customers;
+        combo.DisplayMember = "Name";
+        combo.ValueMember = "Id";
+        list.DataSource = ds;
+        list.DisplayMember = "Customers.Name";
+        form.Show();
+        Application.DoEvents();
+
+        static string Columns(DataGridView g) => string.Join(",", g.Columns.Cast<DataGridViewColumn>().Select(c => c.Name));
+        static string Items(ListControl c, IEnumerable<object> items) => string.Join(",", items.Select(i => c.GetItemText(i)));
+        string State() => $"master {master.Position}/{master.Count} detail {detail.Count} rows {detailGrid.Rows.Count} name {name.Text} "
+            + $"current {masterGrid.CurrentCellAddress.Y}";
+
+        r["exact/binding/dataset-member"] = $"{master.Count} {memberGrid.Rows.Count} {Columns(memberGrid)}";
+        r["exact/binding/relation-not-a-column"] = Columns(masterGrid) + " | " + Columns(detailGrid);
+        r["exact/binding/initial"] = State();
+        master.Position = 1;
+        r["exact/binding/position-1"] = State();
+        masterGrid.CurrentCell = masterGrid.Rows[2].Cells[1];
+        r["exact/binding/grid-row-2"] = State();
+        r["exact/binding/context-manager"] = $"{ReferenceEquals(form.BindingContext[master], form.BindingContext[ds, "Customers"])} "
+            + $"{form.BindingContext[master].Position} {form.BindingContext[ds, "Customers"].Position}";
+        r["exact/binding/combo-items"] = Items(combo, combo.Items.Cast<object>()) + $" selected {combo.SelectedIndex} value {combo.SelectedValue}";
+        combo.SelectedValue = 2;
+        r["exact/binding/combo-selected-value"] = $"{combo.SelectedIndex} {combo.Text} {form.BindingContext[customers].Position}";
+        r["exact/binding/listbox-path"] = Items(list, list.Items.Cast<object>()) + $" selected {list.SelectedIndex}";
     }
 
     /// <summary>

@@ -280,6 +280,15 @@ public class SplitContainer : ContainerControl, ISupportInitialize
 
     protected override Size DefaultSize => new Size(150, 100);
 
+    /// <summary>Unlike other containers, the SplitContainer shares its parent's binding context (WinForms).</summary>
+    [Browsable(false)]
+    [Description("The binding manager for the container control.")]
+    public override BindingContext? BindingContext
+    {
+        get => BindingContextInternal;
+        set => BindingContextInternal = value;
+    }
+
     [Category("Behavior")]
     [Description("Occurs when the splitter is being moved.")]
     public event SplitterCancelEventHandler? SplitterMoving;

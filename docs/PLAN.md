@@ -1597,7 +1597,7 @@ MSBuild молча оставила устаревшие сборки — тес
 - **Свойства-расширители в панели свойств дизайнера** («Error on errorProvider1», «ToolTip on toolTip1»): писатель их
   пишет, читатель читает, но хост не показывает их в панели свойств — нужен `IExtenderProviderService` у `DesignSite`.
 - **Оставшиеся провалы корпуса** — `tests/corpus/corpus.json`, `knownFailures` с причинами; по порядку:
-  печать (`PrintDocument`/`PrintPreviewDialog`), `Binding` (tetris-oop), `GetStockIcon`/`Icon`,
+  печать (`PrintDocument`/`PrintPreviewDialog`), ~~`Binding` (tetris-oop)~~ (решение 141), `GetStockIcon`/`Icon`,
   автодополнение в `TextBox`/`ComboBox`. (`ErrorProvider`, `NotifyIcon`, `TaskDialog`, `ImageListStreamer`,
   `RichTextBox` — решения 119–125.)
 - **Оракулы после работы на Linux**: новый API, сделанный без Windows, проверять оракулами при первой возможности —
@@ -1755,6 +1755,30 @@ MSBuild молча оставила устаревшие сборки — тес
     WinForms); сетка зовёт его через внутренний `PaintCell`. Тесты: `ACustomCellPaintsWithTheGridsFont`,
     `TheDefaultStylesFollowTheGridsFontUntilTheyHaveTheirOwn`; оракул — `exact/dgv/style-*` (сценарий компилируется
     и против настоящего WinForms: `dotnet build tests/NetForms.Compat -p:EnableWindowsTargeting=true` на Linux).
+141. **Привязка данных — реализация WinForms, взятая целиком.** Решение 45 («нет `BindingContext`/`CurrencyManager`,
+    их место занимает `BindingSource`») снято: на нём не работали `DataSet` + `DataMember = "Таблица"`, мастер-деталь
+    через `DataRelation`, `DisplayMember` над `DataTable` (отражение по типу `DataRowView` не видит столбцов) — всё, что
+    в WinForms делает `CurrencyManager`. Из dotnet/winforms (коммит c3cf021, MIT, `THIRD-PARTY-NOTICES.md`) перенесены
+    как есть `DataBinding/*` (`Binding`, `BindingContext`, `BindingManagerBase`, `CurrencyManager`, `PropertyManager`,
+    `Related*Manager`, `BindingSource`, `ListBindingHelper`, коллекции привязок, `BindableComponent`, `Formatter`) и
+    `ListControl`; атрибуты `SR*` раскрыты в `Category`/`Description`, строки исключений — `DataBinding/SR.cs`,
+    внутренние помощники — `VendorHelpers.cs`. Наше — стыковка: `Control` реализует `IBindableComponent`
+    (`BindingContext` от родителя, `BindingContextChanged`, перепривязка при смене родителя и при создании),
+    `ContainerControl` создаёт контекст по требованию и в `OnCreateControl` привязывает всё внутри (как в WinForms),
+    `SplitContainer` берёт родительский; окно формы вызывает `OnCreateControl` всего дерева (детей первыми), `Created`
+    у контрола без формы — после `CreateControl()`. `ListBox`/`ComboBox` — под API `ListControl` (`SetItemCore`,
+    `RefreshItem`, выбор ↔ `DataManager.Position`, `Items` при `DataSource` — `ArgumentException`), `SelectedValue`
+    без `DataSource` — `null`, как там. `DataGridView` берёт список у `BindingContext[DataSource, DataMember]`:
+    таблица `DataSet`, путь отношения, `BindingSource`; текущая строка и `Position` следуют друг за другом; свойства-
+    списки (отношения) — не столбцы; связанный менеджер при движении родителя меняет список — сетка перечитывает его.
+    `ErrorProvider` перенесён на `ContainerControl.BindingContext[DataSource, DataMember]` и `Bindings` менеджера.
+    **Поведение стало как в WinForms, и три наших теста его не отражали:** привязка не работает, пока контрол не создан
+    и без контекста; по умолчанию (`OnValidation`) значение уходит в источник при проверке, а не на каждое изменение;
+    `BindingComplete` приходит только при `formattingEnabled: true` (так пишет дизайнер VS). Тесты переписаны.
+    Проверено: `DataBindingTests` (DataSet, мастер-деталь сетками и `BindingSource`, путь отношения, `DisplayMember`/
+    `ValueMember`, общий `CurrencyManager`, поздний контрол), круговой проход дизайнера с
+    `DataBindings.Add(new Binding(...))`, оракул `exact/binding/*`; фасад `System.Windows.Forms` дополнен (15 типов).
+    Корпус: tetris-oop собирается (28 из 45 открытых). ApiDiff: 652 полных, 160 частичных, 442 нет; 1787 членов.
 
 ---
 

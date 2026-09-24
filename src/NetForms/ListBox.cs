@@ -458,17 +458,53 @@ public class ListBox : ListControl
         }
     }
 
+    /// <summary>The items of the data source (ListControl calls it; the selection follows DataManager.Position).</summary>
     protected override void SetItemsCore(IList items)
     {
+        ArgumentNullException.ThrowIfNull(items);
         _items.SetFromDataSource(items);
-        SelectedIndex = _items.Count > 0 ? 0 : -1;
     }
 
-    protected override object? GetItemCore(int index) => _items[index];
+    protected override void SetItemCore(int index, object value) => _items.SetItemInternal(index, value);
 
-    protected override int GetItemCountCore() => _items.Count;
+    /// <summary>Re-reads the items - from the data source when there is one - and their text (WinForms).</summary>
+    protected override void RefreshItems()
+    {
+        if (DataManager is { } manager)
+        {
+            _items.SetFromDataSource(manager.List);
+            if (SelectionMode != SelectionMode.None) SelectedIndex = manager.Position;
+        }
+        else
+        {
+            ItemsChanged();
+        }
+    }
 
-    protected override void RefreshItems() => Invalidate();
+    protected override void RefreshItem(int index) => Invalidate();
+
+    protected override void OnDataSourceChanged(EventArgs e)
+    {
+        if (DataSource == null)
+        {
+            SelectedIndex = -1;
+            _items.SetFromDataSource(Array.Empty<object>());
+        }
+        base.OnDataSourceChanged(e);
+        RefreshItems();
+    }
+
+    protected override void OnDisplayMemberChanged(EventArgs e)
+    {
+        base.OnDisplayMemberChanged(e);
+        RefreshItems();
+        if (SelectionMode != SelectionMode.None && DataManager != null) SelectedIndex = DataManager.Position;
+    }
+
+    private void CheckNoDataSource()
+    {
+        if (DataSource != null) throw new ArgumentException(SR.DataSourceLocksItems);
+    }
 
     public int FindString(string s) => FindString(s, -1);
 
@@ -556,6 +592,12 @@ public class ListBox : ListControl
     protected override void OnSelectedIndexChanged(EventArgs e)
     {
         base.OnSelectedIndexChanged(e);
+        // The data source's current item follows the selection (setting Position only when it differs: it
+        // ends the current edit). Unselecting everything leaves the position alone.
+        if (DataManager != null && DataManager.Position != SelectedIndex && (!FormattingEnabled || SelectedIndex != -1))
+        {
+            DataManager.Position = SelectedIndex;
+        }
         SelectedIndexChanged?.Invoke(this, e);
     }
 
@@ -816,14 +858,21 @@ public class ListBox : ListControl
             get => _items[index];
             set
             {
-                ArgumentNullException.ThrowIfNull(value);
-                _items[index] = value;
-                _owner.ItemsChanged();
+                _owner.CheckNoDataSource();
+                SetItemInternal(index, value);
             }
+        }
+
+        internal void SetItemInternal(int index, object value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _items[index] = value;
+            _owner.ItemsChanged();
         }
 
         public int Add(object item)
         {
+            _owner.CheckNoDataSource();
             ArgumentNullException.ThrowIfNull(item);
             int index;
             if (_owner._sorted)
@@ -870,6 +919,7 @@ public class ListBox : ListControl
 
         public void Insert(int index, object item)
         {
+            _owner.CheckNoDataSource();
             ArgumentNullException.ThrowIfNull(item);
             if (_owner._sorted) { Add(item); return; }
             _items.Insert(index, item);
@@ -880,6 +930,7 @@ public class ListBox : ListControl
 
         public void Clear()
         {
+            _owner.CheckNoDataSource();
             _items.Clear();
             _owner._selection.Clear();
             _owner._focusedIndex = -1;
@@ -901,6 +952,7 @@ public class ListBox : ListControl
 
         public void RemoveAt(int index)
         {
+            _owner.CheckNoDataSource();
             _items.RemoveAt(index);
             _owner._selection.Remove(index);
             for (int i = 0; i < _owner._selection.Count; i++)
@@ -933,6 +985,9 @@ public class ListBox : ListControl
             _owner.ItemsCleared();
             foreach (var o in source) if (o != null) _items.Add(o);
             for (int i = 0; i < _items.Count; i++) _owner.ItemInserted(i);
+            _owner._selection.RemoveAll(i => i >= _items.Count);
+            if (_owner._focusedIndex >= _items.Count) _owner._focusedIndex = -1;
+            if (_owner._topIndex >= _items.Count) _owner._topIndex = 0;
             _owner.ItemsChanged();
         }
 

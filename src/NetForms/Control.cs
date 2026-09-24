@@ -228,6 +228,8 @@ public partial class Control : Component, IWin32Window
         if (old?.Font != Font) OnFontChanged(EventArgs.Empty);
         if (old?.BackColor != BackColor) OnBackColorChanged(EventArgs.Empty);
         if (old?.ForeColor != ForeColor) OnForeColorChanged(EventArgs.Empty);
+        // WinForms: a created control that takes its BindingContext from the parent rebinds to the new one.
+        if (!_hasOwnBindingContext && Created) OnBindingContextChanged(EventArgs.Empty);
     }
 
     // --- geometry ------------------------------------------------------------------
@@ -1032,14 +1034,6 @@ public partial class Control : Component, IWin32Window
 
     private ContextMenuStrip? _contextMenuStrip;
 
-    private ControlBindingsCollection? _dataBindings;
-
-    /// <summary>Links between this control's properties and a data source.</summary>
-    [Category("Data")]
-    [Description("The data bindings for the control.")]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
-    public ControlBindingsCollection DataBindings => _dataBindings ??= new ControlBindingsCollection(this);
-
     /// <summary>Right mouse-up: find the nearest ContextMenuStrip up the parent chain and pop it up.</summary>
     internal void ShowContextMenuStrip(Point clientPoint)
     {
@@ -1078,7 +1072,7 @@ public partial class Control : Component, IWin32Window
     [Description("Determines if the control has been fully created.")]
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public bool Created => IsHandleCreated;
+    public bool Created => IsHandleCreated || (_createControlCalled && TopLevelForm == null);
 
     [Description("Determines if this control has been disposed.")]
     [Browsable(false)]
@@ -1211,6 +1205,7 @@ public partial class Control : Component, IWin32Window
         if (disposing && !_isDisposed)
         {
             Disposing = true;
+            _dataBindings?.Clear();
             if (_controls != null)
             {
                 foreach (var c in _controls.ToArray()) c.Dispose();
@@ -1572,11 +1567,39 @@ public partial class Control : Component, IWin32Window
 
     protected virtual void OnCreateControl() { }
 
-    /// <summary>Forces creation of the control (in WinForms: its handle). Here: the top-level form's window.</summary>
+    /// <summary>
+    /// Forces creation of the control (in WinForms: its handle). Here: the top-level form's window, or - for a
+    /// control without a form - the "created" state alone, which is what data binding waits for.
+    /// </summary>
     public void CreateControl()
     {
+        bool alreadyCreated = Created;
         TopLevelForm?.CreateWindowIfNeeded();
+        RaiseCreateControl();
+        if (!_hasOwnBindingContext && _parent != null && !alreadyCreated) OnBindingContextChanged(EventArgs.Empty);
+    }
+
+    private bool _createControlCalled;
+
+    /// <summary>OnCreateControl, once per control (WinForms' Created state guards it the same way).</summary>
+    private void RaiseCreateControl()
+    {
+        if (_createControlCalled) return;
+        _createControlCalled = true;
         OnCreateControl();
+    }
+
+    /// <summary>
+    /// The window of the form exists: every control is created, children first, as WinForms' CreateControl
+    /// walks the tree (a container's OnCreateControl then binds the data bindings of all it contains).
+    /// </summary>
+    internal void RaiseCreateControlRecursive()
+    {
+        if (_controls != null)
+        {
+            foreach (var c in _controls.ToArray()) c.RaiseCreateControlRecursive();
+        }
+        RaiseCreateControl();
     }
 
     internal void RaiseHandleCreatedRecursive()

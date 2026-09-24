@@ -604,12 +604,25 @@ public class DataGridViewTests
 
             Assert.Equal("Ada", box.Text);
 
+            // DataSourceUpdateMode.OnValidation, the default: the item gets the text when the control validates.
             box.Text = "Grace";
+            Assert.Equal("Ada", people[0].Name);
+            form.ActiveControl = box;
+            Assert.True(form.Validate());
             Assert.Equal("Grace", people[0].Name);
 
             people.Add(new Person { Name = "Alan" });
             source.MoveNext();
             Assert.Equal("Alan", box.Text);
+
+            // OnPropertyChanged writes as the property changes.
+            var other = new TextBox();
+            form.Controls.Add(other);
+            other.DataBindings.Add("Text", source, "Name", true, DataSourceUpdateMode.OnPropertyChanged);
+            Assert.Equal("Alan", other.Text);
+            other.Text = "Barbara";
+            Assert.Equal("Barbara", people[1].Name);
+            Assert.Equal("Barbara", box.Text);
         }
     }
 

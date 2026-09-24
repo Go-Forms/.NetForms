@@ -218,8 +218,10 @@ public class ErrorProviderTests
         var people = new BindingSource { DataSource = new BindingList<Person> { new() { Name = "", Age = 30 }, new() { Name = "Ann", Age = -1 } } };
         var name = new TextBox { Bounds = new Rectangle(10, 10, 100, 23) };
         var age = new TextBox { Bounds = new Rectangle(10, 50, 100, 23) };
-        name.DataBindings.Add("Text", people, "Name");
-        age.DataBindings.Add("Text", people, "Age");
+        // As the designer writes them: formatting enabled (BindingComplete is raised only then); the name is written
+        // as it is typed, so its error shows at once.
+        name.DataBindings.Add(new Binding("Text", people, "Name", true, DataSourceUpdateMode.OnPropertyChanged));
+        age.DataBindings.Add(new Binding("Text", people, "Age", true));
         var (_, form, _) = ShowForm(name, age);
         using (form)
         using (var provider = new ErrorProvider { ContainerControl = form, DataSource = people })
@@ -245,7 +247,10 @@ public class ErrorProviderTests
     {
         var person = new Person { Name = "Ann" };
         var box = new TextBox();
-        var binding = box.DataBindings.Add("Text", person, "Name");
+        // WinForms binds a control once it is created and has a BindingContext (a form gives both).
+        var (_, form, _) = ShowForm(box);
+        using var _form = form;
+        var binding = box.DataBindings.Add("Text", person, "Name", true, DataSourceUpdateMode.OnPropertyChanged);
         var states = new List<(BindingCompleteState, string)>();
         binding.BindingComplete += (_, e) => states.Add((e.BindingCompleteState, e.ErrorText));
         box.Text = "";

@@ -74,8 +74,10 @@ public class DataGridView : Control, ISupportInitialize
     private object? _dataSource;
     private string _dataMember = string.Empty;
     private IList? _boundList;
+    private CurrencyManager? _currencyManager;
     private PropertyDescriptorCollection? _boundProperties;
     private bool _inBindingUpdate;
+    private bool _syncingPosition;
 
     private DataGridViewCell? _currentCell;
     private (int Column, int Row) _anchor = (-1, -1);
@@ -556,56 +558,95 @@ public class DataGridView : Control, ISupportInitialize
 
     internal bool IsBound => _boundList != null;
 
+    /// <summary>
+    /// The bound list is <c>BindingContext[DataSource, DataMember]</c>, as in WinForms: so a DataSet with a table
+    /// name, a relation as the DataMember (master-detail) and a BindingSource all resolve the way they do there,
+    /// and the grid shares the current item with every other control bound to the same source. Without a
+    /// binding context (a grid not yet in a form) there is nothing to show until it gets one.
+    /// </summary>
     private void DetachDataSource()
     {
-        if (_boundList is IBindingList bindingList) bindingList.ListChanged -= OnBoundListChanged;
-        if (_dataSource is BindingSource source) source.ListChanged -= OnBoundListChanged;
+        if (_currencyManager != null)
+        {
+            _currencyManager.ListChanged -= OnBoundListChanged;
+            _currencyManager.PositionChanged -= OnBoundPositionChanged;
+            _currencyManager.MetaDataChanged -= OnBoundMetaDataChanged;
+        }
+        _currencyManager = null;
         _boundList = null;
         _boundProperties = null;
     }
 
     private void AttachDataSource()
     {
-        var list = ResolveList(_dataSource, _dataMember);
-        _boundList = list;
-        if (list == null)
+        var context = BindingContext;
+        _currencyManager = _dataSource != null && _dataSource != DBNull.Value && context != null
+            ? context[_dataSource, _dataMember] as CurrencyManager
+            : null;
+        _boundList = _currencyManager?.List;
+        if (_currencyManager == null || _boundList == null)
         {
-            _rows.Clear();
+            _currencyManager = null;
+            _boundList = null;
+            if (_dataSource == null) _rows.Clear();
             InvalidateGridLayout();
             return;
         }
 
-        _boundProperties = GetItemProperties(list);
+        _boundProperties = _currencyManager.GetItemProperties();
         if (AutoGenerateColumns) GenerateColumns();
-        if (list is IBindingList bindingList) bindingList.ListChanged += OnBoundListChanged;
-        if (_dataSource is BindingSource source) source.ListChanged += OnBoundListChanged;
+        _currencyManager.ListChanged += OnBoundListChanged;
+        _currencyManager.PositionChanged += OnBoundPositionChanged;
+        _currencyManager.MetaDataChanged += OnBoundMetaDataChanged;
+        RebuildBoundRows();
+        OnBoundPositionChanged(_currencyManager, EventArgs.Empty);
+    }
+
+    protected override void OnBindingContextChanged(EventArgs e)
+    {
+        if (_dataSource != null)
+        {
+            DetachDataSource();
+            AttachDataSource();
+        }
+        base.OnBindingContextChanged(e);
+    }
+
+    private void OnBoundMetaDataChanged(object? sender, EventArgs e)
+    {
+        if (_currencyManager == null) return;
+        _boundProperties = _currencyManager.GetItemProperties();
+        if (AutoGenerateColumns) GenerateColumns();
         RebuildBoundRows();
     }
 
-    private static IList? ResolveList(object? source, string member)
+    /// <summary>The data source's current item moved (another control, or code): the current row follows.</summary>
+    private void OnBoundPositionChanged(object? sender, EventArgs e)
     {
-        object? resolved = source switch
+        if (_currencyManager == null || _syncingPosition) return;
+        int row = _currencyManager.Position;
+        if (row < 0 || row >= _rows.Count || _currentCell?.RowIndex == row) return;
+        int column = _currentCell?.ColumnIndex ?? -1;
+        if (column < 0 || column >= _columns.Count || !_columns[column].Visible) column = FirstVisibleColumnIndex();
+        if (column < 0) return;
+        _syncingPosition = true;
+        try
         {
-            null => null,
-            BindingSource bindingSource => bindingSource.List,
-            IListSource listSource => listSource.GetList(),
-            _ => source,
-        };
-        if (resolved != null && !string.IsNullOrEmpty(member))
-        {
-            var property = TypeDescriptor.GetProperties(resolved).Find(member, true);
-            resolved = property?.GetValue(resolved);
-            if (resolved is IListSource inner) resolved = inner.GetList();
+            SetCurrentCell(column, row);
         }
-        return resolved as IList;
+        finally
+        {
+            _syncingPosition = false;
+        }
     }
 
-    private static PropertyDescriptorCollection GetItemProperties(IList list)
+    private int FirstVisibleColumnIndex()
     {
-        if (list is ITypedList typed) return typed.GetItemProperties(null);
-        var itemType = list.GetType().GetInterface("IList`1")?.GetGenericArguments()[0];
-        if (itemType == null && list.Count > 0 && list[0] != null) itemType = list[0]!.GetType();
-        return itemType != null ? TypeDescriptor.GetProperties(itemType) : new PropertyDescriptorCollection(null);
+        for (int i = 0; i < _columns.Count; i++)
+        {
+            if (_columns[i].Visible) return i;
+        }
+        return -1;
     }
 
     private void GenerateColumns()
@@ -615,14 +656,9 @@ public class DataGridView : Control, ISupportInitialize
         foreach (PropertyDescriptor property in _boundProperties)
         {
             if (!property.IsBrowsable) continue;
-            var column = new DataGridViewTextBoxColumn
-            {
-                Name = property.Name,
-                HeaderText = property.DisplayName,
-                DataPropertyName = property.Name,
-                ValueType = property.PropertyType,
-                ReadOnly = property.IsReadOnly,
-            };
+            // A child list (a DataRelation of a DataTable, a collection property) is not a column (WinForms).
+            if (typeof(IList).IsAssignableFrom(property.PropertyType)
+                && !TypeDescriptor.GetConverter(typeof(Image)).CanConvertFrom(property.PropertyType)) continue;
             if (property.PropertyType == typeof(bool))
             {
                 _columns.Add(new DataGridViewCheckBoxColumn
@@ -635,12 +671,21 @@ public class DataGridView : Control, ISupportInitialize
                 });
                 continue;
             }
-            _columns.Add(column);
+            _columns.Add(new DataGridViewTextBoxColumn
+            {
+                Name = property.Name,
+                HeaderText = property.DisplayName,
+                DataPropertyName = property.Name,
+                ValueType = property.PropertyType,
+                ReadOnly = property.IsReadOnly,
+            });
         }
     }
 
     private void OnBoundListChanged(object? sender, ListChangedEventArgs e)
     {
+        // A related manager (a relation as the DataMember) swaps its list when the parent moves.
+        if (_currencyManager != null) _boundList = _currencyManager.List;
         if (_inBindingUpdate) return;
         RebuildBoundRows();
     }
@@ -648,10 +693,20 @@ public class DataGridView : Control, ISupportInitialize
     private void RebuildBoundRows()
     {
         if (_boundList == null) return;
+        var current = CurrentCellAddress;
         var rows = new List<DataGridViewRow>(_boundList.Count);
         for (int i = 0; i < _boundList.Count; i++) rows.Add(CreateRowFromTemplate());
         _rows.ResetTo(rows);
         _selection.RemoveWhere(c => c.Row >= rows.Count || c.Column >= _columns.Count);
+        // The current cell stays at its address in the new rows (or goes, when the list got shorter).
+        if (_currentCell != null && _editingCell == null)
+        {
+            var moved = current.Y >= 0 && current.Y < rows.Count && current.X >= 0 && current.X < _columns.Count
+                ? _rows[current.Y].Cells[current.X]
+                : null;
+            _currentCell = moved;
+            if (moved == null) OnCurrentCellChanged(EventArgs.Empty);
+        }
         InvalidateGridLayout();
     }
 
@@ -1411,6 +1466,20 @@ public class DataGridView : Control, ISupportInitialize
         EndEdit();
         _currentCell = cell;
         if (cell != null) FirstDisplayedCell(cell.ColumnIndex, cell.RowIndex);
+        // The bound source's current item follows the current row (and so does every control bound to it).
+        if (cell != null && !_syncingPosition && _currencyManager != null && cell.RowIndex >= 0
+            && cell.RowIndex < _currencyManager.Count && _currencyManager.Position != cell.RowIndex)
+        {
+            _syncingPosition = true;
+            try
+            {
+                _currencyManager.Position = cell.RowIndex;
+            }
+            finally
+            {
+                _syncingPosition = false;
+            }
+        }
         OnCurrentCellChanged(EventArgs.Empty);
         Invalidate();
     }

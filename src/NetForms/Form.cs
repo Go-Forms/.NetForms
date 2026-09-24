@@ -466,6 +466,7 @@ public partial class Form : ContainerControl
         }
         Application.RegisterForm(this);
         RaiseHandleCreatedRecursive();
+        RaiseCreateControlRecursive();
     }
 
     /// <summary>

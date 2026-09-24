@@ -22,6 +22,16 @@ and the `VisualStyleElement` class tree - are copied from `src/System.Windows.Fo
 (commit 751b3b8), with the Win32 constants they referred to (`TMT_*`, `HT*`, `BF_*`, `EDGE_*`) replaced by their
 numeric values. Each file keeps the .NET Foundation header.
 
+`src/NetForms/DataBinding/*.cs` - data binding: `Binding`, `BindingContext`, `BindingManagerBase`, `CurrencyManager`,
+`PropertyManager` and the related managers, `BindingSource`, `ListBindingHelper`, `ListBindingConverter`, the
+bindings collections, `BindableComponent`, the internal `Formatter`, and the event types and enumerations that go
+with them - and `src/NetForms/ListControl.cs` (the data part of `ListBox` and `ComboBox`) are copied from
+`src/System.Windows.Forms/System/Windows/Forms/DataBinding`, `.../Controls/ListControl` and `.../Internal/Formatter.cs`
+(commit c3cf021). The `SRCategory`/`SRDescription` attributes are written out as `Category`/`Description` with their
+English texts, the resource strings the code throws are in `DataBinding/SR.cs`, and the few internal helpers it calls
+(flag setting, critical-exception test, `Hashtable`-style copying) are in `DataBinding/VendorHelpers.cs`; Visual
+Studio designer attributes naming `System.Design` types are left out. Each file keeps the .NET Foundation header.
+
 Layout semantics and control metrics elsewhere in the code were derived from the same repository by
 reading it as a specification; where whole algorithms were ported the file says so in a comment.
 

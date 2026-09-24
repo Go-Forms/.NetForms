@@ -77,9 +77,9 @@ not work on Linux (with file and line), and after it the original project is kep
 as `*.csproj.winforms.bak`. See [Migrating](migrating.md).
 
 Measured on a corpus of real projects (`tests/corpus/corpus.json`): **7 of 7** of the customer's
-.NET Framework 4.8/4.8.1 projects and **27 of 45** open-source WinForms projects convert and build with no
+.NET Framework 4.8/4.8.1 projects and **28 of 45** open-source WinForms projects convert and build with no
 manual edit. The rest fail for the reasons in the last rows of the table (8 × BinaryFormatter,
-4 × Windows-only components) or for API NetForms does not have yet (printing, some data binding).
+4 × Windows-only components) or for API NetForms does not have yet (printing, stock icons).
 
 ---
 
@@ -96,11 +96,11 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `Button` | ✅ Works · 1 missing | `Image`, `ImageList`, `TextImageRelation`, `FlatStyle`, `FlatAppearance`, `DialogResult`, `AcceptButton`/`CancelButton`. |
 | `CheckBox` | ✅ Works · 1 missing | Three-state, `Appearance.Button`, AutoSize metrics identical to VS (`checkBox1` → 83×19). |
 | `CheckedListBox` | ✅ Works · 2 missing | |
-| `ComboBox` | ✅ Works · 6 missing | `DropDown`, `DropDownList`, `Simple`; the list opens outside the form. `AutoCompleteMode` is stored, suggestions are not shown yet. |
+| `ComboBox` | ✅ Works · 4 missing | `DropDown`, `DropDownList`, `Simple`; the list opens outside the form. `DataSource` with `DisplayMember`/`ValueMember` (lists, `DataTable`, `DataSet` paths), the selection following the data source's position. `AutoCompleteMode` is stored, suggestions are not shown yet. |
 | `DateTimePicker` | ✅ Works · 1 missing | Custom formats, field editing with arrows, drop-down calendar, `ShowUpDown`, `ShowCheckBox`. |
 | `Label` | ✅ Works · 12 missing | Missing: `Image`/`ImageList` on a label, `PreferredWidth/Height`. |
 | `LinkLabel` | ✅ Works · 3 missing | |
-| `ListBox` | ✅ Works · 10 missing | Owner draw, multi-select. Missing: `CustomTabOffsets`, `Sort()` override hook. |
+| `ListBox` | ✅ Works · 7 missing | Owner draw, multi-select, `DataSource`/`DisplayMember`/`ValueMember` as in `ComboBox`. Missing: `CustomTabOffsets`, `Sort()` override hook. |
 | `ListView` | ✅ Works · 43 missing | All views (Details, List, SmallIcon, LargeIcon, Tile), groups, check boxes, label edit, sorting. Missing: `VirtualMode`, column reordering by drag, `HotTracking`, insertion mark. |
 | `MaskedTextBox` | ✅ Works · 1 missing | Masks via the same `MaskedTextProvider` WinForms uses. |
 | `MonthCalendar` | ✅ Works · 8 missing | One month is shown (`CalendarDimensions` is stored). |
@@ -143,11 +143,11 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 
 | Control | Status | Notes |
 |---|---|---|
-| `DataGridView` | ✅ Works · 292 missing | Columns of every kind (text, check box, combo box, button, link, image) and per-cell types (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, editing, sorting, selection modes, auto-size policies, `DataSource` binding (lists, `DataTable`), frozen columns, virtual scrolling. Custom cells (a `DataGridViewCell` subclass overriding `Paint`) work and get the inherited style, font included; the default styles carry the grid's font and follow it, as in WinForms. Missing: `EditingControl` and `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, custom editing controls (`IDataGridViewEditingControl`, e.g. a date-picker column), `VirtualMode`; the rest of the missing count is mostly protected `Process*Key`/`On*Changed` hooks and `AutoResize*` methods. |
-| `BindingSource` | ✅ Works · 10 missing | Over lists and a `DataTable`: `Position`, `Filter`, `Sort`, `AddNew`. Missing: `ApplySort`, `AllowNew`, `CurrencyManager`; a `DataSet` with `DataMember = "Table"` gives no rows yet, and a `BindingSource` over another one with a `DataRelation` as `DataMember` (master-detail) is empty. |
+| `DataGridView` | ✅ Works · 291 missing | Columns of every kind (text, check box, combo box, button, link, image) and per-cell types (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, editing, sorting, selection modes, auto-size policies, `DataSource`/`DataMember` binding through the form's `BindingContext` (lists, `DataTable`, a `DataSet` table, a relation for master-detail; the current row and the source's `Position` follow each other; relations are not columns), frozen columns, virtual scrolling. Custom cells (a `DataGridViewCell` subclass overriding `Paint`) work and get the inherited style, font included; the default styles carry the grid's font and follow it, as in WinForms. Missing: `EditingControl` and `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, custom editing controls (`IDataGridViewEditingControl`, e.g. a date-picker column), `VirtualMode`; the rest of the missing count is mostly protected `Process*Key`/`On*Changed` hooks and `AutoResize*` methods. |
+| `BindingSource` | ✅ Works · API: complete | The WinForms implementation itself (vendored from dotnet/winforms): lists, `DataTable`, a `DataSet` with a table as `DataMember`, master-detail with a `DataRelation` as the `DataMember` of a second `BindingSource`, `Position`, `Filter`, `Sort`, `AddNew`, `CurrencyManager`. |
 | `BindingNavigator` | ❌ Missing | |
 | ADO.NET itself (`DataSet`, `DataTable`, `DataAdapter`, providers) | Part of .NET, not of WinForms: works on Linux as it is. Edits made in a bound grid set `RowState`, so `adapter.Update(table)` saves them. The provider decides the platform: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle run on Linux; **Access through `System.Data.OleDb` is Windows-only** (`PlatformNotSupportedException` on Linux, the converter warns). |
-| `Control.DataBindings` (`Binding`) | ⚠️ Partial | Simple property binding works, over objects and `DataTable` rows, following `Position`; `BindingContext`/`CurrencyManager` are missing. `ComboBox`/`ListBox` with `DisplayMember`/`ValueMember` over a `DataTable` show empty text for now. |
+| `Control.DataBindings`, `Binding`, `BindingContext`, `CurrencyManager` | ✅ Works · API: complete | The WinForms implementation itself (vendored from dotnet/winforms), with its rules: a control binds once it is created and has a `BindingContext` (a form gives both); the default `DataSourceUpdateMode.OnValidation` writes the value when the control validates; `Format`/`Parse`, `FormatString`, `NullValue`, `BindingComplete` (with formatting enabled), `ErrorProvider` over `IDataErrorInfo`. The designer reads and writes `DataBindings.Add(new Binding(...))` as Visual Studio does. |
 | `PropertyGrid` | ✅ Works · 31 missing | Categories, type editors, expandable objects. Missing: the command pane and its colours. |
 
 ### Components and dialogs
@@ -233,10 +233,10 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **381/381**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **390/390**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
-  regenerates [the tables](api/README.md). Today: **633** of 1254 types complete, **164** partial,
-  **457** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
+  regenerates [the tables](api/README.md). Today: **652** of 1254 types complete, **160** partial,
+  **442** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
 - **Corpus of real projects** (`NETFORMS_CORPUS=1`, CI job `corpus`): converted and built without
   manual edits, with the reason for every failure recorded in `tests/corpus/corpus.json`.

@@ -4,6 +4,11 @@
 
 - **DataGridView:** the default cell styles carry the grid's font and follow it, as in WinForms — a custom cell's
   `Paint` gets `cellStyle.Font` (it was `null`), and `new Font(grid.DefaultCellStyle.Font, FontStyle.Bold)` works.
+- **Data binding** is the WinForms implementation itself (`BindingContext`, `CurrencyManager`, `Binding`, `BindingSource`,
+  `ListBindingHelper`, vendored from dotnet/winforms): a `DataSet` with a table as `DataMember`, master-detail through
+  a `DataRelation`, `DisplayMember`/`ValueMember` over a `DataTable`, a grid's current row and its source's `Position`
+  following each other. Bindings follow WinForms' rules: a control binds once it is created and has a binding context,
+  and the default `DataSourceUpdateMode.OnValidation` writes the value when the control validates.
 - **Designer:** a **+** button in the Events tab creates a handler with the default name in one click; **✕** unbinds it.
 
 ## 0.1.0-preview.1 — first public preview
