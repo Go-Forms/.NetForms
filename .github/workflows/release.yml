@@ -125,17 +125,20 @@ jobs:
           name: vscode
           path: designer/*.vsix
 
+      # One extension id, one package per platform: VS Code downloads the one for the machine it runs on. Only
+      # the platform packages go to the Marketplace and Open VSX; the universal netforms-designer-<version>.vsix
+      # (built without --pre-release, every platform's natives) is for installing by hand from GitHub Releases.
       - name: Publish to the VS Code Marketplace
         if: env.PUBLISH == 'true'
         run: |
           if [ -z "$VSCE_PAT" ]; then echo "::warning::No VSCE_PAT secret: the extension is not published to the Marketplace."; exit 0; fi
-          for f in netforms-designer-*.vsix; do npx vsce publish --packagePath "$f" --skip-duplicate; done
+          for f in netforms-designer-{win32,linux,darwin}-*.vsix; do npx vsce publish --packagePath "$f" --skip-duplicate; done
 
       - name: Publish to Open VSX
         if: env.PUBLISH == 'true'
         run: |
           if [ -z "$OVSX_PAT" ]; then echo "No OVSX_PAT secret: Open VSX skipped."; exit 0; fi
-          for f in netforms-designer-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT" --skip-duplicate; done
+          for f in netforms-designer-{win32,linux,darwin}-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT" --skip-duplicate; done
 
   github-release:
     if: inputs.publish || startsWith(github.ref, 'refs/tags/v')

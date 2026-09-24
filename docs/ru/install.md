@@ -108,8 +108,12 @@ dotnet tool install -g NetForms.Convert --prerelease
 2. **C#.** Расширение **C#** (`ms-dotnettools.csharp`) — подсказки, сборка, отладка. В VSCodium и других
    редакторах с Open VSX: `muhammad-sammy.csharp`.
 3. **NetForms Designer.** Панель расширений → поиск *NetForms* → Install, или
-   `code --install-extension netforms.netforms-designer`. Без доступа к Marketplace возьмите `.vsix` для своей
-   платформы из GitHub Releases и выполните `code --install-extension netforms-designer-linux-x64.vsix`.
+   `code --install-extension netforms.netforms-designer`. Расширение одно для всех систем: в Marketplace под
+   одним именем лежит сборка для каждой платформы (Windows и Linux, x64 и arm64; есть и непроверенные сборки
+   для macOS), и VS Code сам скачивает ту, что подходит машине. Без доступа к Marketplace возьмите из GitHub
+   Releases `.vsix` своей платформы (`netforms-designer-linux-x64.vsix`, `-win32-x64`, …, около 15 МБ) или
+   универсальный `netforms-designer-<версия>.vsix`, который работает везде (около 40 МБ), и выполните
+   `code --install-extension <файл>.vsix`.
 4. **Проверка.** Палитра команд → **NetForms: Check Setup** покажет найденный `dotnet`, хост дизайнера и
    установленные шаблоны.
 

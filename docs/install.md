@@ -107,8 +107,12 @@ Global tools live in `~/.dotnet/tools` (Linux) or `%USERPROFILE%\.dotnet\tools` 
 2. **C#.** The **C#** extension (`ms-dotnettools.csharp`) for IntelliSense, build and debugging. In VSCodium
    and other editors that use Open VSX: `muhammad-sammy.csharp`.
 3. **NetForms Designer.** Extensions view → search *NetForms* → Install, or
-   `code --install-extension netforms.netforms-designer`. Without access to the Marketplace, take the
-   `.vsix` for your platform from GitHub Releases and run `code --install-extension netforms-designer-linux-x64.vsix`.
+   `code --install-extension netforms.netforms-designer`. It is one extension for every system: the
+   Marketplace keeps a build per platform (Windows and Linux, x64 and arm64; macOS builds too, untested)
+   under the same name, and VS Code downloads the one for your machine by itself. Without access to the
+   Marketplace, take the `.vsix` for your platform from GitHub Releases (`netforms-designer-linux-x64.vsix`,
+   `-win32-x64`, …, about 15 MB) or the universal `netforms-designer-<version>.vsix` that works everywhere
+   (about 40 MB), and run `code --install-extension <file>.vsix`.
 4. **Check.** Command palette → **NetForms: Check Setup** shows the `dotnet` found, the designer host and the
    installed templates.
 
