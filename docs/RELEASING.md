@@ -110,6 +110,22 @@ Azure (сама identity бесплатна). Вход через GitHub OIDC, �
 Именно managed identity: с app registration вход проходит, а публикация, по опыту других проектов, падает с
 `InvalidAccessException`.
 
+Шаги 1–2 без поиска пунктов меню (портал на любом языке): значок `>_` (Cloud Shell) вверху портала → Bash →
+
+```sh
+az provider register --namespace Microsoft.ManagedIdentity --wait
+az group create -n netforms-marketplace -l westeurope
+az identity create -g netforms-marketplace -n netforms-marketplace
+az identity federated-credential create -g netforms-marketplace --identity-name netforms-marketplace \
+  -n github-marketplace --issuer https://token.actions.githubusercontent.com \
+  --subject repo:Go-Forms/.NetForms:environment:marketplace --audiences api://AzureADTokenExchange
+az identity show -g netforms-marketplace -n netforms-marketplace \
+  --query "{AZURE_CLIENT_ID:clientId, AZURE_TENANT_ID:tenantId}" -o table
+```
+
+Последняя команда печатает значения для секретов шага 3. В русском портале эти два поля легко перепутать:
+«клиентом» там переводят и client, и tenant; вывод команды подписан именами секретов.
+
 Без обоих способов шаг публикации в Marketplace пропускается с предупреждением, остальной выпуск идёт.
 
 **Расширение для уже вышедшей версии** (секреты добавлены после выпуска): *Actions → Release → Run workflow* с
