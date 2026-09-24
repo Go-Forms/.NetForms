@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **DataGridView:** the default cell styles carry the grid's font and follow it, as in WinForms — a custom cell's
+  `Paint` gets `cellStyle.Font` (it was `null`), and `new Font(grid.DefaultCellStyle.Font, FontStyle.Bold)` works.
+- **Designer:** a **+** button in the Events tab creates a handler with the default name in one click; **✕** unbinds it.
+
 ## 0.1.0-preview.1 — first public preview
 
 The first release on NuGet and the VS Code Marketplace.

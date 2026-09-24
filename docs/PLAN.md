@@ -1742,6 +1742,19 @@ MSBuild молча оставила устаревшие сборки — тес
     `setEvent` с именем по умолчанию, хост пишет заготовку в `MainForm.cs`, редактор открывает её. У привязанного —
     **→** (перейти) и **✕** (отвязать, `setEvent` с `""`; метод остаётся в коде, как в VS). Ввод своего имени и
     Enter работают по-прежнему. UI-тест проходит оба пути по файлам на диске.
+140. **Стили `DataGridView` по умолчанию несут шрифт сетки.** Баг из проверки выпуска: в `Paint` своей ячейки
+    `cellStyle.Font == null` — `DefaultCellStyle`, `ColumnHeadersDefaultCellStyle`, `RowHeadersDefaultCellStyle`
+    создавались без шрифта, и рисование подставляло `DataGridView.Font` само. Теперь, как в WinForms
+    (`DefaultDefaultCellStyle`), у всех трёх `Font = grid.Font`, и шрифт «окружающий»: следует за `Font` сетки (в т.ч.
+    унаследованным от формы), пока стилю не дали свой (другой объект `Font` — сравнение по ссылке, как `!=` в WinForms).
+    `ShouldSerialize*` сравнивают с умолчанием на текущем шрифте, так что форма со своим шрифтом не пишет стили.
+    **Осознанная разница:** WinForms при неполном назначенном `DefaultCellStyle` отдаёт из геттера заполненную
+    копию (правки в ней теряются); мы дозаполняем пустые члены самого назначенного объекта — результат геттера тот
+    же, правки не теряются. `null` восстанавливает стиль по умолчанию, как там. `DataGridViewCell.Paint` стал
+    `protected virtual` (был `protected internal`: сборка с `InternalsVisibleTo` не могла переопределить его как в
+    WinForms); сетка зовёт его через внутренний `PaintCell`. Тесты: `ACustomCellPaintsWithTheGridsFont`,
+    `TheDefaultStylesFollowTheGridsFontUntilTheyHaveTheirOwn`; оракул — `exact/dgv/style-*` (сценарий компилируется
+    и против настоящего WinForms: `dotnet build tests/NetForms.Compat -p:EnableWindowsTargeting=true` на Linux).
 
 ---
 

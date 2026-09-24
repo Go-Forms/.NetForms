@@ -180,8 +180,14 @@ public abstract class DataGridViewCell : DataGridViewElement, ICloneable
         return new Size(size.Width + style.Padding.Horizontal + 9, size.Height + style.Padding.Vertical + 5);
     }
 
+    /// <summary>How the grid calls <see cref="Paint"/>, which is protected in WinForms (and so overridable as protected from any assembly).</summary>
+    internal void PaintCell(Graphics graphics, Rectangle clipBounds, Rectangle cellBounds, int rowIndex,
+        DataGridViewElementStates cellState, object? value, object? formattedValue, string? errorText,
+        DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle, DataGridViewPaintParts paintParts) =>
+        Paint(graphics, clipBounds, cellBounds, rowIndex, cellState, value, formattedValue, errorText, cellStyle, advancedBorderStyle, paintParts);
+
     /// <summary>Draws the cell; the base class paints background, border and text.</summary>
-    protected internal virtual void Paint(Graphics graphics, Rectangle clipBounds, Rectangle cellBounds, int rowIndex,
+    protected virtual void Paint(Graphics graphics, Rectangle clipBounds, Rectangle cellBounds, int rowIndex,
         DataGridViewElementStates cellState, object? value, object? formattedValue, string? errorText,
         DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle, DataGridViewPaintParts paintParts)
     {

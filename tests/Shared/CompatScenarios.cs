@@ -32,7 +32,37 @@ public static class CompatScenarios
         Mdi(r);
         RichText(r);
         GridHeaders(r);
+        GridStyleFonts(r);
         return r;
+    }
+
+    /// <summary>
+    /// The grid's default styles carry its font (DefaultDefaultCellStyle) and follow it until they get their own;
+    /// a custom cell's Paint gets that font in cellStyle (decision 140).
+    /// </summary>
+    private static void GridStyleFonts(SortedDictionary<string, string> r)
+    {
+        static string F(Font? f) => f == null ? "null" : f.Name + " " + f.Size.ToString(System.Globalization.CultureInfo.InvariantCulture) + " " + f.Style;
+        static string Same(Font? a, Font b) => ReferenceEquals(a, b) ? "grid" : F(a);
+        using var form = new Form();
+        var grid = new DataGridView();
+        form.Controls.Add(grid);
+        string Styles() => $"{Same(grid.DefaultCellStyle.Font, grid.Font)} | {Same(grid.ColumnHeadersDefaultCellStyle.Font, grid.Font)} | {Same(grid.RowHeadersDefaultCellStyle.Font, grid.Font)}";
+        string Serialized() => string.Join(" ", new[] { "DefaultCellStyle", "ColumnHeadersDefaultCellStyle", "RowHeadersDefaultCellStyle" }
+            .Select(p => System.ComponentModel.TypeDescriptor.GetProperties(grid)[p]!.ShouldSerializeValue(grid)));
+        r["exact/dgv/style-font-new"] = Styles();
+        form.Font = new Font("Arial", 12);
+        r["exact/dgv/style-font-ambient"] = F(grid.Font) + " | " + Styles();
+        r["exact/dgv/style-font-ambient-serialized"] = Serialized();
+        grid.ColumnHeadersDefaultCellStyle.Font = new Font("Arial", 16, FontStyle.Bold);
+        grid.Font = new Font("Arial", 10);
+        r["exact/dgv/style-font-own"] = F(grid.Font) + " | " + Styles();
+        grid.Columns.Add("a", "A");
+        grid.Rows.Add("x");
+        r["exact/dgv/style-font-inherited"] = F(grid.Rows[0].Cells[0].InheritedStyle.Font);
+        grid.DefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.Yellow };
+        var assigned = grid.DefaultCellStyle;
+        r["exact/dgv/style-assigned"] = $"{Same(assigned.Font, grid.Font)} {assigned.Alignment} {assigned.WrapMode} {assigned.BackColor.Name}";
     }
 
     /// <summary>DataGridView.ColumnHeadersHeightSizeMode and ScrollBars (the corpus' SuperAdventure uses both).</summary>

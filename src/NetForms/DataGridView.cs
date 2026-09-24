@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace System.Windows.Forms;
@@ -104,53 +105,27 @@ public class DataGridView : Control, ISupportInitialize
         BackgroundColor = SystemColors.AppWorkspace;
         BackColor = SystemColors.Window;
 
-        DefaultCellStyle = new DataGridViewCellStyle
-        {
-            BackColor = SystemColors.Window,
-            ForeColor = SystemColors.ControlText,
-            SelectionBackColor = Theme.Highlight,
-            SelectionForeColor = Theme.HighlightText,
-            Alignment = DataGridViewContentAlignment.MiddleLeft,
-            WrapMode = DataGridViewTriState.False,
-        };
-        ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-        {
-            BackColor = Theme.StripBackground,
-            ForeColor = SystemColors.ControlText,
-            SelectionBackColor = Theme.StripItemPressed,
-            SelectionForeColor = SystemColors.ControlText,
-            Alignment = DataGridViewContentAlignment.MiddleLeft,
-            WrapMode = DataGridViewTriState.True,
-        };
-        RowHeadersDefaultCellStyle = new DataGridViewCellStyle
-        {
-            BackColor = Theme.StripBackground,
-            ForeColor = SystemColors.ControlText,
-            SelectionBackColor = Theme.StripItemPressed,
-            SelectionForeColor = SystemColors.ControlText,
-            Alignment = DataGridViewContentAlignment.MiddleLeft,
-        };
+        _defaultCellStyle = DefaultDefaultCellStyle();
+        _ambientFont = _defaultCellStyle.Font;
+        _columnHeadersDefaultCellStyle = DefaultColumnHeadersDefaultCellStyle();
+        _ambientColumnHeadersFont = _columnHeadersDefaultCellStyle.Font;
+        _rowHeadersDefaultCellStyle = DefaultRowHeadersDefaultCellStyle();
+        _ambientRowHeadersFont = _rowHeadersDefaultCellStyle.Font;
         RowsDefaultCellStyle = new DataGridViewCellStyle();
         AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle();
-        _initialDefaultCellStyle = new DataGridViewCellStyle(DefaultCellStyle);
-        _initialColumnHeadersStyle = new DataGridViewCellStyle(ColumnHeadersDefaultCellStyle);
-        _initialRowHeadersStyle = new DataGridViewCellStyle(RowHeadersDefaultCellStyle);
     }
 
     // --- design-time serialization ---------------------------------------------------------------
     // A style is written only when it differs from what a new grid starts with (WinForms compares
     // against its DefaultXxxCellStyle the same way).
 
-    private readonly DataGridViewCellStyle _initialDefaultCellStyle;
-    private readonly DataGridViewCellStyle _initialColumnHeadersStyle;
-    private readonly DataGridViewCellStyle _initialRowHeadersStyle;
     private static readonly DataGridViewCellStyle s_emptyStyle = new();
 
-    internal bool ShouldSerializeDefaultCellStyle() => !DefaultCellStyle.IsEquivalentTo(_initialDefaultCellStyle);
+    internal bool ShouldSerializeDefaultCellStyle() => !DefaultCellStyle.IsEquivalentTo(DefaultDefaultCellStyle());
 
-    internal bool ShouldSerializeColumnHeadersDefaultCellStyle() => !ColumnHeadersDefaultCellStyle.IsEquivalentTo(_initialColumnHeadersStyle);
+    internal bool ShouldSerializeColumnHeadersDefaultCellStyle() => !ColumnHeadersDefaultCellStyle.IsEquivalentTo(DefaultColumnHeadersDefaultCellStyle());
 
-    internal bool ShouldSerializeRowHeadersDefaultCellStyle() => !RowHeadersDefaultCellStyle.IsEquivalentTo(_initialRowHeadersStyle);
+    internal bool ShouldSerializeRowHeadersDefaultCellStyle() => !RowHeadersDefaultCellStyle.IsEquivalentTo(DefaultRowHeadersDefaultCellStyle());
 
     internal bool ShouldSerializeRowsDefaultCellStyle() => !RowsDefaultCellStyle.IsEquivalentTo(s_emptyStyle);
 
@@ -195,17 +170,108 @@ public class DataGridView : Control, ISupportInitialize
 
     // --- appearance ------------------------------------------------------------------------------
 
+    // The three default styles start with the grid's font, as in WinForms (DefaultDefaultCellStyle): a cell's
+    // InheritedStyle, and so the cellStyle a custom cell's Paint gets, always has a Font. The font is "ambient" -
+    // it follows the grid's Font - until the style is given a font of its own.
+    private DataGridViewCellStyle _defaultCellStyle;
+    private DataGridViewCellStyle _columnHeadersDefaultCellStyle;
+    private DataGridViewCellStyle _rowHeadersDefaultCellStyle;
+    private Font? _ambientFont, _ambientColumnHeadersFont, _ambientRowHeadersFont;
+
+    private DataGridViewCellStyle DefaultDefaultCellStyle() => new()
+    {
+        BackColor = SystemColors.Window,
+        ForeColor = SystemColors.ControlText,
+        SelectionBackColor = Theme.Highlight,
+        SelectionForeColor = Theme.HighlightText,
+        Font = Font,
+        Alignment = DataGridViewContentAlignment.MiddleLeft,
+        WrapMode = DataGridViewTriState.False,
+    };
+
+    private DataGridViewCellStyle DefaultColumnHeadersDefaultCellStyle() => new()
+    {
+        BackColor = Theme.StripBackground,
+        ForeColor = SystemColors.ControlText,
+        SelectionBackColor = Theme.StripItemPressed,
+        SelectionForeColor = SystemColors.ControlText,
+        Font = Font,
+        Alignment = DataGridViewContentAlignment.MiddleLeft,
+        WrapMode = DataGridViewTriState.True,
+    };
+
+    private DataGridViewCellStyle DefaultRowHeadersDefaultCellStyle() => new()
+    {
+        BackColor = Theme.StripBackground,
+        ForeColor = SystemColors.ControlText,
+        SelectionBackColor = Theme.StripItemPressed,
+        SelectionForeColor = SystemColors.ControlText,
+        Font = Font,
+        Alignment = DataGridViewContentAlignment.MiddleLeft,
+        WrapMode = DataGridViewTriState.True,
+    };
+
+    /// <summary>
+    /// The style every cell inherits from. A style assigned with members unset gets them from the defaults
+    /// (WinForms returns a filled copy from the getter instead - a deliberate difference, so that editing the
+    /// returned style is never lost); null restores the default style.
+    /// </summary>
     [Category("Appearance")]
     [Description("The DataGridViewBand.DefaultCellStyle to be applied to the DataGridView if no other style is set.")]
-    public DataGridViewCellStyle DefaultCellStyle { get; set; }
+    [AmbientValue(null)]
+    [AllowNull]
+    public DataGridViewCellStyle DefaultCellStyle
+    {
+        get => _defaultCellStyle;
+        set
+        {
+            var defaults = DefaultDefaultCellStyle();
+            if (value == null) value = defaults;
+            else
+            {
+                if (value.BackColor.IsEmpty) value.BackColor = defaults.BackColor;
+                if (value.ForeColor.IsEmpty) value.ForeColor = defaults.ForeColor;
+                if (value.SelectionBackColor.IsEmpty) value.SelectionBackColor = defaults.SelectionBackColor;
+                if (value.SelectionForeColor.IsEmpty) value.SelectionForeColor = defaults.SelectionForeColor;
+                value.Font ??= defaults.Font;
+                if (value.Alignment == DataGridViewContentAlignment.NotSet) value.Alignment = defaults.Alignment;
+                if (value.WrapMode == DataGridViewTriState.NotSet) value.WrapMode = defaults.WrapMode;
+            }
+            _defaultCellStyle = value;
+            _ambientFont = ReferenceEquals(value.Font, Font) ? Font : null;
+            InvalidateGridLayout();
+        }
+    }
 
     [Category("Appearance")]
     [Description("The default column header style.")]
-    public DataGridViewCellStyle ColumnHeadersDefaultCellStyle { get; set; }
+    [AmbientValue(null)]
+    [AllowNull]
+    public DataGridViewCellStyle ColumnHeadersDefaultCellStyle
+    {
+        get => _columnHeadersDefaultCellStyle;
+        set
+        {
+            _columnHeadersDefaultCellStyle = value ?? DefaultColumnHeadersDefaultCellStyle();
+            _ambientColumnHeadersFont = ReferenceEquals(_columnHeadersDefaultCellStyle.Font, Font) ? Font : null;
+            InvalidateGridLayout();
+        }
+    }
 
     [Category("Appearance")]
     [Description("The default style applied to the row header cells.")]
-    public DataGridViewCellStyle RowHeadersDefaultCellStyle { get; set; }
+    [AmbientValue(null)]
+    [AllowNull]
+    public DataGridViewCellStyle RowHeadersDefaultCellStyle
+    {
+        get => _rowHeadersDefaultCellStyle;
+        set
+        {
+            _rowHeadersDefaultCellStyle = value ?? DefaultRowHeadersDefaultCellStyle();
+            _ambientRowHeadersFont = ReferenceEquals(_rowHeadersDefaultCellStyle.Font, Font) ? Font : null;
+            InvalidateGridLayout();
+        }
+    }
 
     [Category("Appearance")]
     [Description("The default style applied to the row cells of the DataGridView.")]
@@ -999,6 +1065,12 @@ public class DataGridView : Control, ISupportInitialize
     protected override void OnFontChanged(EventArgs e)
     {
         base.OnFontChanged(e);
+        // An ambient font follows the grid's; one the style was given (a different Font object) stays.
+        if (_ambientFont != null && ReferenceEquals(_defaultCellStyle.Font, _ambientFont)) _defaultCellStyle.Font = _ambientFont = Font;
+        if (_ambientColumnHeadersFont != null && ReferenceEquals(_columnHeadersDefaultCellStyle.Font, _ambientColumnHeadersFont))
+            _columnHeadersDefaultCellStyle.Font = _ambientColumnHeadersFont = Font;
+        if (_ambientRowHeadersFont != null && ReferenceEquals(_rowHeadersDefaultCellStyle.Font, _ambientRowHeadersFont))
+            _rowHeadersDefaultCellStyle.Font = _ambientRowHeadersFont = Font;
         InvalidateGridLayout();
     }
 
@@ -1880,7 +1952,7 @@ public class DataGridView : Control, ISupportInitialize
         OnCellPainting(painting);
         if (painting.Handled) return;
 
-        cell.Paint(g, clip, bounds, rowIndex, cellState, value, formatted, cell.ErrorText, style,
+        cell.PaintCell(g, clip, bounds, rowIndex, cellState, value, formatted, cell.ErrorText, style,
             new DataGridViewAdvancedBorderStyle(), DataGridViewPaintParts.All);
 
         if (_currentCell == cell && Focused && ShowFocusCues)
@@ -1904,7 +1976,7 @@ public class DataGridView : Control, ISupportInitialize
     {
         if (e.RowIndex < 0 || e.RowIndex >= _rows.Count || e.ColumnIndex < 0 || e.ColumnIndex >= _columns.Count) return;
         var cell = _rows[e.RowIndex].Cells[e.ColumnIndex];
-        cell.Paint(e.Graphics, clipBounds, e.CellBounds, e.RowIndex, e.State, e.Value, e.FormattedValue, e.ErrorText,
+        cell.PaintCell(e.Graphics, clipBounds, e.CellBounds, e.RowIndex, e.State, e.Value, e.FormattedValue, e.ErrorText,
             e.CellStyle, e.AdvancedBorderStyle, DataGridViewPaintParts.ContentForeground);
     }
 

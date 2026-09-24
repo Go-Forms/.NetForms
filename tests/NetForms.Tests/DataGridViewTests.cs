@@ -107,6 +107,75 @@ public class DataGridViewTests
         }
     }
 
+    /// <summary>A cell that paints itself, as in Microsoft's samples: it draws with the cellStyle it is given.</summary>
+    private sealed class FontRecordingCell : DataGridViewTextBoxCell
+    {
+        public static readonly List<Font?> Fonts = new();
+
+        protected override void Paint(Graphics graphics, Rectangle clipBounds, Rectangle cellBounds, int rowIndex,
+            DataGridViewElementStates cellState, object? value, object? formattedValue, string? errorText,
+            DataGridViewCellStyle cellStyle, DataGridViewAdvancedBorderStyle advancedBorderStyle, DataGridViewPaintParts paintParts)
+        {
+            Fonts.Add(cellStyle.Font);
+            using var brush = new SolidBrush(cellStyle.ForeColor);
+            graphics.DrawString(formattedValue as string ?? "", cellStyle.Font, brush, cellBounds.Location);
+        }
+    }
+
+    [Fact]
+    public void ACustomCellPaintsWithTheGridsFont()
+    {
+        var (_, form, _, grid) = ShowGrid(g => g.AllowUserToAddRows = false);
+        using (form)
+        {
+            grid.Columns.Add(new DataGridViewColumn(new FontRecordingCell()) { Name = "Name" });
+            grid.Rows.Add("Ada");
+            FontRecordingCell.Fonts.Clear();
+            RenderOnce(grid)?.Dispose();
+
+            Assert.NotEmpty(FontRecordingCell.Fonts);
+            Assert.All(FontRecordingCell.Fonts, f => Assert.Same(grid.Font, f));
+            // WinForms: the default styles carry the grid's font, so code like new Font(DefaultCellStyle.Font, Bold) works.
+            Assert.Same(grid.Font, grid.DefaultCellStyle.Font);
+            Assert.Same(grid.Font, grid.ColumnHeadersDefaultCellStyle.Font);
+            Assert.Same(grid.Font, grid.RowHeadersDefaultCellStyle.Font);
+            Assert.Same(grid.Font, grid.Rows[0].Cells[0].InheritedStyle.Font);
+        }
+    }
+
+    [Fact]
+    public void TheDefaultStylesFollowTheGridsFontUntilTheyHaveTheirOwn()
+    {
+        var (_, form, _, grid) = ShowGrid(g => g.AllowUserToAddRows = false);
+        using (form)
+        {
+            // Ambient: the form's font reaches the grid and its default styles.
+            var formFont = new Font("Arial", 12);
+            form.Font = formFont;
+            Assert.Same(formFont, grid.Font);
+            Assert.Same(formFont, grid.DefaultCellStyle.Font);
+            Assert.Same(formFont, grid.ColumnHeadersDefaultCellStyle.Font);
+
+            // A font of the style's own stays when the grid's changes.
+            var header = new Font("Arial", 16, FontStyle.Bold);
+            grid.ColumnHeadersDefaultCellStyle.Font = header;
+            var gridFont = new Font("Arial", 10);
+            grid.Font = gridFont;
+            Assert.Same(gridFont, grid.DefaultCellStyle.Font);
+            Assert.Same(header, grid.ColumnHeadersDefaultCellStyle.Font);
+            Assert.Same(gridFont, grid.RowHeadersDefaultCellStyle.Font);
+
+            // A style assigned without a font gets the grid's (WinForms fills it in the getter); null restores the default.
+            grid.DefaultCellStyle = new DataGridViewCellStyle { BackColor = Color.Yellow };
+            Assert.Same(gridFont, grid.DefaultCellStyle.Font);
+            Assert.Equal(Color.Yellow, grid.DefaultCellStyle.BackColor);
+            Assert.Equal(DataGridViewContentAlignment.MiddleLeft, grid.DefaultCellStyle.Alignment);
+            grid.DefaultCellStyle = null;
+            Assert.Equal(SystemColors.Window, grid.DefaultCellStyle.BackColor);
+            Assert.Same(gridFont, grid.DefaultCellStyle.Font);
+        }
+    }
+
     // --- width policy ------------------------------------------------------------------------
 
     [Fact]
