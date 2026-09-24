@@ -1616,8 +1616,9 @@ public class DataGridView : Control, ISupportInitialize
         {
             if (ReferenceEquals(value, _currentCell)) return;
             if (value != null && value.DataGridView != this) throw new ArgumentException("The cell does not belong to this DataGridView.");
-            // WinForms: setting it in code commits the edit without validating the cell (but a null validates).
-            if (!SetCurrentCell(value, validate: value == null))
+            // WinForms validates here too: ScrollIntoView commits the edit through CommitEditForOperation (CellLeave,
+            // CellValidating, CellValidated, RowValidating when the row changes) before the cell moves.
+            if (!SetCurrentCell(value))
             {
                 throw new InvalidOperationException("Operation did not succeed because the program cannot commit or quit a cell value change.");
             }

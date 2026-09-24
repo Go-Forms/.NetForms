@@ -604,8 +604,10 @@ public class DataGridViewRow : DataGridViewBand
     private string _errorText = string.Empty;
 
     /// <summary>The row's error message (WinForms shows it as an icon in the row header; a CellValidating handler sets it).</summary>
-    [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [DefaultValue("")]
+    [NotifyParentProperty(true)]
+    [Category("Appearance")]
+    [Description("The error message text for row-level errors.")]
     [AllowNull]
     public string ErrorText
     {

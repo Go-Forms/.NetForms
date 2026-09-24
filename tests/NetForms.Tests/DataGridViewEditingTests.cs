@@ -95,6 +95,38 @@ public class DataGridViewEditingTests
     }
 
     [Fact]
+    public void SettingCurrentCellInCodeValidatesTheCellItLeaves()
+    {
+        // WinForms: the setter's ScrollIntoView commits through CommitEditForOperation (oracle exact/dgv/edit-current, edit-move).
+        var (form, _, grid) = ShowGrid(g => People(g));
+        using (form)
+        {
+            grid.CurrentCell = grid.Rows[0].Cells[0];
+            var events = Record(grid);
+            grid.CurrentCell = grid.Rows[0].Cells[1];
+            Assert.Equal(new[] { "CellLeave 0,0", "CellValidating 0,0 'Ada'", "CellValidated 0,0", "CellEnter 1,0" }, events);
+
+            events.Clear();
+            grid.BeginEdit(true);
+            grid.EditingControl!.Text = "38";
+            grid.CurrentCell = grid.Rows[1].Cells[0];
+            Assert.Equal(new[]
+            {
+                "CellBeginEdit 1,0", "EditingControlShowing DataGridViewTextBoxEditingControl", "CurrentCellDirtyStateChanged True",
+                "CellLeave 1,0", "RowLeave 0", "CellValidating 1,0 '38'", "CellParsing '38' Int32", "CellValueChanged 1,0",
+                "CurrentCellDirtyStateChanged False", "CellValidated 1,0", "CellEndEdit 1,0",
+                "RowValidating 0", "RowValidated 0", "RowEnter 1", "CellEnter 0,1",
+            }, events);
+            Assert.Equal(38, grid.Rows[0].Cells[1].Value);
+
+            // A cancelled validation keeps the cell, and the setter throws as in WinForms.
+            grid.CellValidating += (_, e) => e.Cancel = true;
+            Assert.Throws<InvalidOperationException>(() => grid.CurrentCell = grid.Rows[0].Cells[0]);
+            Assert.Equal(new Point(0, 1), grid.CurrentCellAddress);
+        }
+    }
+
+    [Fact]
     public void CancellingCellValidatingKeepsTheCellAndItsEdit()
     {
         var (form, window, grid) = ShowGrid(g => People(g));

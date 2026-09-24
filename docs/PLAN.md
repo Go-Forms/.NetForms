@@ -1799,7 +1799,8 @@ MSBuild молча оставила устаревшие сборки — тес
       (или `ParseFormattedValue` через `Formatter` WinForms), значение, `CellValidated`; ошибка разбора — `DataError`
       с `Parsing|Commit` и `Cancel = true` (ячейка остаётся в правке); `CancelEdit` возвращает исходное и не выходит из
       правки, Escape — выходит; смена текущей ячейки мышью/клавиатурой валидирует (`CellLeave`, `RowLeave`, …,
-      `RowValidating`, `RowEnter`, `CellEnter`), присваивание `CurrentCell` в коде — нет, как в WinForms; уход фокуса из
+      `RowValidating`, `RowEnter`, `CellEnter`), присваивание `CurrentCell` в коде — тоже (`ScrollIntoView` →
+      `CommitEditForOperation`, подтверждено оракулом); уход фокуса из
       сетки фиксирует правку (`OnValidating`);
     - клавиатура: символ начинает правку (`KeyEntersEditMode`), F2 — с кареткой в конце, Enter фиксирует и спускается,
       Tab ходит по ячейкам (`StandardTab`), клавиши редактора, которые он не хочет (`EditingControlWantsInputKey`),
@@ -1828,7 +1829,7 @@ MSBuild молча оставила устаревшие сборки — тес
     README, `docs/*` (англ. и рус.), `eng/package/README.md` и на главных страницах сайта — новая. Выпуск, как в
     решении 135: пуш смены версии в `main` после зелёного CI предыдущего коммита.
 
-**Состояние тестов на конец сессии (2026-09-24, Linux):** .NET — **401/401**, расширение — **21/21**; оракулы
+**Состояние тестов на конец сессии (2026-09-24, Linux):** .NET — **402/402**, расширение — **21/21**; оракулы
 WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/focus/nested-*`) и сверка атрибутов —
 зелёные в CI на Windows.
 
