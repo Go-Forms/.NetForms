@@ -1264,8 +1264,9 @@ public abstract class TextBoxBase : Control
     protected override bool IsInputKey(Keys keyData)
     {
         var code = keyData & Keys.KeyCode;
-        if (code is Keys.Left or Keys.Right or Keys.Home or Keys.End or Keys.Back or Keys.Delete or Keys.Insert) return true;
-        if (_multiline && code is Keys.Up or Keys.Down or Keys.PageUp or Keys.PageDown) return true;
+        // The edit control asks for every arrow key (DLGC_WANTARROWS), one-line too: Up and Down never move the focus.
+        if (code is Keys.Left or Keys.Right or Keys.Up or Keys.Down or Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown
+            or Keys.Back or Keys.Delete or Keys.Insert) return true;
         if (code == Keys.Return && _multiline && AcceptsReturnCore) return true;
         if (code == Keys.Tab && _acceptsTab && _multiline && (keyData & Keys.Control) == 0) return true;
         return base.IsInputKey(keyData);

@@ -145,7 +145,7 @@ self-contained, со средой внутри).
 
 | Контрол | Состояние | Примечания |
 |---|---|---|
-| `DataGridView` | ✅ Работает · нет 291 | Столбцы всех видов (текст, флажок, список, кнопка, ссылка, картинка) и типы отдельных ячеек (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, правка, сортировка, режимы выделения, политики ширин, привязка `DataSource`/`DataMember` через `BindingContext` формы (списки, `DataTable`, таблица `DataSet`, отношение для мастер-детали; текущая строка и `Position` источника следуют друг за другом; отношения не становятся столбцами), закреплённые столбцы, виртуальная прокрутка. Свои ячейки (наследник `DataGridViewCell` с переопределённым `Paint`) работают и получают унаследованный стиль вместе со шрифтом; стили по умолчанию несут шрифт сетки и следуют за ним, как в WinForms. Нет: `EditingControl` и `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, собственных редакторов ячеек (`IDataGridViewEditingControl`, например столбца с выбором даты), `VirtualMode`; остальное из недостающего — в основном защищённые `Process*Key`/`On*Changed` и методы `AutoResize*`. |
+| `DataGridView` | ✅ Работает · нет 242 | Столбцы всех видов (текст, флажок, список, кнопка, ссылка, картинка) и типы отдельных ячеек (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, правка, сортировка, режимы выделения, политики ширин, привязка `DataSource`/`DataMember` через `BindingContext` формы (списки, `DataTable`, таблица `DataSet`, отношение для мастер-детали; текущая строка и `Position` источника следуют друг за другом; отношения не становятся столбцами), закреплённые столбцы, виртуальная прокрутка. Свои ячейки (наследник `DataGridViewCell` с переопределённым `Paint`) работают и получают унаследованный стиль вместе со шрифтом; стили по умолчанию несут шрифт сетки и следуют за ним, как в WinForms. Правка — по модели WinForms: контрол `EditType` ячейки (`DataGridViewTextBoxEditingControl`, `DataGridViewComboBoxEditingControl` или свой `IDataGridViewEditingControl` — столбец-календарь из документации Microsoft работает как опубликован) в `EditingPanel`, `EditingControlShowing`, «грязная» ячейка и `CurrentCellDirtyStateChanged`, `CellValidating`/`CellParsing`/`CellValidated` и `DataError` при фиксации, `CellEnter`/`CellLeave`/`RowEnter`/`RowLeave`/`RowValidating`, `BeginEdit`/`EndEdit`/`CommitEdit`/`CancelEdit`/`RefreshEdit`, `EditMode`, ввод/F2/Enter/Escape/Tab; ячейка-флажок правит себя сама (`IDataGridViewEditingCell`) и фиксируется при уходе, как в WinForms. `VirtualMode` с `RowCount`, `CellValueNeeded`/`CellValuePushed`, `RowDirtyStateNeeded`, `CancelRowEdit`. Нет: потока новой строки `NewRowNeeded`/`UserAddedRow`, копирования в буфер, остальных защищённых `Process*Key`/`On*Changed` и методов `AutoResize*`. |
 | `BindingSource` | ✅ Работает · API: полный | Сама реализация WinForms (взята из dotnet/winforms): списки, `DataTable`, `DataSet` с таблицей в `DataMember`, мастер-деталь — второй `BindingSource` с `DataRelation` в `DataMember`, `Position`, `Filter`, `Sort`, `AddNew`, `CurrencyManager`. |
 | `BindingNavigator` | ❌ Нет | |
 | Сам ADO.NET (`DataSet`, `DataTable`, `DataAdapter`, провайдеры) | Часть .NET, а не WinForms: на Linux работает как есть. Правка в привязанной сетке выставляет `RowState`, поэтому `adapter.Update(table)` её сохраняет. Платформу определяет провайдер: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle работают на Linux; **Access через `System.Data.OleDb` — только Windows** (на Linux — `PlatformNotSupportedException`, конвертер предупреждает). |
@@ -222,6 +222,9 @@ self-contained, со средой внутри).
   синтезируется, события правой кнопки приходят только при открытии меню, `MouseMove` не приходит,
   меню рисует оболочка.
 - **Значки `ErrorProvider`** не мигают.
+- **`DataGridView`**: необработанный `DataError` не показывается окном сообщения (WinForms показывает); первая
+  ячейка не становится текущей при создании окна (в WinForms становится); назначенный `DefaultCellStyle` с
+  незаданными членами дозаполняется сам (WinForms отдаёт из геттера заполненную копию).
 - **`Form.TopLevel = false`**: у встроенной формы нет рамки (WinForms её рисует).
 - **`RichTextBox.Rtf`** записывает не-ASCII символы как `\uN?` (RichEdit — как `\'hh` в кодовой странице
   шрифта); читаются оба варианта.
@@ -236,10 +239,10 @@ self-contained, со средой внутри).
 
 - **Дифф-тесты против настоящего WinForms** (`tests/NetForms.Compat`, CI на Windows): одни и те же сценарии
   выполняются в `System.Windows.Forms` и в NetForms; сравниваются положения, размеры, порядок событий,
-  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **390/390**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
+  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **401/401**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
 - **Golden-тесты отрисовки** (без окна, одинаковые картинки на Windows и Linux).
 - **Покрытие API** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api` заново строит
-  [таблицы](../api/README.md). Сейчас: **652** из 1254 типов полные, **160** частично, **442** нет
+  [таблицы](../api/README.md). Сейчас: **662** из 1254 типов полные, **162** частично, **430** нет
   (в основном `EventArgs`, специальные возможности, печать и удалённые контролы 1.x).
 - **Корпус реальных проектов** (`NETFORMS_CORPUS=1`, задача CI `corpus`): проекты переводятся и
   собираются без ручных правок, причина каждого провала записана в `tests/corpus/corpus.json`.

@@ -1608,6 +1608,13 @@ MSBuild молча оставила устаревшие сборки — тес
   собственные курсоры из файлов, `WndProc` для синтезированных сообщений — объявлены, поведения нет.
 - **Запуск проектов заказчика на Linux** проверен сборкой и тестами конвертера; ручной прогон окон
   (Sapper и др.) — за заказчиком.
+- **`DataGridView` после решения 142**: WinForms делает первую ячейку текущей при создании окна, при добавлении
+  строк в сетку без текущей ячейки и при входе фокусом (`MakeFirstDisplayedCellCurrentCell`) — у нас нет (скажется на
+  golden-картинках и выделении); поток новой строки (`NewRowNeeded`, `UserAddedRow`, `DefaultValuesNeeded`, новая
+  строка в привязанной сетке), значок ошибки строки/ячейки (`ErrorText` хранится, не рисуется), карандаш
+  `ShowEditingIcon`, окно сообщения для необработанного `DataError`, копирование в буфер.
+- **Значения перечислений против WinForms**: `DataGridViewDataErrorContexts` расходился по значениям — ApiDiff
+  сравнивает члены, но не значения констант; стоит добавить сверку значений всех enum.
 
 
 
@@ -1779,6 +1786,41 @@ MSBuild молча оставила устаревшие сборки — тес
     `ValueMember`, общий `CurrencyManager`, поздний контрол), круговой проход дизайнера с
     `DataBindings.Add(new Binding(...))`, оракул `exact/binding/*`; фасад `System.Windows.Forms` дополнен (15 типов).
     Корпус: tetris-oop собирается (28 из 45 открытых). ApiDiff: 652 полных, 160 частичных, 442 нет; 1787 членов.
+142. **Правка в `DataGridView` — модель WinForms.** Прежняя правка была своей: `TextBox`/`ComboBox` поверх ячейки,
+    значение уходило в ячейку сразу, событий не было. Теперь по `DataGridView.Methods.cs` dotnet/winforms:
+    - ячейка правится контролом своего `EditType` (`IDataGridViewEditingControl`: `DataGridViewTextBoxEditingControl`,
+      `DataGridViewComboBoxEditingControl` — перенесены, свой пользовательский — как столбец-календарь Microsoft) в
+      `EditingPanel`; последний контрол переиспользуется. Ячейка-флажок правит себя сама (`IDataGridViewEditingCell`):
+      щелчок меняет редактируемое значение, `Value` меняется при фиксации (уход с ячейки, `EndEdit`, `CommitEdit`) —
+      как в WinForms, где для немедленного значения ловят `CurrentCellDirtyStateChanged` и зовут `CommitEdit`;
+    - `BeginEdit` → `CellBeginEdit`, `InitializeEditingControl`, `EditingControlShowing`, `ApplyCellStyleToEditingControl`,
+      `PrepareEditingControlForEdit`; правка делает ячейку «грязной» (`NotifyCurrentCellDirty`,
+      `CurrentCellDirtyStateChanged`); фиксация — `CellValidating` (отмена оставляет ячейку и правку), `CellParsing`
+      (или `ParseFormattedValue` через `Formatter` WinForms), значение, `CellValidated`; ошибка разбора — `DataError`
+      с `Parsing|Commit` и `Cancel = true` (ячейка остаётся в правке); `CancelEdit` возвращает исходное и не выходит из
+      правки, Escape — выходит; смена текущей ячейки мышью/клавиатурой валидирует (`CellLeave`, `RowLeave`, …,
+      `RowValidating`, `RowEnter`, `CellEnter`), присваивание `CurrentCell` в коде — нет, как в WinForms; уход фокуса из
+      сетки фиксирует правку (`OnValidating`);
+    - клавиатура: символ начинает правку (`KeyEntersEditMode`), F2 — с кареткой в конце, Enter фиксирует и спускается,
+      Tab ходит по ячейкам (`StandardTab`), клавиши редактора, которые он не хочет (`EditingControlWantsInputKey`),
+      сетка перехватывает в `ProcessKeyPreview`; для этого `RaiseKeyDown/Up/Press` идут через `ProcessKeyMessage`
+      (сначала `ProcessKeyPreview` родителей), а однострочный `TextBox` берёт Up/Down как свои (DLGC_WANTARROWS
+      edit-контрола — фокус стрелками из него не уходит);
+    - форматирование — как `DataGridViewCell.GetFormattedValue` WinForms: `CellFormatting` получает «сырое» значение
+      (раньше — уже отформатированную строку), затем `Formatter.FormatObject`; сигнатура `GetFormattedValue`,
+      `Paint`, `OnClick`/`OnContentClick` — защищённые, как в WinForms; `ParseFormattedValue` бросает на неверном вводе;
+      значения `DataGridViewDataErrorContexts` были не те (и без `[Flags]`) — исправлены;
+    - `VirtualMode`: `RowCount`/`ColumnCount`, `CellValueNeeded` для показа и правки, `CellValuePushed` при фиксации,
+      `RowDirtyStateNeeded`, `CancelRowEdit`;
+    - **фокус** (общая модель, не только сетка): `Leave` и `Validating/Validated` получает каждый покидаемый контрол
+      до общего предка (внутренние первыми), `Enter` — каждый входимый (внешние первыми), как в
+      `ContainerControl.UpdateFocusedControl`; раньше — только сам контрол. Сверяется оракулом `exact/focus/nested-*`.
+    Проверено: `DataGridViewEditingTests` (порядок событий, отмена валидации, `DataError`, `CellParsing`,
+    `EditingControlShowing`, клавиатура, `CancelEdit`, уход фокуса, комбо-ячейка, `VirtualMode`, **столбец-календарь из
+    «How to: Host Controls in Windows Forms DataGridView Cells» — код из документации без правок**), оракул
+    `exact/dgv/edit-*` и `formatting-raw`. Осознанные отличия (compatibility.md): необработанный `DataError` без окна
+    сообщения; первая ячейка не становится текущей при создании окна. ApiDiff: 662 полных, 162 частичных, 430 нет;
+    1712 членов.
 
 ---
 
@@ -2008,11 +2050,12 @@ Windows и Linux CI; процент собравшихся без ручной �
 
 Промт для запуска (скопировать в Claude Code в этой папке):
 
-> Прочитай `CLAUDE.md`, в `docs/PLAN.md` — раздел «С чего начать следующую сессию» и решения 127–138. Работай сразу
-> в `main` (разрешено заказчиком). Начни с пункта 1: баг `cellStyle.Font`, затем привязка к `DataSet`/`DataTable`,
-> затем редактирование в `DataGridView`. Каждое изменение — тест, сценарий оракула, `docs/compatibility.md` (англ. и
-> рус.), `NetForms.ApiDiff --markdown docs/api`; пуш — после зелёных `dotnet test NetForms.slnx` и `designer: npm test`.
-> Решения, которых нет в плане, записывай в журнал (со 139).
+> Прочитай `CLAUDE.md`, в `docs/PLAN.md` — раздел «С чего начать следующую сессию» и решения 127–142. Работай сразу
+> в `main` (разрешено заказчиком). Пункт 1 сделан (решения 140–142); начни с проверки, что оракулы WinForms на
+> Windows CI приняли новые сценарии (`exact/binding/*`, `exact/dgv/edit-*`, `exact/focus/nested-*`), затем пункт 2.
+> Каждое изменение — тест, сценарий оракула, `docs/compatibility.md` (англ. и рус.), `NetForms.ApiDiff --markdown
+> docs/api`; пуш — после зелёных `dotnet test NetForms.slnx` и `designer: npm test`. Решения, которых нет в плане,
+> записывай в журнал (со 143).
 
 **Состояние на 2026-09-24.** Вышел `0.1.0-preview.1` (решение 138): семь пакетов на nuget.org, GitHub Release с тегом,
 сайт <https://go-forms.github.io/.NetForms/>. Путь пользователя проверен с чистого кэша: шаблоны → проект → сборка из
@@ -2022,8 +2065,9 @@ Marketplace **не опубликовано**: нет `VSCE_PAT`. CI и сайт
 Порядок работ:
 
 0. **Проверить, что `main` зелёный** (CI на Ubuntu и Windows, Site), и прочитать решения 127–138.
-1. **Пробелы, найденные при проверке выпуска** — самое заметное пользователю (подробности —
-   `docs/compatibility.md`, строки `DataGridView`, `BindingSource`, `Control.DataBindings`):
+1. ~~**Пробелы, найденные при проверке выпуска**~~ — **сделано 2026-09-24**: шрифт стилей (решение 140), привязка
+   WinForms целиком (141), правка в `DataGridView` (142); кнопка «+» создания обработчика в дизайнере (139). Что
+   осталось от сетки — «Открытые вопросы Ф6». Исходная постановка:
    1. **Баг:** в `Paint` своей ячейки (`DataGridViewCell` с переопределённым `Paint`) `cellStyle.Font == null` —
       должен приходить унаследованный стиль (`InheritedStyle`, шрифт сетки). Тест на офскрин-рендер.
    2. **Привязка к данным ADO.NET** — наша часть (адаптеры СУБД — SqlClient, Npgsql — отдельные пакеты, заказчик их

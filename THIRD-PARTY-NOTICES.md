@@ -32,6 +32,13 @@ English texts, the resource strings the code throws are in `DataBinding/SR.cs`, 
 (flag setting, critical-exception test, `Hashtable`-style copying) are in `DataBinding/VendorHelpers.cs`; Visual
 Studio designer attributes naming `System.Design` types are left out. Each file keeps the .NET Foundation header.
 
+`src/NetForms/DataGridViewEditing.cs` - the DataGridView editing interfaces (`IDataGridViewEditingControl`,
+`IDataGridViewEditingCell`), the event arguments of an edit and `QuestionEventArgs` are copied from
+`src/System.Windows.Forms/System/Windows/Forms/Controls/DataGridView` (commit c3cf021); the two editing controls
+(`DataGridViewTextBoxEditingControl`, `DataGridViewComboBoxEditingControl`) are ported from there without their Win32
+message handling, and the edit/commit/validation sequence of `DataGridView` and the editing members of the cells
+follow the same sources.
+
 Layout semantics and control metrics elsewhere in the code were derived from the same repository by
 reading it as a specification; where whole algorithms were ported the file says so in a comment.
 

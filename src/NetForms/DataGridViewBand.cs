@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 
 namespace System.Windows.Forms;
@@ -599,6 +600,22 @@ public class DataGridViewRow : DataGridViewBand
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
     public DataGridViewCellCollection Cells => _cells;
+
+    private string _errorText = string.Empty;
+
+    /// <summary>The row's error message (WinForms shows it as an icon in the row header; a CellValidating handler sets it).</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [AllowNull]
+    public string ErrorText
+    {
+        get => _errorText;
+        set
+        {
+            _errorText = value ?? string.Empty;
+            DataGridView?.Invalidate();
+        }
+    }
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]

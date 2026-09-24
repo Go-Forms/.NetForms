@@ -287,8 +287,10 @@ public partial class Control
 
     internal bool RaiseKeyDown(Keys keyData)
     {
+        // As WM_KEYDOWN reaches a WinForms control: the parents' ProcessKeyPreview first (a grid hears the keys of
+        // its editing control there), then the control's own ProcessKeyEventArgs.
         var m = new Message { Msg = Message.WM_KEYDOWN, WParam = (int)(keyData & Keys.KeyCode) };
-        return ProcessKeyEventArgs(ref m);
+        return ProcessKeyMessage(ref m);
     }
 
     internal void RaiseEnter() => OnEnter(EventArgs.Empty);
@@ -301,13 +303,13 @@ public partial class Control
     internal bool RaiseKeyUp(Keys keyData)
     {
         var m = new Message { Msg = Message.WM_KEYUP, WParam = (int)(keyData & Keys.KeyCode) };
-        return ProcessKeyEventArgs(ref m);
+        return ProcessKeyMessage(ref m);
     }
 
     internal bool RaiseKeyPress(char ch)
     {
         var m = new Message { Msg = Message.WM_CHAR, WParam = ch };
-        return ProcessKeyEventArgs(ref m);
+        return ProcessKeyMessage(ref m);
     }
 }
 

@@ -20,11 +20,11 @@ Every type links to its Microsoft documentation, which is the documentation of N
 | [System.Drawing.Interop](System.Drawing.Interop.md) | 2 | 0 | 0 | 2 | 0 |
 | [System.Drawing.Printing](System.Drawing.Printing.md) | 31 | 0 | 0 | 31 | 0 |
 | [System.Drawing.Text](System.Drawing.Text.md) | 6 | 6 | 0 | 0 | 0 |
-| [System.Windows.Forms](System.Windows.Forms.md) | 804 | 367 | 141 | 296 | 1521 |
+| [System.Windows.Forms](System.Windows.Forms.md) | 804 | 377 | 143 | 284 | 1446 |
 | [System.Windows.Forms.Automation](System.Windows.Forms.Automation.md) | 4 | 0 | 0 | 4 | 0 |
 | [System.Windows.Forms.ComponentModel.Com2Interop](System.Windows.Forms.ComponentModel.Com2Interop.md) | 3 | 0 | 0 | 3 | 0 |
 | [System.Windows.Forms.Design](System.Windows.Forms.Design.md) | 9 | 0 | 0 | 9 | 0 |
 | [System.Windows.Forms.Layout](System.Windows.Forms.Layout.md) | 3 | 1 | 0 | 2 | 0 |
 | [System.Windows.Forms.PropertyGridInternal](System.Windows.Forms.PropertyGridInternal.md) | 3 | 0 | 0 | 3 | 0 |
 | [System.Windows.Forms.VisualStyles](System.Windows.Forms.VisualStyles.md) | 238 | 232 | 0 | 6 | 0 |
-| **Total** | **1254** | **652** | **160** | **442** | **1787** |
+| **Total** | **1254** | **662** | **162** | **430** | **1712** |

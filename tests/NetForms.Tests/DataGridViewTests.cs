@@ -356,13 +356,14 @@ public class DataGridViewTests
     // --- cell kinds -----------------------------------------------------------------------------------
 
     [Fact]
-    public void ClickingACheckBoxCellTogglesItWithoutOpeningAnEditor()
+    public void ClickingACheckBoxCellTogglesTheEditedValueUntilItIsCommitted()
     {
         var (_, form, window, grid) = ShowGrid(g => g.AllowUserToAddRows = false);
         using (form)
         {
             grid.Columns.Add(new DataGridViewCheckBoxColumn { Name = "Active", HeaderText = "Active" });
             grid.Rows.Add(false);
+            var cell = grid.Rows[0].Cells[0];
 
             int contentClicks = 0;
             grid.CellContentClick += (_, _) => contentClicks++;
@@ -370,12 +371,25 @@ public class DataGridViewTests
             var bounds = grid.GetCellDisplayRectangle(0, 0, false);
             window.Click(Center(bounds));
 
+            // WinForms: the check box cell edits itself - no editing control - and the click toggles the edited value;
+            // Value changes when the edit is committed (leaving the cell, EndEdit, CommitEdit).
             Assert.Equal(1, contentClicks);
-            Assert.Equal(true, grid.Rows[0].Cells[0].Value);
-            Assert.False(grid.IsCurrentCellInEditMode);
+            Assert.True(grid.IsCurrentCellInEditMode);
+            Assert.Null(grid.EditingControl);
+            Assert.True(grid.IsCurrentCellDirty);
+            Assert.Equal(false, cell.Value);
+            Assert.Equal(true, cell.EditedFormattedValue);
+            Assert.True(grid.EndEdit());
+            Assert.Equal(true, cell.Value);
+            Assert.False(grid.IsCurrentCellDirty);
 
+            // The usual WinForms pattern: commit as soon as the cell becomes dirty.
+            grid.CurrentCellDirtyStateChanged += (_, _) =>
+            {
+                if (grid.IsCurrentCellDirty) grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            };
             window.Click(Center(bounds));
-            Assert.Equal(false, grid.Rows[0].Cells[0].Value);
+            Assert.Equal(false, cell.Value);
         }
     }
 
@@ -438,8 +452,12 @@ public class DataGridViewTests
             Assert.True(grid.BeginEdit(true));
             Assert.True(grid.IsCurrentCellInEditMode);
 
-            var editor = (TextBox)grid.Controls[0];
+            // The editing control is WinForms' DataGridViewTextBoxEditingControl, in the grid's EditingPanel.
+            var editor = Assert.IsType<DataGridViewTextBoxEditingControl>(grid.EditingControl);
+            Assert.Same(grid.EditingPanel, editor.Parent);
+            Assert.Equal("36", editor.Text);
             editor.Text = "41";
+            Assert.True(grid.IsCurrentCellDirty);
             grid.EndEdit();
 
             Assert.False(grid.IsCurrentCellInEditMode);

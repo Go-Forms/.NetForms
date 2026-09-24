@@ -54,6 +54,13 @@ public class ToolStripDropDown : ToolStrip
     // WinForms by AttributeDiffTests.
 
     [Browsable(false)]
+    public new event EventHandler? BindingContextChanged
+    {
+        add => base.BindingContextChanged += value;
+        remove => base.BindingContextChanged -= value;
+    }
+
+    [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public new event EventHandler? BackgroundImageChanged
     {

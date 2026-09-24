@@ -282,7 +282,7 @@ public class SplitContainer : ContainerControl, ISupportInitialize
 
     /// <summary>Unlike other containers, the SplitContainer shares its parent's binding context (WinForms).</summary>
     [Browsable(false)]
-    [Description("The binding manager for the container control.")]
+    [Description("The binding manager for the container control.  This manages all bindings of child controls to lists.")]
     public override BindingContext? BindingContext
     {
         get => BindingContextInternal;

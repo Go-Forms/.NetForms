@@ -27,7 +27,7 @@ public class ContainerControl : ScrollableControl, IContainerControl
 
     /// <summary>A container has a binding context of its own, made on first use (WinForms).</summary>
     [Browsable(false)]
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Description("The binding manager for the container control.  This manages all bindings of child controls to lists.")]
     public override BindingContext? BindingContext
     {
         get

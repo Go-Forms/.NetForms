@@ -81,8 +81,6 @@ public class DataGridView : Control, ISupportInitialize
 
     private DataGridViewCell? _currentCell;
     private (int Column, int Row) _anchor = (-1, -1);
-    private Control? _editor;
-    private DataGridViewCell? _editingCell;
     private int _pressedColumnHeader = -1;
     private int _hotColumnHeader = -1;
     private DataGridViewColumn? _sortedColumn;
@@ -151,6 +149,43 @@ public class DataGridView : Control, ISupportInitialize
 
     [Browsable(false)]
     public DataGridViewRowCollection Rows => _rows;
+
+    /// <summary>The number of rows; setting it adds rows from the template or removes them from the end (VirtualMode grids size themselves this way).</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [DefaultValue(0)]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public int RowCount
+    {
+        get => _rows.Count;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            if (value == _rows.Count) return;
+            if (IsBound) throw new InvalidOperationException("RowCount property cannot be set on a data-bound DataGridView control.");
+            if (value > 0 && _columns.Count == 0) ColumnCount = 1;
+            if (value > _rows.Count) _rows.Add(value - _rows.Count);
+            else while (_rows.Count > value) _rows.RemoveAt(_rows.Count - 1);
+        }
+    }
+
+    /// <summary>The number of columns; setting it adds text box columns or removes them from the end.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [DefaultValue(0)]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public int ColumnCount
+    {
+        get => _columns.Count;
+        set
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(value);
+            if (value == _columns.Count) return;
+            if (IsBound) throw new InvalidOperationException("ColumnCount property cannot be set on a data-bound DataGridView control.");
+            while (_columns.Count < value) _columns.Add(new DataGridViewTextBoxColumn());
+            while (_columns.Count > value) _columns.RemoveAt(_columns.Count - 1);
+        }
+    }
 
     [Category("Appearance")]
     [Description("Identifies the template row whose characteristics are used as the basis for all new implicitly added rows.")]
@@ -453,7 +488,67 @@ public class DataGridView : Control, ISupportInitialize
     [Category("Behavior")]
     [Description("Identifies the mode that determines how cell editing is started.")]
     [DefaultValue(DataGridViewEditMode.EditOnKeystrokeOrF2)]
-    public DataGridViewEditMode EditMode { get; set; } = DataGridViewEditMode.EditOnKeystrokeOrF2;
+    public DataGridViewEditMode EditMode
+    {
+        get => _editMode;
+        set
+        {
+            if (!Enum.IsDefined(value)) throw new InvalidEnumArgumentException(nameof(value), (int)value, typeof(DataGridViewEditMode));
+            if (_editMode == value) return;
+            _editMode = value;
+            OnEditModeChanged(EventArgs.Empty);
+        }
+    }
+
+    private DataGridViewEditMode _editMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
+
+    [Category("Property Changed")]
+    [Description("Occurs when the value of the DataGridView.EditMode property changes.")]
+    public event EventHandler? EditModeChanged;
+
+    protected virtual void OnEditModeChanged(EventArgs e)
+    {
+        // EditOnEnter edits the current cell at once; leaving it ends a pending edit.
+        if (Focused && _editMode == DataGridViewEditMode.EditOnEnter && _currentCell != null && !IsCurrentCellInEditMode) BeginEditInternal(selectAll: true);
+        else if (_editMode != DataGridViewEditMode.EditOnEnter && _editingControl != null && !IsCurrentCellDirty) EndEdit();
+        EditModeChanged?.Invoke(this, e);
+    }
+
+    /// <summary>Whether the row header shows the pencil while the current row is being edited.</summary>
+    [Category("Appearance")]
+    [DefaultValue(true)]
+    [Description("Indicates whether or not the editing glyph is visible in the row header of the cell being edited.")]
+    public bool ShowEditingIcon { get; set; } = true;
+
+    public void InvalidateCell(DataGridViewCell dataGridViewCell)
+    {
+        ArgumentNullException.ThrowIfNull(dataGridViewCell);
+        if (dataGridViewCell.DataGridView != this) throw new ArgumentException("The cell does not belong to this DataGridView.");
+        Invalidate();
+    }
+
+    public void InvalidateCell(int columnIndex, int rowIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(columnIndex, -1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(columnIndex, _columns.Count);
+        ArgumentOutOfRangeException.ThrowIfLessThan(rowIndex, -1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(rowIndex, _rows.Count);
+        Invalidate();
+    }
+
+    public void InvalidateColumn(int columnIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(columnIndex, _columns.Count);
+        Invalidate();
+    }
+
+    public void InvalidateRow(int rowIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(rowIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(rowIndex, _rows.Count);
+        Invalidate();
+    }
 
     [Category("Behavior")]
     [Description("Indicates whether the option to add rows is displayed to the user.")]
@@ -632,7 +727,7 @@ public class DataGridView : Control, ISupportInitialize
         _syncingPosition = true;
         try
         {
-            SetCurrentCell(column, row);
+            SetCurrentCell(column, row, validate: false);
         }
         finally
         {
@@ -699,7 +794,7 @@ public class DataGridView : Control, ISupportInitialize
         _rows.ResetTo(rows);
         _selection.RemoveWhere(c => c.Row >= rows.Count || c.Column >= _columns.Count);
         // The current cell stays at its address in the new rows (or goes, when the list got shorter).
-        if (_currentCell != null && _editingCell == null)
+        if (_currentCell != null && !IsCurrentCellInEditMode)
         {
             var moved = current.Y >= 0 && current.Y < rows.Count && current.X >= 0 && current.X < _columns.Count
                 ? _rows[current.Y].Cells[current.X]
@@ -846,6 +941,58 @@ public class DataGridView : Control, ISupportInitialize
     [Description("Occurs when the DataGridView control completes a sorting operation.")]
     public event EventHandler? Sorted;
 
+    [Category("Focus")]
+    [Description("Occurs when the cell receives input focus, becoming the current cell in the DataGridView.")]
+    public event DataGridViewCellEventHandler? CellEnter;
+
+    [Category("Focus")]
+    [Description("Occurs when a cell loses input focus and is no longer the current cell.")]
+    public event DataGridViewCellEventHandler? CellLeave;
+
+    [Category("Focus")]
+    [Description("Occurs when a row receives input focus and becomes the current row.")]
+    public event DataGridViewCellEventHandler? RowEnter;
+
+    [Category("Focus")]
+    [Description("Occurs when a row loses input focus and is no longer the current row.")]
+    public event DataGridViewCellEventHandler? RowLeave;
+
+    [Category("Focus")]
+    [Description("Occurs when the cell is validating.")]
+    public event DataGridViewCellValidatingEventHandler? CellValidating;
+
+    [Category("Focus")]
+    [Description("Occurs after the cell has finished validating.")]
+    public event DataGridViewCellEventHandler? CellValidated;
+
+    [Category("Focus")]
+    [Description("Occurs when a row is validating.")]
+    public event DataGridViewCellCancelEventHandler? RowValidating;
+
+    [Category("Focus")]
+    [Description("Occurs after a row has finished validating.")]
+    public event DataGridViewCellEventHandler? RowValidated;
+
+    [Category("Display")]
+    [Description("Occurs when the user leaves edit mode, regardless of whether the value of the current cell has been modified.")]
+    public event DataGridViewCellParsingEventHandler? CellParsing;
+
+    [Category("Action")]
+    [Description("Occurs when a control for editing a cell is showing.")]
+    public event DataGridViewEditingControlShowingEventHandler? EditingControlShowing;
+
+    [Category("Behavior")]
+    [Description("Occurs when the state of a cell changes in relation to a change in its contents.")]
+    public event EventHandler? CurrentCellDirtyStateChanged;
+
+    [Category("Data")]
+    [Description("Occurs when the DataGridView.VirtualMode property of the DataGridView control is true and the DataGridView needs to determine whether the current row has uncommitted changes.")]
+    public event QuestionEventHandler? RowDirtyStateNeeded;
+
+    [Category("Action")]
+    [Description("Occurs when the DataGridView.VirtualMode property of a DataGridView control is true and a row edit should be canceled.")]
+    public event QuestionEventHandler? CancelRowEdit;
+
     protected virtual void OnCellClick(DataGridViewCellEventArgs e) => CellClick?.Invoke(this, e);
     protected virtual void OnCellContentClick(DataGridViewCellEventArgs e) => CellContentClick?.Invoke(this, e);
     protected virtual void OnCellDoubleClick(DataGridViewCellEventArgs e) => CellDoubleClick?.Invoke(this, e);
@@ -867,6 +1014,19 @@ public class DataGridView : Control, ISupportInitialize
     protected virtual void OnUserDeletingRow(DataGridViewRowCancelEventArgs e) => UserDeletingRow?.Invoke(this, e);
     protected virtual void OnUserDeletedRow(DataGridViewRowEventArgs e) => UserDeletedRow?.Invoke(this, e);
     protected virtual void OnSorted(EventArgs e) => Sorted?.Invoke(this, e);
+    protected virtual void OnCellEnter(DataGridViewCellEventArgs e) => CellEnter?.Invoke(this, e);
+    protected virtual void OnCellLeave(DataGridViewCellEventArgs e) => CellLeave?.Invoke(this, e);
+    protected virtual void OnRowEnter(DataGridViewCellEventArgs e) => RowEnter?.Invoke(this, e);
+    protected virtual void OnRowLeave(DataGridViewCellEventArgs e) => RowLeave?.Invoke(this, e);
+    protected virtual void OnCellValidating(DataGridViewCellValidatingEventArgs e) => CellValidating?.Invoke(this, e);
+    protected virtual void OnCellValidated(DataGridViewCellEventArgs e) => CellValidated?.Invoke(this, e);
+    protected virtual void OnRowValidating(DataGridViewCellCancelEventArgs e) => RowValidating?.Invoke(this, e);
+    protected virtual void OnRowValidated(DataGridViewCellEventArgs e) => RowValidated?.Invoke(this, e);
+    protected virtual void OnCellParsing(DataGridViewCellParsingEventArgs e) => CellParsing?.Invoke(this, e);
+    protected virtual void OnEditingControlShowing(DataGridViewEditingControlShowingEventArgs e) => EditingControlShowing?.Invoke(this, e);
+    protected virtual void OnCurrentCellDirtyStateChanged(EventArgs e) => CurrentCellDirtyStateChanged?.Invoke(this, e);
+    protected virtual void OnRowDirtyStateNeeded(QuestionEventArgs e) => RowDirtyStateNeeded?.Invoke(this, e);
+    protected virtual void OnCancelRowEdit(QuestionEventArgs e) => CancelRowEdit?.Invoke(this, e);
 
     internal void NotifyCellValueChanged(int columnIndex, int rowIndex)
     {
@@ -960,6 +1120,7 @@ public class DataGridView : Control, ISupportInitialize
         }
         _content = new Size(width, height);
         UpdateScrollBars();
+        if (_editingControl != null) PositionEditingControl(setLocation: true, setSize: true, setFocus: false);
     }
 
     private void ApplyAutoSizeColumns()
@@ -1107,7 +1268,7 @@ public class DataGridView : Control, ISupportInitialize
         _scroll = next;
         _vscroll.Value = next.Y;
         _hscroll.Value = next.X;
-        PositionEditor();
+        PositionEditingControl(setLocation: true, setSize: true, setFocus: false);
         Invalidate();
     }
 
@@ -1451,7 +1612,16 @@ public class DataGridView : Control, ISupportInitialize
     public DataGridViewCell? CurrentCell
     {
         get => _currentCell;
-        set => SetCurrentCell(value);
+        set
+        {
+            if (ReferenceEquals(value, _currentCell)) return;
+            if (value != null && value.DataGridView != this) throw new ArgumentException("The cell does not belong to this DataGridView.");
+            // WinForms: setting it in code commits the edit without validating the cell (but a null validates).
+            if (!SetCurrentCell(value, validate: value == null))
+            {
+                throw new InvalidOperationException("Operation did not succeed because the program cannot commit or quit a cell value change.");
+            }
+        }
     }
 
     [Browsable(false)]
@@ -1460,10 +1630,46 @@ public class DataGridView : Control, ISupportInitialize
     [Browsable(false)]
     public Point CurrentCellAddress => _currentCell != null ? new Point(_currentCell.ColumnIndex, _currentCell.RowIndex) : new Point(-1, -1);
 
-    private void SetCurrentCell(DataGridViewCell? cell)
+    /// <summary>
+    /// Moves the current cell as WinForms' SetCurrentCellAddressCore: the edit of the old cell is committed (with
+    /// <paramref name="validate"/>: CellLeave, RowLeave, CellValidating/CellValidated, then RowValidating/
+    /// RowValidated when the row changes), then RowEnter, CurrentCellChanged, CellEnter on the new one. A cancelled
+    /// validation (or a failed commit) leaves the current cell where it was and returns false.
+    /// </summary>
+    private bool SetCurrentCell(DataGridViewCell? cell, bool validate = true)
     {
-        if (ReferenceEquals(_currentCell, cell)) return;
-        EndEdit();
+        if (ReferenceEquals(_currentCell, cell))
+        {
+            BeginEditOnEnter();
+            return true;
+        }
+        var old = _currentCell;
+        if (old != null && old.RowIndex >= 0 && old.ColumnIndex >= 0)
+        {
+            bool rowChange = cell == null || cell.RowIndex != old.RowIndex;
+            if (!EndEditCore(DataGridViewDataErrorContexts.Parsing | DataGridViewDataErrorContexts.Commit | DataGridViewDataErrorContexts.CurrentCellChange,
+                    validate ? ValidateCell.Always : ValidateCell.Never, keepFocus: EditMode != DataGridViewEditMode.EditOnEnter,
+                    fireLeave: validate, rowChange: rowChange))
+            {
+                return false;
+            }
+            if (!ReferenceEquals(_currentCell, old)) return false; // a handler moved it
+            if (rowChange && validate)
+            {
+                var rowValidating = new DataGridViewCellCancelEventArgs(old.ColumnIndex, old.RowIndex);
+                OnRowValidating(rowValidating);
+                if (rowValidating.Cancel)
+                {
+                    OnRowEnter(new DataGridViewCellEventArgs(old.ColumnIndex, old.RowIndex));
+                    OnCellEnter(new DataGridViewCellEventArgs(old.ColumnIndex, old.RowIndex));
+                    return false;
+                }
+                OnRowValidated(new DataGridViewCellEventArgs(old.ColumnIndex, old.RowIndex));
+            }
+            if (rowChange) _currentRowDirty = false;
+        }
+        if (cell != null && (old == null || old.RowIndex != cell.RowIndex)) OnRowEnter(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
+
         _currentCell = cell;
         if (cell != null) FirstDisplayedCell(cell.ColumnIndex, cell.RowIndex);
         // The bound source's current item follows the current row (and so does every control bound to it).
@@ -1481,120 +1687,566 @@ public class DataGridView : Control, ISupportInitialize
             }
         }
         OnCurrentCellChanged(EventArgs.Empty);
+        if (cell != null && ReferenceEquals(_currentCell, cell))
+        {
+            OnCellEnter(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
+            BeginEditOnEnter();
+        }
         Invalidate();
+        return true;
     }
 
-    private void SetCurrentCell(int column, int row)
+    /// <summary>EditOnEnter edits every cell that becomes current; a cell that edits itself (the check box) is always in edit mode.</summary>
+    private void BeginEditOnEnter()
     {
-        if (column < 0 || column >= _columns.Count || row < 0 || row >= _rows.Count)
+        var cell = _currentCell;
+        if (cell == null || IsCurrentCellInEditMode || !ContainsFocus || cell.ReadOnly) return;
+        if (EditMode == DataGridViewEditMode.EditOnEnter || (EditMode != DataGridViewEditMode.EditProgrammatically && cell.EditType == null))
         {
-            SetCurrentCell(null);
-            return;
+            BeginEditInternal(selectAll: true);
         }
-        SetCurrentCell(_rows[row].Cells[column]);
+    }
+
+    private bool SetCurrentCell(int column, int row, bool validate = true)
+    {
+        if (column < 0 || column >= _columns.Count || row < 0 || row >= _rows.Count) return SetCurrentCell(null, validate);
+        return SetCurrentCell(_rows[row].Cells[column], validate);
     }
 
     // --- editing ------------------------------------------------------------------------------------------------
+    // The WinForms editing model (DataGridView.Methods.cs in dotnet/winforms): a cell edits through a control of
+    // its EditType (an IDataGridViewEditingControl hosted in EditingPanel) or edits itself (IDataGridViewEditingCell,
+    // the check box). Typing makes the current cell dirty; the edited value reaches the cell on commit - leaving the
+    // cell, EndEdit or CommitEdit - through CellValidating, CellParsing, ParseFormattedValue and CellValidated, and a
+    // failed parse raises DataError.
+
+    private Control? _editingControl;
+    private Control? _latestEditingControl;
+    private Panel? _editingPanel;
+    private bool _editingCellInEditMode;
+    private bool _currentCellDirty;
+    private bool _currentRowDirty;
+    private bool _ignoringEditingChanges;
+    private bool _inBeginEdit;
+    private bool _inCellValidating;
+    private object? _uneditedFormattedValue;
+
+    /// <summary>The control editing the current cell, or null.</summary>
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public Control? EditingControl => _editingControl;
+
+    /// <summary>The panel that holds the editing control over the cell.</summary>
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    public Panel EditingPanel => _editingPanel ??= new Panel { Visible = false, TabStop = false };
 
     internal bool IsCellInEditMode(int columnIndex, int rowIndex) =>
-        _editingCell != null && _editingCell.ColumnIndex == columnIndex && _editingCell.RowIndex == rowIndex;
+        IsCurrentCellInEditMode && _currentCell != null && _currentCell.ColumnIndex == columnIndex && _currentCell.RowIndex == rowIndex;
 
     [Browsable(false)]
-    public bool IsCurrentCellInEditMode => _editingCell != null;
+    public bool IsCurrentCellInEditMode => _editingControl != null || _editingCellInEditMode;
 
-    public bool BeginEdit(bool selectAll)
+    [Browsable(false)]
+    public bool IsCurrentCellDirty => _currentCellDirty;
+
+    /// <summary>Whether the current row has changes not committed yet; VirtualMode asks through RowDirtyStateNeeded.</summary>
+    [Browsable(false)]
+    public bool IsCurrentRowDirty
+    {
+        get
+        {
+            if (!VirtualMode) return _currentRowDirty || _currentCellDirty;
+            var e = new QuestionEventArgs(_currentRowDirty || _currentCellDirty);
+            OnRowDirtyStateNeeded(e);
+            return e.Response;
+        }
+    }
+
+    private bool IsCurrentCellDirtyInternal
+    {
+        set
+        {
+            if (_currentCellDirty == value) return;
+            _currentCellDirty = value;
+            OnCurrentCellDirtyStateChanged(EventArgs.Empty);
+        }
+    }
+
+    /// <summary>The editing control (or editing cell) reports a change: the current cell becomes dirty.</summary>
+    public virtual void NotifyCurrentCellDirty(bool dirty)
+    {
+        if (_ignoringEditingChanges) return;
+        IsCurrentCellDirtyInternal = dirty;
+        if (dirty && _editingControl is IDataGridViewEditingControl { RepositionEditingControlOnValueChange: true })
+        {
+            PositionEditingControl(setLocation: true, setSize: true, setFocus: false);
+        }
+    }
+
+    public virtual bool BeginEdit(bool selectAll)
+    {
+        if (_currentCell == null) throw new InvalidOperationException("Operation cannot be performed because there is no current cell.");
+        return IsCurrentCellInEditMode || BeginEditInternal(selectAll);
+    }
+
+    private bool BeginEditInternal(bool selectAll)
+    {
+        if (_inBeginEdit) throw new InvalidOperationException("BeginEdit cannot be called while in the CellBeginEdit event.");
+        var cell = _currentCell;
+        if (cell == null || cell.ReadOnly) return false;
+        var editType = cell.EditType;
+        if (editType == null && cell is not IDataGridViewEditingCell) return false;
+
+        _inBeginEdit = true;
+        try
+        {
+            var args = new DataGridViewCellCancelEventArgs(cell.ColumnIndex, cell.RowIndex);
+            OnCellBeginEdit(args);
+            if (args.Cancel) return false;
+            if (_currentCell == null) return false;
+            if (!ReferenceEquals(_currentCell, cell))
+            {
+                // The handler moved the current cell: everything checked above is about another cell.
+                cell = _currentCell;
+                editType = cell.EditType;
+                if (cell.ReadOnly || (editType == null && cell is not IDataGridViewEditingCell)) return false;
+            }
+
+            var style = cell.InheritedStyle;
+            if (editType == null)
+            {
+                _editingCellInEditMode = true;
+                InitializeEditingCellValue(cell);
+                ((IDataGridViewEditingCell)cell).PrepareEditingCellForEdit(selectAll);
+                Invalidate();
+                return true;
+            }
+
+            if (!typeof(Control).IsAssignableFrom(editType) || !typeof(IDataGridViewEditingControl).IsAssignableFrom(editType))
+            {
+                throw new InvalidCastException("The editing control must derive from Control and implement IDataGridViewEditingControl.");
+            }
+            if (_latestEditingControl != null && editType.IsInstanceOfType(_latestEditingControl) && !_latestEditingControl.GetType().IsSubclassOf(editType))
+            {
+                _editingControl = _latestEditingControl;
+            }
+            else
+            {
+                _editingControl = (Control)Activator.CreateInstance(editType)!;
+                ((IDataGridViewEditingControl)_editingControl).EditingControlDataGridView = this;
+                _latestEditingControl?.Dispose();
+                _latestEditingControl = null;
+            }
+            var editing = (IDataGridViewEditingControl)_editingControl;
+            editing.EditingControlRowIndex = cell.RowIndex;
+            if (!InitializeEditingControlValue(ref style, cell)) return false;
+
+            var showing = new DataGridViewEditingControlShowingEventArgs(_editingControl, style);
+            OnEditingControlShowing(showing);
+            if (_editingControl == null) return false;
+            EditingPanel.BackColor = showing.CellStyle.BackColor;
+            editing.ApplyCellStyleToEditingControl(showing.CellStyle);
+            PositionEditingControl(setLocation: true, setSize: true, setFocus: true);
+            if (_editingControl == null) return false;
+            editing.PrepareEditingControlForEdit(selectAll);
+            Invalidate();
+            return true;
+        }
+        finally
+        {
+            _inBeginEdit = false;
+        }
+    }
+
+    /// <summary>The value the edit starts from, remembered to restore it on cancel.</summary>
+    private bool InitializeEditingControlValue(ref DataGridViewCellStyle style, DataGridViewCell cell)
+    {
+        object? initial = FormattedValueOf(cell, cell.RowIndex, ref style, DataGridViewDataErrorContexts.Formatting);
+        _ignoringEditingChanges = true;
+        try
+        {
+            cell.InitializeEditingControl(cell.RowIndex, initial, style);
+            ((IDataGridViewEditingControl)_editingControl!).EditingControlValueChanged = false;
+        }
+        catch (Exception ex) when (!ex.IsCriticalException())
+        {
+            var error = new DataGridViewDataErrorEventArgs(ex, cell.ColumnIndex, cell.RowIndex, DataGridViewDataErrorContexts.InitialValueRestoration);
+            OnDataErrorInternal(error);
+            if (error.ThrowException) throw error.Exception!;
+            return !error.Cancel;
+        }
+        finally
+        {
+            _ignoringEditingChanges = false;
+        }
+        _uneditedFormattedValue = initial;
+        return true;
+    }
+
+    private void InitializeEditingCellValue(DataGridViewCell cell)
+    {
+        var style = cell.InheritedStyle;
+        _uneditedFormattedValue = FormattedValueOf(cell, cell.RowIndex, ref style, DataGridViewDataErrorContexts.Formatting);
+        _ignoringEditingChanges = true;
+        try
+        {
+            var editingCell = (IDataGridViewEditingCell)cell;
+            if (!Equals(editingCell.GetEditingCellFormattedValue(DataGridViewDataErrorContexts.Formatting), _uneditedFormattedValue))
+            {
+                editingCell.EditingCellFormattedValue = _uneditedFormattedValue;
+            }
+            editingCell.EditingCellValueChanged = false;
+        }
+        catch (Exception ex) when (!ex.IsCriticalException())
+        {
+            var error = new DataGridViewDataErrorEventArgs(ex, cell.ColumnIndex, cell.RowIndex, DataGridViewDataErrorContexts.InitialValueRestoration);
+            OnDataErrorInternal(error);
+            if (error.ThrowException) throw error.Exception!;
+        }
+        finally
+        {
+            _ignoringEditingChanges = false;
+        }
+    }
+
+    /// <summary>A cell's value: the cell's own, or in VirtualMode what CellValueNeeded supplies.</summary>
+    internal object? ValueOf(DataGridViewCell cell, int rowIndex)
+    {
+        if (VirtualMode && rowIndex >= 0 && cell.ColumnIndex >= 0 && !IsBound)
+        {
+            var needed = new DataGridViewCellValueEventArgs(cell.ColumnIndex, rowIndex);
+            OnCellValueNeeded(needed);
+            return needed.Value;
+        }
+        return cell.Value;
+    }
+
+    /// <summary>
+    /// A cell's formatted value as WinForms makes it: CellFormatting gets the raw value; unless it applied its own
+    /// formatting, the cell formats what the handler left (and a string stays as it is).
+    /// </summary>
+    internal object? FormattedValueOf(DataGridViewCell cell, int rowIndex, ref DataGridViewCellStyle style, DataGridViewDataErrorContexts context) =>
+        FormattedValueOf(cell, ValueOf(cell, rowIndex), rowIndex, ref style, context);
+
+    internal object? FormattedValueOf(DataGridViewCell cell, object? value, int rowIndex, ref DataGridViewCellStyle style, DataGridViewDataErrorContexts context) =>
+        cell.GetFormattedValueInternal(value, rowIndex, ref style, context);
+
+    internal DataGridViewCellFormattingEventArgs RaiseCellFormatting(int columnIndex, int rowIndex, object? value, Type? desiredType, DataGridViewCellStyle style)
+    {
+        var e = new DataGridViewCellFormattingEventArgs(columnIndex, rowIndex, value, desiredType, style);
+        OnCellFormatting(e);
+        return e;
+    }
+
+    internal void RaiseDataError(DataGridViewDataErrorEventArgs e) => OnDataErrorInternal(e);
+
+    internal void RaiseCellValuePushed(int columnIndex, int rowIndex, object? value)
+    {
+        var e = new DataGridViewCellValueEventArgs(columnIndex, rowIndex) { Value = value };
+        OnCellValuePushed(e);
+    }
+
+    /// <summary>Puts the editing control over the current cell (and hides it while the cell is scrolled away).</summary>
+    private void PositionEditingControl(bool setLocation, bool setSize, bool setFocus)
+    {
+        if (_editingControl == null || _currentCell == null) return;
+        var cell = _currentCell;
+        var cellBounds = GetCellDisplayRectangle(cell.ColumnIndex, cell.RowIndex, false);
+        var clip = Rectangle.Intersect(cellBounds, CellsRectangle);
+        if (clip.Width <= 0 || clip.Height <= 0)
+        {
+            // Scrolled out of sight: the panel stays (it may hold the focus), out of the way.
+            EditingPanel.Bounds = new Rectangle(-10000, -10000, Math.Max(1, cellBounds.Width), Math.Max(1, cellBounds.Height));
+            return;
+        }
+        cell.PositionEditingControl(setLocation, setSize, cellBounds, clip, cell.InheritedStyle,
+            singleVerticalBorderAdded: false, singleHorizontalBorderAdded: false,
+            isFirstDisplayedColumn: cell.ColumnIndex == FirstVisibleColumnIndex(), isFirstDisplayedRow: cell.RowIndex == 0);
+        EditingPanel.Visible = true;
+        _editingControl.Visible = true;
+        if (setFocus && _editingControl.CanFocus) _editingControl.Focus();
+    }
+
+    public bool EndEdit() => EndEdit(DataGridViewDataErrorContexts.Parsing | DataGridViewDataErrorContexts.Commit);
+
+    public bool EndEdit(DataGridViewDataErrorContexts context) => EditMode == DataGridViewEditMode.EditOnEnter
+        ? CommitEdit(context)
+        : EndEditCore(context, ValidateCell.Never, keepFocus: true);
+
+    /// <summary>Pushes the edited value into the cell and stays in edit mode.</summary>
+    public bool CommitEdit(DataGridViewDataErrorContexts context)
+    {
+        if (!IsCurrentCellInEditMode) return true;
+        var error = CommitEditCore(context, ValidateCell.Never, fireLeave: false, rowChange: false);
+        if (error != null)
+        {
+            if (error.ThrowException) throw error.Exception!;
+            if (error.Cancel) return false;
+        }
+        return true;
+    }
+
+    private enum ValidateCell { Never, Always, WhenChanged }
+
+    /// <summary>Commits the edit (see CommitEditCore) and leaves edit mode; false keeps the cell in edit mode.</summary>
+    private bool EndEditCore(DataGridViewDataErrorContexts context, ValidateCell validate, bool keepFocus, bool fireLeave = false, bool rowChange = false)
     {
         var cell = _currentCell;
-        if (cell == null || cell.ReadOnly || cell.EditType == null) return false;
-        if (_editingCell == cell) return true;
-        EndEdit();
-
-        var e = new DataGridViewCellCancelEventArgs(cell.ColumnIndex, cell.RowIndex);
-        OnCellBeginEdit(e);
-        if (e.Cancel) return false;
-
-        _editingCell = cell;
-        _editor = CreateEditor(cell);
-        PositionEditor();
-        _editor.Visible = true;
-        _editor.Focus();
-        if (_editor is TextBox box)
+        if (cell == null) return true;
+        var error = CommitEditCore(context, validate, fireLeave, rowChange);
+        if (error != null)
         {
-            box.Text = cell.FormattedValue as string ?? string.Empty;
-            if (selectAll) box.SelectAll();
+            if (error.ThrowException) throw error.Exception!;
+            if (error.Cancel) return false;
+            // The DataError handler said: give up the edit and restore the old value.
+            CancelEditPrivate();
         }
-        else if (_editor is ComboBox combo && cell is DataGridViewComboBoxCell comboCell)
+        if (!IsCurrentCellInEditMode || !ReferenceEquals(_currentCell, cell)) return true;
+
+        int column = cell.ColumnIndex, row = cell.RowIndex;
+        if (_editingControl != null)
         {
-            combo.Items.Clear();
-            foreach (var item in comboCell.EditItems) combo.Items.Add(item!);
-            combo.SelectedItem = cell.Value;
+            bool hadFocus = _editingControl.ContainsFocus;
+            _ignoringEditingChanges = true;
+            try
+            {
+                cell.DetachEditingControl();
+            }
+            finally
+            {
+                _ignoringEditingChanges = false;
+            }
+            _latestEditingControl = _editingControl;
+            _editingControl = null;
+            if (keepFocus && hadFocus && CanFocus) Focus();
+        }
+        else
+        {
+            _editingCellInEditMode = false;
+        }
+        Invalidate();
+        if (column >= 0 && column < _columns.Count && row >= 0 && row < _rows.Count)
+        {
+            OnCellEndEdit(new DataGridViewCellEventArgs(column, row));
         }
         return true;
     }
 
-    private Control CreateEditor(DataGridViewCell cell)
+    /// <summary>
+    /// WinForms' CommitEdit: with <paramref name="validate"/> Always, CellLeave (and RowLeave), then CellValidating
+    /// - cancelled, the cell stays and gets CellEnter again. A dirty cell then gets its edited formatted value parsed
+    /// (CellParsing, ParseFormattedValue) and stored; a failure raises DataError. CellValidated closes a validation.
+    /// </summary>
+    private DataGridViewDataErrorEventArgs? CommitEditCore(DataGridViewDataErrorContexts context, ValidateCell validate, bool fireLeave, bool rowChange)
     {
-        if (cell.EditType == typeof(ComboBox))
+        var cell = _currentCell;
+        if (cell == null) return null;
+        int column = cell.ColumnIndex, row = cell.RowIndex;
+        if (validate == ValidateCell.Always)
         {
-            var combo = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Visible = false };
-            combo.SelectedIndexChanged += (_, _) => { };
-            Controls.Add(combo);
-            return combo;
+            if (fireLeave)
+            {
+                OnCellLeave(new DataGridViewCellEventArgs(column, row));
+                if (rowChange) OnRowLeave(new DataGridViewCellEventArgs(column, row));
+            }
+            if (_currentCell == null) return null;
+            if (RaiseCellValidating(cell, context))
+            {
+                if (fireLeave)
+                {
+                    if (rowChange) OnRowEnter(new DataGridViewCellEventArgs(column, row));
+                    OnCellEnter(new DataGridViewCellEventArgs(column, row));
+                }
+                return new DataGridViewDataErrorEventArgs(null, column, row, context) { Cancel = true };
+            }
+            if (!IsCurrentCellInEditMode || !IsCurrentCellDirty) OnCellValidated(new DataGridViewCellEventArgs(column, row));
         }
-        var box = new TextBox { BorderStyle = BorderStyle.None, Visible = false };
-        box.KeyDown += (_, e) =>
+
+        if (_currentCell == null || !IsCurrentCellInEditMode) return null;
+        if (!IsCurrentCellDirty) return null;
+
+        if (validate == ValidateCell.WhenChanged && RaiseCellValidating(cell, context))
         {
-            if (e.KeyCode == Keys.Return) { EndEdit(); e.Handled = true; }
-            else if (e.KeyCode == Keys.Escape) { CancelEdit(); e.Handled = true; }
-        };
-        Controls.Add(box);
-        return box;
+            return new DataGridViewDataErrorEventArgs(null, column, row, context) { Cancel = true };
+        }
+
+        object? formattedValue = _editingControl is IDataGridViewEditingControl editing
+            ? editing.GetEditingControlFormattedValue(context)
+            : ((IDataGridViewEditingCell)cell).GetEditingCellFormattedValue(context);
+        if (!PushFormattedValue(cell, formattedValue, out var exception))
+        {
+            var error = new DataGridViewDataErrorEventArgs(exception, column, row, context) { Cancel = true };
+            OnDataErrorInternal(error);
+            return error;
+        }
+        if (!IsCurrentCellInEditMode) return null;
+        _uneditedFormattedValue = formattedValue;
+        if (_editingControl is IDataGridViewEditingControl ec) ec.EditingControlValueChanged = false;
+        else if (cell is IDataGridViewEditingCell editingCell) editingCell.EditingCellValueChanged = false;
+        IsCurrentCellDirtyInternal = false;
+        _currentRowDirty = true;
+        if (validate is ValidateCell.Always or ValidateCell.WhenChanged) OnCellValidated(new DataGridViewCellEventArgs(column, row));
+        return null;
     }
 
-    private void PositionEditor()
+    /// <summary>CellValidating with the edited formatted value; true when a handler cancelled.</summary>
+    private bool RaiseCellValidating(DataGridViewCell cell, DataGridViewDataErrorContexts context)
     {
-        if (_editor == null || _editingCell == null) return;
-        var bounds = GetCellDisplayRectangle(_editingCell.ColumnIndex, _editingCell.RowIndex, false);
-        _editor.Bounds = new Rectangle(bounds.X + 1, bounds.Y + 1, Math.Max(0, bounds.Width - 2), Math.Max(0, bounds.Height - 2));
+        if (_inCellValidating) return false;
+        var e = new DataGridViewCellValidatingEventArgs(cell.ColumnIndex, cell.RowIndex, cell.GetEditedFormattedValue(cell.RowIndex, context));
+        _inCellValidating = true;
+        try
+        {
+            OnCellValidating(e);
+        }
+        finally
+        {
+            _inCellValidating = false;
+        }
+        return e.Cancel;
     }
 
-    public bool EndEdit()
+    /// <summary>CellParsing first; unless it parsed the value, the cell's ParseFormattedValue. Then the value is stored.</summary>
+    private bool PushFormattedValue(DataGridViewCell cell, object? formattedValue, out Exception? exception)
     {
-        if (_editingCell == null || _editor == null) return true;
-        var cell = _editingCell;
-        _editingCell = null;
-
-        object? value = _editor switch
+        exception = null;
+        var style = cell.InheritedStyle;
+        var parsing = new DataGridViewCellParsingEventArgs(cell.RowIndex, cell.ColumnIndex, formattedValue, cell.ValueType, style);
+        OnCellParsing(parsing);
+        object? value;
+        if (parsing.ParsingApplied && parsing.Value != null && cell.ValueType != null && cell.ValueType.IsInstanceOfType(parsing.Value))
         {
-            TextBox box => cell.ParseFormattedValue(box.Text, cell.InheritedStyle, null, null),
-            ComboBox combo => combo.SelectedItem,
-            _ => null,
-        };
-        DisposeEditor();
-        cell.Value = value;
-        OnCellEndEdit(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
-        if (CanFocus) Focus();
+            value = parsing.Value;
+        }
+        else
+        {
+            try
+            {
+                value = cell.ParseFormattedValue(formattedValue, parsing.InheritedCellStyle ?? style, null, null);
+            }
+            catch (Exception ex) when (!ex.IsCriticalException())
+            {
+                exception = ex;
+                return false;
+            }
+        }
+        return cell.SetValueInternal(cell.RowIndex, value);
+    }
+
+    /// <summary>Discards the edit: the editing control (or cell) gets the value it started from, and stays in edit mode.</summary>
+    public bool CancelEdit() => CancelEdit(endEdit: false);
+
+    private bool CancelEdit(bool endEdit)
+    {
+        if (_currentCell == null) return true;
+        CancelEditPrivate();
+        if (!IsCurrentCellInEditMode) return true;
+        if (endEdit && EditMode != DataGridViewEditMode.EditOnEnter && _editingControl != null)
+        {
+            return EndEditCore(DataGridViewDataErrorContexts.Parsing | DataGridViewDataErrorContexts.InitialValueRestoration, ValidateCell.Never, keepFocus: true);
+        }
+        _ignoringEditingChanges = true;
+        try
+        {
+            if (_editingControl is IDataGridViewEditingControl editing)
+            {
+                editing.EditingControlFormattedValue = _uneditedFormattedValue;
+                editing.EditingControlValueChanged = false;
+            }
+            else if (_currentCell is IDataGridViewEditingCell editingCell)
+            {
+                editingCell.EditingCellFormattedValue = _uneditedFormattedValue;
+                editingCell.EditingCellValueChanged = false;
+            }
+        }
+        catch (Exception ex) when (!ex.IsCriticalException())
+        {
+            var error = new DataGridViewDataErrorEventArgs(ex, _currentCell.ColumnIndex, _currentCell.RowIndex, DataGridViewDataErrorContexts.InitialValueRestoration);
+            OnDataErrorInternal(error);
+            if (error.ThrowException) throw error.Exception!;
+        }
+        finally
+        {
+            _ignoringEditingChanges = false;
+        }
+        if (_editingControl is IDataGridViewEditingControl prepared) prepared.PrepareEditingControlForEdit(selectAll: true);
+        else if (_currentCell is IDataGridViewEditingCell preparedCell) preparedCell.PrepareEditingCellForEdit(selectAll: true);
+        Invalidate();
         return true;
     }
 
-    public void CancelEdit()
+    private void CancelEditPrivate()
     {
-        if (_editingCell == null) return;
-        var cell = _editingCell;
-        _editingCell = null;
-        DisposeEditor();
-        OnCellEndEdit(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
-        if (CanFocus) Focus();
+        if (VirtualMode && _currentRowDirty && !_currentCellDirty)
+        {
+            // Escape on a row whose cells were committed: VirtualMode gives the row's edits back (WinForms' CancelRowEdit).
+            _currentRowDirty = false;
+            OnCancelRowEdit(new QuestionEventArgs(false));
+        }
+        if (!IsCurrentCellInEditMode) return;
+        if (_editingControl is IDataGridViewEditingControl editing) editing.EditingControlValueChanged = false;
+        else if (_currentCell is IDataGridViewEditingCell editingCell) editingCell.EditingCellValueChanged = false;
+        IsCurrentCellDirtyInternal = false;
     }
 
-    private void DisposeEditor()
+    /// <summary>Reloads the current cell's value into the editing control, discarding what was typed.</summary>
+    public bool RefreshEdit()
     {
-        if (_editor == null) return;
-        var editor = _editor;
-        _editor = null;
-        Controls.Remove(editor);
-        editor.Dispose();
+        var cell = _currentCell;
+        if (cell == null || !IsCurrentCellInEditMode) return true;
+        var style = cell.InheritedStyle;
+        if (_editingControl is IDataGridViewEditingControl editing)
+        {
+            if (!InitializeEditingControlValue(ref style, cell)) return false;
+            if (editing.RepositionEditingControlOnValueChange) PositionEditingControl(setLocation: true, setSize: true, setFocus: false);
+            editing.PrepareEditingControlForEdit(selectAll: true);
+            editing.EditingControlValueChanged = false;
+        }
+        else
+        {
+            InitializeEditingCellValue(cell);
+            ((IDataGridViewEditingCell)cell).PrepareEditingCellForEdit(selectAll: true);
+        }
+        IsCurrentCellDirtyInternal = false;
+        Invalidate();
+        return true;
     }
+
+    /// <summary>
+    /// The focus leaves the grid (or its editing control) for another control: the edit is committed with validation
+    /// (CellValidating, CellValidated), then the row validates; a cancel keeps the focus here.
+    /// </summary>
+    protected override void OnValidating(CancelEventArgs e)
+    {
+        var cell = _currentCell;
+        if (cell != null && cell.RowIndex >= 0)
+        {
+            if (!EndEditCore(DataGridViewDataErrorContexts.Parsing | DataGridViewDataErrorContexts.Commit | DataGridViewDataErrorContexts.LeaveControl,
+                    ValidateCell.Always, keepFocus: false))
+            {
+                e.Cancel = true;
+                return;
+            }
+            if (_currentCell != null)
+            {
+                var rowValidating = new DataGridViewCellCancelEventArgs(_currentCell.ColumnIndex, _currentCell.RowIndex);
+                OnRowValidating(rowValidating);
+                if (rowValidating.Cancel)
+                {
+                    e.Cancel = true;
+                    return;
+                }
+                OnRowValidated(new DataGridViewCellEventArgs(_currentCell.ColumnIndex, _currentCell.RowIndex));
+            }
+        }
+        base.OnValidating(e);
+    }
+
+    /// <summary>DataError; WinForms shows a message box when nobody handles it - NetForms leaves it to the handler.</summary>
+    private void OnDataErrorInternal(DataGridViewDataErrorEventArgs e) => OnDataError(e);
+
+    internal void OnMouseWheelInternal(MouseEventArgs e) => OnMouseWheel(e);
 
     // --- sorting ---------------------------------------------------------------------------------------------------
 
@@ -1684,7 +2336,7 @@ public class DataGridView : Control, ISupportInitialize
                         SelectOnlyCell(-1, hit.RowIndex);
                         _anchor = (0, hit.RowIndex);
                     }
-                    SetCurrentCell(0, hit.RowIndex);
+                    if (!SetCurrentCell(0, hit.RowIndex)) break;
                 }
                 break;
 
@@ -1693,6 +2345,9 @@ public class DataGridView : Control, ISupportInitialize
                     var cell = _rows[hit.RowIndex].Cells[hit.ColumnIndex];
                     bool control = (ModifierKeys & Keys.Control) != 0;
                     bool shift = (ModifierKeys & Keys.Shift) != 0;
+                    bool wasCurrent = ReferenceEquals(_currentCell, cell);
+                    // The old cell's edit is committed and validated first; a cancelled validation keeps everything.
+                    if (!SetCurrentCell(cell)) break;
 
                     if (MultiSelect && shift) SelectRangeTo(hit.ColumnIndex, hit.RowIndex);
                     else if (MultiSelect && control)
@@ -1705,7 +2360,6 @@ public class DataGridView : Control, ISupportInitialize
                         SelectOnlyCell(hit.ColumnIndex, hit.RowIndex);
                         _anchor = (hit.ColumnIndex, hit.RowIndex);
                     }
-                    SetCurrentCell(cell);
 
                     var args = new DataGridViewCellEventArgs(hit.ColumnIndex, hit.RowIndex);
                     OnCellClick(args);
@@ -1715,12 +2369,13 @@ public class DataGridView : Control, ISupportInitialize
 
                     if (IsContentClick(cell, e.Location))
                     {
-                        cell.OnCellContentClick(args);
+                        cell.OnContentClickInternal(args);
                         OnCellContentClick(args);
                     }
-                    else if (EditMode == DataGridViewEditMode.EditOnEnter)
+                    else if (wasCurrent && !IsCurrentCellInEditMode && EditMode != DataGridViewEditMode.EditProgrammatically && cell.EditType != null)
                     {
-                        BeginEdit(true);
+                        // A click on the cell that already was current edits it (WinForms' DataGridViewTextBoxCell.OnMouseClick).
+                        BeginEditInternal(selectAll: true);
                     }
                     break;
                 }
@@ -1817,79 +2472,201 @@ public class DataGridView : Control, ISupportInitialize
         if (hit.Type == DataGridViewHitTestType.Cell)
         {
             OnCellDoubleClick(new DataGridViewCellEventArgs(hit.ColumnIndex, hit.RowIndex));
-            BeginEdit(true);
+            if (_currentCell != null && !IsCurrentCellInEditMode && EditMode != DataGridViewEditMode.EditProgrammatically) BeginEditInternal(selectAll: true);
         }
         base.OnDoubleClick(e);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        base.OnKeyDown(e);
+        if (e.Handled) return;
+        if (ProcessDataGridViewKey(e))
+        {
+            e.Handled = true;
+            return;
+        }
+        // EditOnKeystroke: a key that the current cell takes as input starts the edit; the character that follows
+        // goes to the editing control, which has the focus by then.
+        var cell = _currentCell;
+        if (cell != null && !IsCurrentCellInEditMode && !cell.ReadOnly
+            && EditMode is DataGridViewEditMode.EditOnKeystroke or DataGridViewEditMode.EditOnKeystrokeOrF2
+            && cell.KeyEntersEditMode(e))
+        {
+            if (BeginEditInternal(selectAll: true)) e.Handled = _editingControl != null;
+        }
+    }
+
+    /// <summary>The Enter, Escape and Tab keys of the grid - and of its editing control, whose dialog keys come here.</summary>
+    protected override bool ProcessDialogKey(Keys keyData)
+    {
+        switch (keyData & Keys.KeyCode)
+        {
+            case Keys.Enter:
+                if (ProcessEnterKey(keyData)) return true;
+                break;
+            case Keys.Escape:
+                if (ProcessEscapeKey(keyData)) return true;
+                break;
+            case Keys.Tab:
+                if (!StandardTab && ProcessTabKey(keyData)) return true;
+                break;
+        }
+        return base.ProcessDialogKey(keyData);
+    }
+
+    /// <summary>
+    /// The keys typed into the editing control: the ones the grid navigates with (arrows, Home/End, Page Up/Down,
+    /// Enter, Escape, Tab, F2, Delete, Space) go to the grid unless the control wants them (EditingControlWantsInputKey).
+    /// </summary>
+    protected override bool ProcessKeyPreview(ref Message m)
+    {
+        if (m.Msg == Message.WM_KEYDOWN && _editingControl is IDataGridViewEditingControl editing && _editingControl.ContainsFocus)
+        {
+            var e = new KeyEventArgs((Keys)(int)m.WParam | ModifierKeys);
+            bool gridWantsInputKey = e.KeyCode is Keys.Delete or Keys.Down or Keys.End or Keys.Enter or Keys.Escape or Keys.F2 or Keys.F3
+                or Keys.Home or Keys.Left or Keys.Next or Keys.Prior or Keys.Right or Keys.Space or Keys.Tab or Keys.Up;
+            if (gridWantsInputKey && !editing.EditingControlWantsInputKey(e.KeyData, gridWantsInputKey) && ProcessDataGridViewKey(e))
+            {
+                return true;
+            }
+        }
+        return base.ProcessKeyPreview(ref m);
+    }
+
+    /// <summary>The grid's keyboard: moving the current cell, F2, Space and Ctrl+A. True when the key was used.</summary>
+    protected bool ProcessDataGridViewKey(KeyEventArgs e)
+    {
         EnsureLayout();
+        switch (e.KeyCode)
+        {
+            case Keys.Up:
+            case Keys.Down:
+            case Keys.Left:
+            case Keys.Right:
+            case Keys.Home:
+            case Keys.End:
+            case Keys.PageUp:
+            case Keys.PageDown:
+                return MoveCurrentCell(e.KeyCode, e.Modifiers);
+            case Keys.Enter:
+                return ProcessEnterKey(e.KeyData);
+            case Keys.Escape:
+                return ProcessEscapeKey(e.KeyData);
+            case Keys.Tab:
+                return ProcessTabKey(e.KeyData);
+            case Keys.F2:
+                return ProcessF2Key(e.KeyData);
+            case Keys.Space when (e.Modifiers & (Keys.Control | Keys.Alt | Keys.Shift)) == 0
+                && _currentCell is DataGridViewCheckBoxCell or DataGridViewButtonCell or DataGridViewLinkCell:
+                {
+                    // WinForms raises these from the cell's OnKeyUp; the check box toggles its edited value.
+                    var args = new DataGridViewCellEventArgs(_currentCell.ColumnIndex, _currentCell.RowIndex);
+                    OnCellClick(args);
+                    _currentCell.OnContentClickInternal(args);
+                    OnCellContentClick(args);
+                    return true;
+                }
+            case Keys.A when (e.Modifiers & Keys.Control) != 0 && MultiSelect && !IsCurrentCellInEditMode:
+                SelectAll();
+                return true;
+            case Keys.Delete:
+                if (!IsCurrentCellInEditMode && AllowUserToDeleteRows && !IsBound && SelectedRows.Count > 0)
+                {
+                    DeleteSelectedRows();
+                    return true;
+                }
+                return false;
+        }
+        return false;
+    }
+
+    /// <summary>F2 starts editing with the caret at the end of the text.</summary>
+    protected bool ProcessF2Key(Keys keyData)
+    {
+        if (_currentCell == null || IsCurrentCellInEditMode || (keyData & Keys.Modifiers) != 0) return false;
+        if (EditMode is not (DataGridViewEditMode.EditOnF2 or DataGridViewEditMode.EditOnKeystrokeOrF2)) return false;
+        BeginEditInternal(selectAll: false);
+        return true;
+    }
+
+    /// <summary>Enter commits the edit and moves to the cell below (Ctrl+Enter commits and stays).</summary>
+    protected bool ProcessEnterKey(Keys keyData)
+    {
+        if (_currentCell == null) return false;
+        if (IsCurrentCellInEditMode
+            && !EndEditCore(DataGridViewDataErrorContexts.Parsing | DataGridViewDataErrorContexts.Commit, ValidateCell.WhenChanged, keepFocus: true))
+        {
+            return true; // the value did not commit: the cell stays in edit mode
+        }
+        if ((keyData & Keys.Control) == 0 && _currentCell != null && _currentCell.RowIndex < _rows.Count - 1) MoveCurrentCell(Keys.Down, Keys.None);
+        return true;
+    }
+
+    /// <summary>Escape gives up the edit: the old value comes back and edit mode ends.</summary>
+    protected bool ProcessEscapeKey(Keys keyData)
+    {
+        if (!IsCurrentCellInEditMode) return false;
+        CancelEdit(endEdit: true);
+        if (CanFocus && !Focused) Focus();
+        return true;
+    }
+
+    /// <summary>Tab moves to the next cell (Shift+Tab to the previous), wrapping to the next row.</summary>
+    protected bool ProcessTabKey(Keys keyData)
+    {
+        if (_columns.Count == 0 || _rows.Count == 0 || (keyData & Keys.Control) != 0) return false;
+        var address = CurrentCellAddress;
+        int column = Math.Max(0, address.X), row = Math.Max(0, address.Y);
+        column += (keyData & Keys.Shift) != 0 ? -1 : 1;
+        if (column >= _columns.Count)
+        {
+            if (row >= _rows.Count - 1) return false; // past the last cell: the focus leaves the grid
+            column = 0;
+            row++;
+        }
+        else if (column < 0)
+        {
+            if (row == 0) return false;
+            column = _columns.Count - 1;
+            row--;
+        }
+        SelectAndMove(column, row, Keys.None);
+        return true;
+    }
+
+    private bool MoveCurrentCell(Keys key, Keys modifiers)
+    {
+        if (_columns.Count == 0 || _rows.Count == 0) return false;
         var address = CurrentCellAddress;
         int column = address.X, row = address.Y;
-        if (column < 0 && _columns.Count > 0) column = 0;
-        if (row < 0 && _rows.Count > 0) row = 0;
-
-        switch (e.KeyCode)
+        if (column < 0) column = 0;
+        if (row < 0) row = 0;
+        bool ctrl = (modifiers & Keys.Control) != 0;
+        switch (key)
         {
             case Keys.Up: row--; break;
             case Keys.Down: row++; break;
             case Keys.Left: column--; break;
             case Keys.Right: column++; break;
-            case Keys.Home: column = 0; if ((e.Modifiers & Keys.Control) != 0) row = 0; break;
-            case Keys.End: column = _columns.Count - 1; if ((e.Modifiers & Keys.Control) != 0) row = _rows.Count - 1; break;
+            case Keys.Home: column = 0; if (ctrl) row = 0; break;
+            case Keys.End: column = _columns.Count - 1; if (ctrl) row = _rows.Count - 1; break;
             case Keys.PageUp: row -= Math.Max(1, CellsRectangle.Height / Math.Max(1, RowTemplate.Height)); break;
             case Keys.PageDown: row += Math.Max(1, CellsRectangle.Height / Math.Max(1, RowTemplate.Height)); break;
-            case Keys.Tab:
-                column += (e.Modifiers & Keys.Shift) != 0 ? -1 : 1;
-                if (column >= _columns.Count) { column = 0; row++; }
-                else if (column < 0) { column = _columns.Count - 1; row--; }
-                break;
-            case Keys.F2:
-                if (EditMode is DataGridViewEditMode.EditOnF2 or DataGridViewEditMode.EditOnKeystrokeOrF2)
-                {
-                    BeginEdit(true);
-                    e.Handled = true;
-                }
-                return;
-            case Keys.Space:
-                if (_currentCell != null)
-                {
-                    var args = new DataGridViewCellEventArgs(_currentCell.ColumnIndex, _currentCell.RowIndex);
-                    _currentCell.OnCellContentClick(args);
-                    OnCellContentClick(args);
-                    e.Handled = true;
-                }
-                return;
-            case Keys.A when (e.Modifiers & Keys.Control) != 0 && MultiSelect:
-                SelectAll();
-                e.Handled = true;
-                return;
-            case Keys.Delete:
-                if (AllowUserToDeleteRows && !IsBound && SelectedRows.Count > 0)
-                {
-                    DeleteSelectedRows();
-                    e.Handled = true;
-                }
-                return;
-            default:
-                base.OnKeyDown(e);
-                return;
         }
+        SelectAndMove(Math.Clamp(column, 0, _columns.Count - 1), Math.Clamp(row, 0, _rows.Count - 1), modifiers);
+        return true;
+    }
 
-        if (_columns.Count == 0 || _rows.Count == 0)
+    private void SelectAndMove(int column, int row, Keys modifiers)
+    {
+        if (!SetCurrentCell(column, row)) return;
+        if (MultiSelect && (modifiers & Keys.Shift) != 0) SelectRangeTo(column, row);
+        else
         {
-            base.OnKeyDown(e);
-            return;
+            SelectOnlyCell(column, row);
+            _anchor = (column, row);
         }
-
-        column = Math.Clamp(column, 0, _columns.Count - 1);
-        row = Math.Clamp(row, 0, _rows.Count - 1);
-        if (MultiSelect && (e.Modifiers & Keys.Shift) != 0) SelectRangeTo(column, row);
-        else { SelectOnlyCell(column, row); _anchor = (column, row); }
-        SetCurrentCell(column, row);
-        e.Handled = true;
-        base.OnKeyDown(e);
     }
 
     private void DeleteSelectedRows()
@@ -2002,19 +2779,13 @@ public class DataGridView : Control, ISupportInitialize
         if (IsCellSelected(columnIndex, rowIndex)) cellState |= DataGridViewElementStates.Selected;
         if (cell.ReadOnly) cellState |= DataGridViewElementStates.ReadOnly;
 
-        object? value = cell.Value;
-        if (VirtualMode)
+        object? value = ValueOf(cell, rowIndex);
+        object? formatted = FormattedValueOf(cell, value, rowIndex, ref style, DataGridViewDataErrorContexts.Display);
+        // A cell editing itself (the check box) shows the edited value until it is committed.
+        if (cell is IDataGridViewEditingCell editingCell && _editingCellInEditMode && ReferenceEquals(cell, _currentCell))
         {
-            var needed = new DataGridViewCellValueEventArgs(columnIndex, rowIndex);
-            OnCellValueNeeded(needed);
-            if (needed.Value != null) value = needed.Value;
+            formatted = editingCell.GetEditingCellFormattedValue(DataGridViewDataErrorContexts.Display);
         }
-
-        object? formatted = cell.GetFormattedValue(value, rowIndex, style, DataGridViewDataErrorContexts.Display);
-        var formatting = new DataGridViewCellFormattingEventArgs(columnIndex, rowIndex, formatted, typeof(string), style);
-        OnCellFormatting(formatting);
-        if (formatting.FormattingApplied || !Equals(formatting.Value, formatted)) formatted = formatting.Value;
-        style = formatting.CellStyle ?? style;
 
         var painting = new DataGridViewCellPaintingEventArgs(this, g, clip, bounds, rowIndex, columnIndex, cellState,
             value, formatted, cell.ErrorText, style, new DataGridViewAdvancedBorderStyle(), DataGridViewPaintParts.All);
@@ -2157,6 +2928,13 @@ public class DataGridView : Control, ISupportInitialize
             DetachDataSource();
             _vscroll.Dispose();
             _hscroll.Dispose();
+            // The editing controls live outside Controls between edits (WinForms keeps the last one for reuse).
+            _latestEditingControl?.Dispose();
+            _latestEditingControl = null;
+            _editingControl?.Dispose();
+            _editingControl = null;
+            _editingPanel?.Dispose();
+            _editingPanel = null;
         }
         base.Dispose(disposing);
     }

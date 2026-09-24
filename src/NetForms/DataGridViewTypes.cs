@@ -139,20 +139,20 @@ public enum DataGridViewHitTestType
     VerticalScrollBar = 6,
 }
 
+[Flags]
 public enum DataGridViewDataErrorContexts
 {
-    Formatting = 1,
-    Display = 2,
-    ClipboardContent = 4,
-    ErrorText = 8,
-    RowDeletion = 16,
-    Parsing = 256,
-    Commit = 512,
-    InitialValueRestoration = 1024,
-    LeaveControl = 2048,
-    CurrentCellChange = 4096,
-    Scroll = 8192,
-    PreferredSize = 16384,
+    Formatting = 0x0001,
+    Display = 0x0002,
+    PreferredSize = 0x0004,
+    RowDeletion = 0x0008,
+    Parsing = 0x0100,
+    Commit = 0x0200,
+    InitialValueRestoration = 0x0400,
+    LeaveControl = 0x0800,
+    CurrentCellChange = 0x1000,
+    Scroll = 0x2000,
+    ClipboardContent = 0x4000,
 }
 
 /// <summary>The wrap mode of a cell's text, as WinForms' DataGridViewTriState-based setting.</summary>

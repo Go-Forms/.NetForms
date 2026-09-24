@@ -9,6 +9,13 @@
   a `DataRelation`, `DisplayMember`/`ValueMember` over a `DataTable`, a grid's current row and its source's `Position`
   following each other. Bindings follow WinForms' rules: a control binds once it is created and has a binding context,
   and the default `DataSourceUpdateMode.OnValidation` writes the value when the control validates.
+- **DataGridView editing** follows the WinForms model: editing controls (`IDataGridViewEditingControl`, custom ones
+  such as Microsoft's calendar column), `EditingControlShowing`, `CurrentCellDirtyStateChanged`, `CellValidating`,
+  `CellParsing`, `CellValidated`, `DataError` on a value that does not parse, `CommitEdit`/`CancelEdit`/`RefreshEdit`,
+  the cell and row enter/leave/validating events, typing/F2/Enter/Escape/Tab, and `VirtualMode` (`RowCount`,
+  `CellValuePushed`). The check box cell now commits its value when the cell is left, as in WinForms.
+  `CellFormatting` gets the raw value; `DataGridViewDataErrorContexts` has the WinForms values.
+- **Focus**: `Enter`, `Leave`, `Validating` and `Validated` reach every container the focus enters or leaves, as in WinForms.
 - **Designer:** a **+** button in the Events tab creates a handler with the default name in one click; **✕** unbinds it.
 
 ## 0.1.0-preview.1 — first public preview

@@ -143,7 +143,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 
 | Control | Status | Notes |
 |---|---|---|
-| `DataGridView` | ✅ Works · 291 missing | Columns of every kind (text, check box, combo box, button, link, image) and per-cell types (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, editing, sorting, selection modes, auto-size policies, `DataSource`/`DataMember` binding through the form's `BindingContext` (lists, `DataTable`, a `DataSet` table, a relation for master-detail; the current row and the source's `Position` follow each other; relations are not columns), frozen columns, virtual scrolling. Custom cells (a `DataGridViewCell` subclass overriding `Paint`) work and get the inherited style, font included; the default styles carry the grid's font and follow it, as in WinForms. Missing: `EditingControl` and `EditingControlShowing`, `CellValidating`, `CellParsing`, `CurrentCellDirtyStateChanged`, custom editing controls (`IDataGridViewEditingControl`, e.g. a date-picker column), `VirtualMode`; the rest of the missing count is mostly protected `Process*Key`/`On*Changed` hooks and `AutoResize*` methods. |
+| `DataGridView` | ✅ Works · 242 missing | Columns of every kind (text, check box, combo box, button, link, image) and per-cell types (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, editing, sorting, selection modes, auto-size policies, `DataSource`/`DataMember` binding through the form's `BindingContext` (lists, `DataTable`, a `DataSet` table, a relation for master-detail; the current row and the source's `Position` follow each other; relations are not columns), frozen columns, virtual scrolling. Custom cells (a `DataGridViewCell` subclass overriding `Paint`) work and get the inherited style, font included; the default styles carry the grid's font and follow it, as in WinForms. Editing is the WinForms model: the cell's `EditType` control (`DataGridViewTextBoxEditingControl`, `DataGridViewComboBoxEditingControl`, or your own `IDataGridViewEditingControl` — Microsoft's calendar column works as published) in `EditingPanel`, `EditingControlShowing`, the dirty cell and `CurrentCellDirtyStateChanged`, `CellValidating`/`CellParsing`/`CellValidated` and `DataError` on commit, `CellEnter`/`CellLeave`/`RowEnter`/`RowLeave`/`RowValidating`, `BeginEdit`/`EndEdit`/`CommitEdit`/`CancelEdit`/`RefreshEdit`, `EditMode`, typing/F2/Enter/Escape/Tab; the check box cell edits itself (`IDataGridViewEditingCell`) and commits on leave, as in WinForms. `VirtualMode` with `RowCount`, `CellValueNeeded`/`CellValuePushed`, `RowDirtyStateNeeded`, `CancelRowEdit`. Missing: the new row's `NewRowNeeded`/`UserAddedRow` flow, clipboard copy, the rest of the protected `Process*Key`/`On*Changed` hooks and `AutoResize*` methods. |
 | `BindingSource` | ✅ Works · API: complete | The WinForms implementation itself (vendored from dotnet/winforms): lists, `DataTable`, a `DataSet` with a table as `DataMember`, master-detail with a `DataRelation` as the `DataMember` of a second `BindingSource`, `Position`, `Filter`, `Sort`, `AddNew`, `CurrencyManager`. |
 | `BindingNavigator` | ❌ Missing | |
 | ADO.NET itself (`DataSet`, `DataTable`, `DataAdapter`, providers) | Part of .NET, not of WinForms: works on Linux as it is. Edits made in a bound grid set `RowState`, so `adapter.Update(table)` saves them. The provider decides the platform: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle run on Linux; **Access through `System.Data.OleDb` is Windows-only** (`PlatformNotSupportedException` on Linux, the converter warns). |
@@ -221,6 +221,9 @@ is a bug — please report it.
   right-button events arrive only when a context menu opens, `MouseMove` never arrives, and the menu
   is drawn by the shell.
 - **`ErrorProvider`** icons do not blink.
+- **`DataGridView`**: an unhandled `DataError` is not shown in a message box (WinForms shows one); the first cell
+  is not made current when the window is created (WinForms does); a `DefaultCellStyle` assigned with members unset
+  gets them filled on the object (WinForms returns a filled copy from the getter).
 - **`Form.TopLevel = false`**: an embedded form has no frame (WinForms draws one).
 - **`RichTextBox.Rtf`** writes non-ASCII characters as `\uN?` (RichEdit uses `\'hh` in the font's code page); both are read.
 - **Negative sizes** of an unparented docked control are clamped to 0 immediately (WinForms does it when the window is created).
@@ -233,10 +236,10 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **390/390**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **401/401**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
-  regenerates [the tables](api/README.md). Today: **652** of 1254 types complete, **160** partial,
-  **442** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
+  regenerates [the tables](api/README.md). Today: **662** of 1254 types complete, **162** partial,
+  **430** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
 - **Corpus of real projects** (`NETFORMS_CORPUS=1`, CI job `corpus`): converted and built without
   manual edits, with the reason for every failure recorded in `tests/corpus/corpus.json`.

@@ -34,7 +34,93 @@ public static class CompatScenarios
         GridHeaders(r);
         GridStyleFonts(r);
         AdoNetBinding(r);
+        GridEditing(r);
         return r;
+    }
+
+    /// <summary>
+    /// The DataGridView editing model driven from code (decision 142): the events of BeginEdit and EndEdit and their
+    /// order, the editing control, CancelEdit, a value that does not parse, and CellFormatting getting the raw value.
+    /// </summary>
+    private static void GridEditing(SortedDictionary<string, string> r)
+    {
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+        try
+        {
+            using var form = new Form { ClientSize = new Size(400, 300), StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000) };
+            var grid = new DataGridView { Bounds = new Rectangle(0, 0, 400, 250), AllowUserToAddRows = false };
+            grid.Columns.Add("Name", "Name");
+            grid.Columns.Add("Age", "Age");
+            grid.Columns[1].ValueType = typeof(int);
+            grid.Rows.Add("Ada", 36);
+            grid.Rows.Add("Alan", 41);
+            form.Controls.Add(grid);
+            form.Show();
+            Application.DoEvents();
+            // WinForms makes the first cell current when the window is created; NetForms does not yet (PLAN.md, open
+            // questions): start from there either way.
+            grid.CurrentCell = grid.Rows[0].Cells[0];
+
+            var events = new List<string>();
+            grid.CellBeginEdit += (_, e) => events.Add($"BeginEdit {e.ColumnIndex},{e.RowIndex}");
+            grid.EditingControlShowing += (_, e) => events.Add("Showing " + e.Control.GetType().Name);
+            grid.CurrentCellDirtyStateChanged += (_, _) => events.Add("Dirty " + grid.IsCurrentCellDirty);
+            grid.CellValidating += (_, e) => events.Add($"Validating {e.ColumnIndex},{e.RowIndex} {e.FormattedValue}");
+            grid.CellParsing += (_, e) => events.Add($"Parsing {e.Value} {e.DesiredType?.Name}");
+            grid.CellValueChanged += (_, e) => events.Add($"ValueChanged {e.ColumnIndex},{e.RowIndex}");
+            grid.CellValidated += (_, e) => events.Add($"Validated {e.ColumnIndex},{e.RowIndex}");
+            grid.CellEndEdit += (_, e) => events.Add($"EndEdit {e.ColumnIndex},{e.RowIndex}");
+            grid.RowEnter += (_, e) => events.Add($"RowEnter {e.RowIndex}");
+            grid.CellEnter += (_, e) => events.Add($"CellEnter {e.ColumnIndex},{e.RowIndex}");
+            grid.CellLeave += (_, e) => events.Add($"CellLeave {e.ColumnIndex},{e.RowIndex}");
+            var errors = new List<string>();
+            grid.DataError += (_, e) => errors.Add($"{e.Exception?.GetType().Name} {e.Context} cancel={e.Cancel}");
+
+            grid.CurrentCell = grid.Rows[0].Cells[1];
+            r["exact/dgv/edit-current"] = string.Join(" | ", events);
+            events.Clear();
+            bool began = grid.BeginEdit(true);
+            var editor = grid.EditingControl;
+            r["exact/dgv/edit-begin"] = $"{began} {editor?.GetType().Name} {editor?.Text} {editor?.Parent == grid.EditingPanel} "
+                + $"{grid.IsCurrentCellInEditMode} {grid.IsCurrentCellDirty} | " + string.Join(" | ", events);
+            events.Clear();
+            editor!.Text = "37";
+            r["exact/dgv/edit-typed"] = $"{grid.IsCurrentCellDirty} {grid.Rows[0].Cells[1].Value} {grid.Rows[0].Cells[1].EditedFormattedValue} | " + string.Join(" | ", events);
+            events.Clear();
+            bool ended = grid.EndEdit();
+            r["exact/dgv/edit-end"] = $"{ended} {grid.IsCurrentCellInEditMode} {grid.EditingControl == null} {grid.Rows[0].Cells[1].Value} | " + string.Join(" | ", events);
+            events.Clear();
+
+            grid.BeginEdit(true);
+            grid.EditingControl!.Text = "changed";
+            bool cancelled = grid.CancelEdit();
+            r["exact/dgv/edit-cancel"] = $"{cancelled} {grid.IsCurrentCellInEditMode} {grid.IsCurrentCellDirty} {grid.EditingControl?.Text}";
+            grid.EndEdit();
+            events.Clear();
+
+            grid.BeginEdit(true);
+            grid.EditingControl!.Text = "abc";
+            bool badEnd = grid.EndEdit();
+            r["exact/dgv/edit-bad"] = $"{badEnd} {grid.IsCurrentCellInEditMode} {grid.Rows[0].Cells[1].Value} | " + string.Join(" | ", errors);
+            grid.CancelEdit();
+            grid.EndEdit();
+            events.Clear();
+
+            grid.BeginEdit(true);
+            grid.EditingControl!.Text = "38";
+            grid.CurrentCell = grid.Rows[1].Cells[0];
+            r["exact/dgv/edit-move"] = $"{grid.Rows[0].Cells[1].Value} {grid.CurrentCellAddress.X},{grid.CurrentCellAddress.Y} | " + string.Join(" | ", events);
+
+            var formatted = new List<string>();
+            grid.CellFormatting += (_, e) => formatted.Add($"{e.Value?.GetType().Name} {e.DesiredType?.Name}");
+            var fv = grid.Rows[1].Cells[1].FormattedValue;
+            r["exact/dgv/formatting-raw"] = $"{fv} | " + string.Join(" | ", formatted.Distinct());
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = culture;
+        }
     }
 
     /// <summary>
@@ -1218,6 +1304,57 @@ public static class CompatScenarios
         catch (Exception ex)
         {
             r["info/focus/error"] = ex.GetType().Name + ": " + ex.Message;
+        }
+        NestedFocusOrder(r);
+    }
+
+    /// <summary>
+    /// Enter, Leave and validation reach the containers too: every control on the way out of the focus, innermost
+    /// first, and on the way in, outermost first (ContainerControl.UpdateFocusedControl; decision 142 - how a
+    /// DataGridView learns that the focus left its editing control).
+    /// </summary>
+    private static void NestedFocusOrder(SortedDictionary<string, string> r)
+    {
+        try
+        {
+            using var form = new Form { ClientSize = new Size(300, 200), StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000) };
+            var group = new GroupBox { Name = "group", Bounds = new Rectangle(10, 10, 150, 100) };
+            var inner = new TextBox { Name = "inner", Bounds = new Rectangle(10, 20, 100, 23), TabIndex = 0 };
+            var panel = new Panel { Name = "panel", Bounds = new Rectangle(10, 50, 120, 40), TabIndex = 1 };
+            var deep = new TextBox { Name = "deep", Bounds = new Rectangle(5, 5, 100, 23) };
+            var outside = new Button { Name = "outside", Bounds = new Rectangle(170, 10, 80, 25), TabIndex = 1 };
+            panel.Controls.Add(deep);
+            group.Controls.Add(inner);
+            group.Controls.Add(panel);
+            form.Controls.Add(group);
+            form.Controls.Add(outside);
+            var events = new List<string>();
+            foreach (var c in new Control[] { group, inner, panel, deep, outside })
+            {
+                c.Enter += (s, _) => events.Add(((Control)s!).Name + ".Enter");
+                c.Leave += (s, _) => events.Add(((Control)s!).Name + ".Leave");
+                c.Validating += (s, _) => events.Add(((Control)s!).Name + ".Validating");
+                c.Validated += (s, _) => events.Add(((Control)s!).Name + ".Validated");
+            }
+            form.Show();
+            Application.DoEvents();
+            events.Clear();
+            deep.Focus();
+            Application.DoEvents();
+            r["exact/focus/nested-in"] = string.Join(" ", events);
+            events.Clear();
+            inner.Focus();
+            Application.DoEvents();
+            r["exact/focus/nested-sibling"] = string.Join(" ", events);
+            events.Clear();
+            outside.Focus();
+            Application.DoEvents();
+            r["exact/focus/nested-out"] = string.Join(" ", events);
+            form.Close();
+        }
+        catch (Exception ex)
+        {
+            r["info/focus/nested-error"] = ex.GetType().Name + ": " + ex.Message;
         }
     }
 }

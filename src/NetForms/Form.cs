@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using NetForms.Platform;
@@ -816,24 +817,34 @@ public partial class Form : ContainerControl
         if (_focused == control) return true;
         var old = _focused;
         if (nativeFirst) old?.RaiseLostFocus();
-        if (old != null && old != this)
+        // As WinForms' ContainerControl.UpdateFocusedControl: every control on the way out - the old one and its
+        // parents below the common ancestor - gets Leave, innermost first, then Validating/Validated in the same
+        // order; every control on the way in gets Enter, outermost first. (A grid learns this way that the focus
+        // left its editing control.)
+        var leaving = new List<Control>();
+        for (var c = old; c != null && c != this && c != control && !c.Contains(control); c = c.Parent) leaving.Add(c);
+        var entering = new List<Control>();
+        for (var c = control; c != null && c != this && (old == null || (c != old && !c.Contains(old))); c = c.Parent) entering.Insert(0, c);
+        foreach (var c in leaving) c.RaiseLeave();
+        if (control.CausesValidation)
         {
-            old.RaiseLeave();
-            var autoValidate = ContainerControl.GetAutoValidateForControl(old);
-            if (old.CausesValidation && control.CausesValidation && autoValidate != AutoValidate.Disable)
+            foreach (var c in leaving)
             {
+                var autoValidate = ContainerControl.GetAutoValidateForControl(c);
+                if (!c.CausesValidation || autoValidate == AutoValidate.Disable) continue;
                 var e = new CancelEventArgs();
-                old.RaiseValidating(e);
+                c.RaiseValidating(e);
                 if (e.Cancel && autoValidate == AutoValidate.EnablePreventFocusChange)
                 {
-                    old.RaiseEnter();
-                    if (nativeFirst) old.RaiseGotFocus();   // the focus goes back where it was
+                    for (int i = leaving.Count - 1; i >= 0; i--) leaving[i].RaiseEnter();
+                    if (nativeFirst) old!.RaiseGotFocus();   // the focus goes back where it was
                     return false;
                 }
-                if (!e.Cancel) old.RaiseValidated();
+                if (!e.Cancel) c.RaiseValidated();
             }
         }
-        control.RaiseEnter();
+        foreach (var c in entering) c.RaiseEnter();
+        if (control == this) control.RaiseEnter();
         _focused = control;
         SetActiveControlInternal(control == this ? null : control);
         if (!nativeFirst) old?.RaiseLostFocus();

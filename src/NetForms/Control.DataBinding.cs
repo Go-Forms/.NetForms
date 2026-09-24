@@ -39,7 +39,7 @@ public partial class Control : IBindableComponent
     [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Advanced)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    [Description("The binding manager for the control.")]
+    [Description("The binding context for the control.")]
     public virtual BindingContext? BindingContext
     {
         get => BindingContextInternal;
