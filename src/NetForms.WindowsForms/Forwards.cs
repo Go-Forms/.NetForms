@@ -383,6 +383,7 @@
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutCellPaintEventArgs))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutCellPaintEventHandler))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutColumnStyleCollection))]
+[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutControlCollection))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutPanel))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutPanelCellBorderStyle))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Windows.Forms.TableLayoutPanelCellPosition))]

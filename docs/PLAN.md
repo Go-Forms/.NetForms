@@ -1596,9 +1596,9 @@ MSBuild молча оставила устаревшие сборки — тес
   NetForms, где фасад лежит в `lib/` (решение 128; для `ProjectReference` на копию NetForms — по-прежнему `CS0012`). Пакеты с `FrameworkReference` на WindowsDesktop (NETSDK1136) так не спасти.
 - **Свойства-расширители в панели свойств дизайнера** («Error on errorProvider1», «ToolTip on toolTip1»): писатель их
   пишет, читатель читает, но хост не показывает их в панели свойств — нужен `IExtenderProviderService` у `DesignSite`.
-- **Оставшиеся провалы корпуса** — `tests/corpus/corpus.json`, `knownFailures` с причинами; по порядку:
-  печать (`PrintDocument`/`PrintPreviewDialog`), ~~`Binding` (tetris-oop)~~ (решение 141), `GetStockIcon`/`Icon`,
-  автодополнение в `TextBox`/`ComboBox`. (`ErrorProvider`, `NotifyIcon`, `TaskDialog`, `ImageListStreamer`,
+- **Оставшиеся провалы корпуса** — `tests/corpus/corpus.json`, `knownFailures` с причинами; порядок — решение 146
+  (`compatibility.md` § 8): печать, `ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`;
+  ~~`Binding` (tetris-oop)~~ (решение 141); автодополнение в `TextBox`/`ComboBox`. (`ErrorProvider`, `NotifyIcon`, `TaskDialog`, `ImageListStreamer`,
   `RichTextBox` — решения 119–125.)
 - **Оракулы после работы на Linux**: новый API, сделанный без Windows, проверять оракулами при первой возможности —
   долг решений 114–118 (решение 126) набрался именно так. Оракулы запускаются локально (см. «Дифф-прогон» ниже).
@@ -1615,6 +1615,9 @@ MSBuild молча оставила устаревшие сборки — тес
   `ShowEditingIcon`, окно сообщения для необработанного `DataError`, копирование в буфер.
 - **Значения перечислений против WinForms**: `DataGridViewDataErrorContexts` расходился по значениям — ApiDiff
   сравнивает члены, но не значения констант; стоит добавить сверку значений всех enum.
+- **Выборка открытого кода для `ApiDiff --usage`** (решение 146): корпус почти собирается и остальные ~430
+  недостающих типов не упорядочивает. Нужен список популярных открытых WinForms-репозиториев с закреплёнными коммитами
+  (код только компилируется для подсчёта и в репозиторий не попадает), клоны — в ту же папку.
 
 
 
@@ -1849,6 +1852,49 @@ MSBuild молча оставила устаревшие сборки — тес
 WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/focus/nested-*`) и сверка атрибутов —
 зелёные в CI на Windows.
 
+### Что использует реальный код — порядок работ по корпусу (2026-09-24, Linux)
+
+146. **Недостающий API ранжируется по использованию — `NetForms.ApiDiff --usage <папка> [--out docs/api/usage.md]`**
+    (пункт 2 «С чего начать»). Каждый C#-проект каждого репозитория в папке (клоны корпуса — каталог `CorpusTests`,
+    по папке на репозиторий) компилируется Roslyn-ом **против настоящих эталонных сборок WinForms** (тот же
+    `Microsoft.WindowsDesktop.App.Ref`, что у ApiDiff), и каждая ссылка на тип или член WinForms привязывается так, как её
+    привязывает компилятор: перегрузка, объявляющий тип, переопределяемый член (`override OnPaint` требует члена),
+    конструктор в `new`/атрибуте, индексатор, пользовательский оператор; `var` не считается. Неявные using-и SDK-проекта с
+    `ImplicitUsings` и `<Using Include>` добавляются; файл относится к ближайшему `.csproj` над ним. Компиляция против
+    WinForms, а не против NetForms, — поэтому видно и то, что у нас не компилируется. Ссылка сверяется со списком
+    недостающего: тип целиком или член существующего типа; член типа, которого у нас нет целиком, засчитывается типу —
+    **кроме** случая, когда к нему обращаются через тип, который у нас есть и в котором этот член есть (`Controls.Count`:
+    в WinForms `Count` объявлен на `ArrangedElementCollection`, которого нет, а у нашего `ControlCollection` он есть).
+    Ключ члена (вид, имя, типы параметров, у методов и возвращаемый) один для рефлексии (что нам недостаёт) и для Roslyn
+    (что использует код) — это держит тест на десяти типах, от `Control` до `GraphicsPath`. Результат —
+    `docs/api/usage.md` (по типам и по членам, число репозиториев и обращений, где) и раздел 8 «Что дальше» в
+    `compatibility.md`. Тесты: `ApiUsageTests`.
+    **Итог по корпусу:** 24 репозитория, 63 проекта, 25 887 ссылок на API WinForms; до исправлений ниже недостающих — 16
+    типов и членов, после — **11**, и все они в трёх проектах, которые не собираются: печать (MDBEditor);
+    `ImageList.Images.Add(string, Icon)` (Surviving-WinForms, GetStockIcon); `LinkLabel.OverrideCursor` (xrails-login-ui,
+    оба проекта — **не WPF**, как было записано в `corpus.json`: наследник `LinkLabel` задаёт защищённое свойство);
+    мелочь в тех же проектах (`ImageFormat.Icon/Tiff/Wmf`, `OpenFileDialog.SafeFileName`, `TabPages.Remove`,
+    `Font(FontFamily, float, FontStyle, GraphicsUnit, byte)`). Корпус почти целиком собирается, поэтому ранжировать
+    остальные ~430 недостающих типов он уже не может — нужна выборка открытого кода, которому достаточно компилироваться
+    против WinForms (открытый вопрос ниже).
+    **Найдено и исправлено — типы не на своём месте.** Они есть, но в другом пространстве имён или вложенные: код,
+    называющий их, не компилируется, а таблицы покрытия считают их отсутствующими. `TextureBrush` был в
+    `System.Drawing.Drawing2D` (в WinForms — `System.Drawing`; `new TextureBrush(image)` не компилировался с `using
+    System.Drawing;`), `FlushIntention` — наоборот, в `System.Drawing` (там — `Drawing2D`), `TableLayoutControlCollection`
+    был вложен в `TableLayoutPanel` (там — тип верхнего уровня; из-за этого `TableLayoutPanel.Controls` стоял первым в
+    рейтинге: 6 репозиториев, 197 обращений — компилировались, пока тип не называли явно), у `ImageList.ImageCollection`
+    был выдуманный вложенный `StringCollection` (в WinForms `Keys` — `System.Collections.Specialized.StringCollection`,
+    копия ключей с `""` у картинки без ключа). Класс ошибок закрыт тестом
+    `EveryTypeNamedLikeAWinFormsTypeIsWhereWinFormsDeclaresIt`: публичный тип NetForms с именем типа WinForms лежит там же,
+    где в WinForms. Фасады перегенерированы (`--forwards`, `--forwards-winforms`). ApiDiff: **664 полных, 163 частичных,
+    427 нет; 1718 членов** (было 662/162/430, 1712: `TextureBrush` стал частичным — нет перегрузок с `RectangleF`/
+    `ImageAttributes` и `…Transform(…, MatrixOrder)`).
+    Заодно: расширение в Marketplace владелец выкладывает **вручную** (заказчик, 2026-09-24) — пропуск публикации в
+    `vscode-publish` без секретов ожидаем.
+
+**Состояние тестов на конец сессии (решение 146, 2026-09-24, Linux):** .NET — **415/415** (+13: `ApiUsageTests`,
+`ImageKeysAreACopyInTheBclStringCollection`); оракулы WinForms — в CI на Windows.
+
 ---
 
 # План Ф5 — визуальный дизайнер
@@ -2077,20 +2123,20 @@ Windows и Linux CI; процент собравшихся без ручной �
 
 Промт для запуска (скопировать в Claude Code в этой папке):
 
-> Прочитай `CLAUDE.md`, в `docs/PLAN.md` — раздел «С чего начать следующую сессию» и решения 127–145. Работай сразу
-> в `main` (разрешено заказчиком). Пункт 1 сделан и выпущен в `0.1.0-preview.2` (решения 139–143), исправление
-> инспектора дизайнера — в `0.1.0-preview.3` (решения 144–145); начни с проверки, что выпуск дошёл (GitHub Release
-> `v0.1.0-preview.3`, расширение `0.1.2`), затем пункт 2.
+> Прочитай `CLAUDE.md`, в `docs/PLAN.md` — раздел «С чего начать следующую сессию» и решения 127–146. Работай сразу
+> в `main` (разрешено заказчиком). Пункты 1–2 сделаны (решения 139–146); дальше пункт 3 — по списку «What comes next»
+> в `docs/compatibility.md` § 8 (он же `docs/api/usage.md`).
 > Каждое изменение — тест, сценарий оракула, `docs/compatibility.md` (англ. и рус.), `NetForms.ApiDiff --markdown
-> docs/api`; пуш — после зелёных `dotnet test NetForms.slnx` и `designer: npm test`. Решения, которых нет в плане,
-> записывай в журнал (со 146).
+> docs/api` и `--usage <клоны корпуса> --out docs/api/usage.md`; пуш — после зелёных `dotnet test NetForms.slnx` и
+> `designer: npm test`. Решения, которых нет в плане, записывай в журнал (со 147).
 
-**Состояние на 2026-09-24.** Выпускается `0.1.0-preview.3` (решение 145): инспектор дизайнера не сбрасывается при правке
+**Состояние на 2026-09-24.** В `main` после выпуска — решение 146 (порядок работ по использованию, четыре типа
+перенесены на свои места); не выпущено. Выпущен `0.1.0-preview.3` (решение 145): инспектор дизайнера не сбрасывается при правке
 свойства. До него — `0.1.0-preview.2` (решение 143): привязка данных WinForms, правка в `DataGridView`,
 кнопка «+» обработчика в дизайнере. До него вышел `0.1.0-preview.1` (решение 138): семь пакетов на nuget.org, GitHub Release с тегом,
 сайт <https://go-forms.github.io/.NetForms/>. Путь пользователя проверен с чистого кэша: шаблоны → проект → сборка из
-пакетов, `netforms-convert --apply` → сборка. Расширение собрано (шесть платформенных `.vsix` + универсальный), в
-Marketplace **не опубликовано**: нет `VSCE_PAT`. CI и сайт зелёные.
+пакетов, `netforms-convert --apply` → сборка. Расширение собирается (шесть платформенных `.vsix` + универсальный) и
+лежит в GitHub Release; в Marketplace его выкладывает владелец вручную. CI и сайт зелёные.
 
 Порядок работ:
 
@@ -2109,27 +2155,24 @@ Marketplace **не опубликовано**: нет `VSCE_PAT`. CI и сайт
    3. **Редактирование в `DataGridView`:** `EditingControl`, `EditingControlShowing`, `CellValidating`/`CellValidated`,
       `CellParsing`, `CurrentCellDirtyStateChanged`, `IDataGridViewEditingControl` (приёмка — колонка-календарь из
       документации Microsoft «How to: Host Controls in DataGridView Cells»), затем `VirtualMode`.
-2. **Ранжировать недостающее по востребованности** (заказчик спрашивал «что переносить в первую очередь» —
-   ответ не дан): частота использования каждого недостающего типа и члена по корпусу `tests/corpus` плюс выборке
-   популярных открытых WinForms-проектов (новый режим ApiDiff, например `--usage <каталог>`: веса по исходникам). Результат — таблица в
-   `docs/compatibility.md` («что дальше») и порядок следующих работ.
-3. **Корпус Ф6.К** — оставшиеся провалы по списку «Открытые вопросы Ф6»: печать (`PrintDocument`,
-   `PrintPreviewDialog`), `Binding` (tetris-oop), `GetStockIcon`/`Icon`, автодополнение в `TextBox`/`ComboBox`.
+2. ~~**Ранжировать недостающее по востребованности**~~ — **сделано по корпусу 2026-09-24** (решение 146):
+   `ApiDiff --usage`, `docs/api/usage.md`, `compatibility.md` § 8. Осталось: выборка популярных открытых WinForms-проектов
+   (клонировать в ту же папку, что корпус, — собираться с NetForms им не нужно), чтобы упорядочить остальные ~430 типов.
+3. **Корпус Ф6.К** — по § 8 `compatibility.md`: печать (`PrintDocument`, `PrintPageEventArgs`, `PrintDialog`, затем
+   `PrintPreviewDialog`/`PageSetupDialog`; MDBEditor, с ним `ImageFormat.Icon/Tiff/Wmf`, `OpenFileDialog.SafeFileName`,
+   `TabPages.Remove`), `ImageList.Images.Add(string, Icon)` (GetStockIcon), `LinkLabel.OverrideCursor` (xrails-login-ui, с
+   ним `Font(FontFamily, float, FontStyle, GraphicsUnit, byte)`); вне сканера — `Microsoft.VisualBasic.Devices`
+   (minesweeper), ссылка NLog, которую не переносит конвертер (NLogUtility); автодополнение в `TextBox`/`ComboBox`.
 4. **Ф6 — полировка:** запись `.resx` дизайнером, DPI/AutoScale (per-monitor), темы и тёмная тема (+ `Edit Theme` в
    расширении), доступность (automation peers Avalonia), drag-and-drop, AOT/single-file. Дизайнер: свойства-
    расширители в панели свойств (`IExtenderProviderService`).
 5. **Выпуск и инфраструктура.**
-   - Владелец добавляет `VSCE_PAT` (действует до 30.11.2026), по желанию `OVSX_PAT` → *Actions → Release → Run
-     workflow* с *publish*. Проверить: задача `vscode-publish` прошла, расширение видно в Marketplace, VS Code ставит
-     сборку своей платформы.
-   - **До 1.12.2026** Marketplace перестанет принимать `VSCE_PAT`. Варианты: подписка Azure + managed identity
-     (`docs/RELEASING.md`, вариант B; у заказчика подписки сейчас нет) или `vsce publish --oidc`, если Marketplace
-     включит Trusted Publishing (следить за microsoft/vsmarketplace#1422), — тогда добавить этот путь в `release.yml`.
-     App registration не подходит (Marketplace отклоняет, microsoft/vscode-vsce#976).
+   - Расширение в Marketplace владелец выкладывает вручную (`.vsix` из GitHub Release); автоматическая публикация
+     (`VSCE_PAT` до 30.11.2026, managed identity, `--oidc` — `docs/RELEASING.md`) остаётся на случай, если он передумает.
    - Зарезервировать префикс `NetForms.` на nuget.org (заявка владельца).
-   - Следующий выпуск `0.1.0-preview.2`: версия в `Directory.Build.props`, `templates/netforms-app/NetFormsApp1.csproj`,
-     `designer/package.json` (`netformsVersion`), `CHANGELOG.md`, `designer/CHANGELOG.md`, ApiDiff и цифры покрытия;
-     пуш в `main` выпускает сам.
+   - Следующий выпуск (`0.1.0-preview.4`): версия в `Directory.Build.props`, `templates/netforms-app/NetFormsApp1.csproj`,
+     `designer/package.json` (`netformsVersion`), `CHANGELOG.md` (раздел «Unreleased»), `designer/CHANGELOG.md`, ApiDiff
+     и цифры покрытия; пуш в `main` выпускает сам.
 6. **Решения заказчика — без ответа не делать:** public signing фасадов открытым ключом Microsoft (решение 136),
    чтобы компилировались сторонние пакеты контролов (ZedGraph, OxyPlot, ScottPlot, FastColoredTextBox,
    ObjectListView); для DockPanelSuite ещё и снятие `FrameworkReference` WindowsDesktop.

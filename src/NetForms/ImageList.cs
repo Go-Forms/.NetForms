@@ -192,7 +192,16 @@ public sealed class ImageList : Component
             }
         }
 
-        public StringCollection Keys => new StringCollection(_keys);
+        /// <summary>A copy of the keys, <c>""</c> for an image without one - as WinForms hands them out.</summary>
+        public System.Collections.Specialized.StringCollection Keys
+        {
+            get
+            {
+                var keys = new System.Collections.Specialized.StringCollection();
+                foreach (var key in _keys) keys.Add(key ?? string.Empty);
+                return keys;
+            }
+        }
 
         internal Image? GetImage(int index) => index >= 0 && index < _images.Count ? _images[index] : null;
 
@@ -310,31 +319,5 @@ public sealed class ImageList : Component
         void IList.Insert(int index, object? value) => throw new NotSupportedException();
         void IList.Remove(object? value) { if (value is Image i) Remove(i); }
         void ICollection.CopyTo(Array array, int index) => ((ICollection)_images).CopyTo(array, index);
-
-        /// <summary>The read-only view of the image keys that WinForms hands out from Images.Keys.</summary>
-        public sealed class StringCollection : IList
-        {
-            private readonly List<string> _items;
-
-            internal StringCollection(List<string> items) => _items = items;
-
-            public int Count => _items.Count;
-            public bool IsReadOnly => true;
-            public bool IsFixedSize => true;
-            public bool IsSynchronized => false;
-            public object SyncRoot => this;
-
-            public object? this[int index] { get => _items[index]; set => throw new NotSupportedException(); }
-
-            public bool Contains(object? value) => value is string s && _items.Contains(s);
-            public int IndexOf(object? value) => value is string s ? _items.IndexOf(s) : -1;
-            public IEnumerator GetEnumerator() => _items.GetEnumerator();
-            public void CopyTo(Array array, int index) => ((ICollection)_items).CopyTo(array, index);
-            public int Add(object? value) => throw new NotSupportedException();
-            public void Clear() => throw new NotSupportedException();
-            public void Insert(int index, object? value) => throw new NotSupportedException();
-            public void Remove(object? value) => throw new NotSupportedException();
-            public void RemoveAt(int index) => throw new NotSupportedException();
-        }
     }
 }

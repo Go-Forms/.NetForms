@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- **System.Drawing:** `TextureBrush` is in `System.Drawing` and `FlushIntention` in `System.Drawing.Drawing2D`, as in
+  WinForms (they were the other way round, so `new TextureBrush(image)` did not compile with `using System.Drawing;`).
+- **TableLayoutPanel:** `TableLayoutControlCollection` is a type of `System.Windows.Forms`, as in WinForms (it was nested
+  in the panel). `ImageList.Images.Keys` returns `System.Collections.Specialized.StringCollection`, a copy of the keys.
+- **Documentation:** [Missing API by use](docs/api/usage.md) — which of the API NetForms lacks real projects use — and
+  "What comes next" in the compatibility guide.
+
 ## 0.1.0-preview.3 — the designer keeps its place
 
 - **Designer:** editing a property no longer resets the property grid — the selection, the scroll position, an open

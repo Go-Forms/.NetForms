@@ -605,27 +605,6 @@ public class TableLayoutPanel : Panel, IExtenderProvider
         }
     }
 
-    public class TableLayoutControlCollection : ControlCollection
-    {
-        private readonly TableLayoutPanel _owner;
-
-        public TableLayoutControlCollection(TableLayoutPanel container) : base(container) => _owner = container;
-
-        public TableLayoutPanel Container => _owner;
-
-        public virtual void Add(Control control, int column, int row)
-        {
-            base.Add(control);
-            _owner.SetCellPosition(control, new TableLayoutPanelCellPosition(column, row));
-        }
-
-        public override void Remove(Control? value)
-        {
-            base.Remove(value);
-            if (value != null) _owner.ForgetControl(value);
-        }
-    }
-
     // Members WinForms hides or re-defaults on this control; TypeDescriptor reads them
     // off the derived type, so they have to be re-declared here to be advertised differently.
 

@@ -19,6 +19,7 @@
     <ProjectReference Include="../../src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
     <ProjectReference Include="../../src/NetForms.Design/NetForms.Design.csproj" />
     <ProjectReference Include="../../tools/NetForms.Convert/NetForms.Convert.csproj" />
+    <ProjectReference Include="../../tools/NetForms.ApiDiff/NetForms.ApiDiff.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../Shared/CompatScenarios.cs" />

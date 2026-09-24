@@ -165,6 +165,12 @@ namespace System.Drawing.Drawing2D
         Round = 2,
         MiterClipped = 3,
     }
+
+    public enum FlushIntention
+    {
+        Flush = 0,
+        Sync = 1,
+    }
 }
 
 namespace System.Drawing.Text

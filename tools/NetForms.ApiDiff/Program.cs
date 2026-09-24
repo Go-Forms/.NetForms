@@ -4,13 +4,17 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using NetForms.ApiDiff;
 
 // dotnet NetForms.ApiDiff.dll [--types] [--type <FullName>] [--namespace <prefix>] [--ref <dir>] [--markdown <dir>]
+//                             [--usage <dir> [--out <file.md>]]
 //
 // Lists what the real WinForms (System.Windows.Forms + System.Drawing.Common, from the reference pack)
 // has and NetForms has not: missing types, then per type the missing public/protected members, as
 // C#-ish signatures. --types: only the missing types. --type: one type's missing members.
 // --markdown: the coverage reference docs/api (one page per namespace, links to the Microsoft docs).
+// --usage: which missing types and members the code of the repositories under <dir> uses (the corpus clones,
+// one folder per repository), ranked by the number of repositories; --out writes it as docs/api/usage.md.
 var refDir = ArgValue("--ref") ?? typeof(Program).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
     .First(a => a.Key == "WindowsDesktopRef").Value!;
 if (!Directory.Exists(refDir)) { Console.Error.WriteLine($"No reference pack at {refDir} (restore the project, or pass --ref)."); return 2; }
@@ -82,6 +86,41 @@ if (ArgValue("--show") is { } show)
     return 0;
 }
 
+if (ArgValue("--usage") is { } usageDir)
+{
+    // Decision 146: the missing API ranked by how many real projects use it (Usage.cs).
+    // A member WinForms declares on the type: missing as the coverage tables count it. A member it inherits (asked
+    // when the declaring base is missing in NetForms): missing unless our type has it, declared or inherited.
+    var memberKeys = new Dictionary<string, (HashSet<string> Declared, HashSet<string> Missing, HashSet<string> Ours)>(StringComparer.Ordinal);
+    bool IsMissing(string type, string? member)
+    {
+        if (!realTypes.TryGetValue(type, out var real)) return false;
+        if (!ourTypes.TryGetValue(type, out var mine)) return member == null;
+        if (member == null) return false;
+        if (!memberKeys.TryGetValue(type, out var keys))
+        {
+            var have = new HashSet<string>(Members(mine, inherited: true).Select(Signature));
+            memberKeys[type] = keys = (
+                Members(real, inherited: false).Select(ApiUsage.Key).ToHashSet(StringComparer.Ordinal),
+                Members(real, inherited: false).Where(m => !have.Contains(Signature(m))).Select(ApiUsage.Key).ToHashSet(StringComparer.Ordinal),
+                Members(mine, inherited: true).Select(ApiUsage.Key).ToHashSet(StringComparer.Ordinal));
+        }
+        return keys.Declared.Contains(member) ? keys.Missing.Contains(member) : !keys.Ours.Contains(member);
+    }
+    var usage = ApiUsage.Scan(usageDir, refDir, IsMissing);
+    var summary = $"{usage.Repositories.Count} repositories, {usage.Projects} projects, {usage.References} references to WinForms API; " +
+        $"{usage.Rows.Count} missing types and members used";
+    if (ArgValue("--out") is { } outFile)
+    {
+        File.WriteAllText(outFile, ApiUsage.Markdown(usage, (t, _) => ourTypes.ContainsKey(t) ? "🟡 partial" : "❌ missing"));
+        Console.WriteLine($"{summary} -> {outFile}");
+        return 0;
+    }
+    foreach (var r in usage.Rows) Console.WriteLine($"{r.Repositories.Count,3} {r.Uses,5}  {r.Display}  [{string.Join(", ", r.Repositories)}]");
+    Console.WriteLine(summary);
+    return 0;
+}
+
 if (ArgValue("--markdown") is { } mdDir)
 {
     // docs/api: the coverage reference - per namespace, every type of the real WinForms with its status and
@@ -101,6 +140,7 @@ if (ArgValue("--markdown") is { } mdDir)
         "[the compatibility guide](../compatibility.md) for what is declared but behaves differently.",
         "",
         "Every type links to its Microsoft documentation, which is the documentation of NetForms too.",
+        "Which of the missing API real projects use, and how widely: [Missing API by use](usage.md).",
         "",
         "| Namespace | Types | Complete | Partial | Missing | Missing members |",
         "|---|---:|---:|---:|---:|---:|",

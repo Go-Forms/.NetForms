@@ -10,6 +10,8 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Reflection.MetadataLoadContext" />
+    <!-- The usage mode: the corpus is compiled against the real WinForms to bind every API reference (Usage.cs). -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <!-- The reference pack is only downloaded (it is not a dependency): its path is baked in below. -->
     <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[10.0.0]" />
   </ItemGroup>

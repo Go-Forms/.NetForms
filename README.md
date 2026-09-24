@@ -70,9 +70,9 @@ own pages (the same Markdown is in [docs/](docs/README.md)):
 
 Preview. Measured, not guessed:
 
-- **API:** 662 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
-  162 partial, 430 missing ([coverage](docs/api/README.md)).
-- **Behaviour:** 402/402 tests; layout, event order, text metrics and designer output diffed against the real
+- **API:** 664 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
+  163 partial, 427 missing ([coverage](docs/api/README.md)).
+- **Behaviour:** 415/415 tests; layout, event order, text metrics and designer output diffed against the real
   WinForms on Windows and rendered offscreen on both OSes.
 - **Real projects:** 7/7 customer .NET Framework projects and 28/45 open-source WinForms projects convert
   and build without manual edits.

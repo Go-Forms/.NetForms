@@ -220,4 +220,18 @@ public class CompatSurfaceTests
         form.Close();
         Assert.True(exited);
     }
+
+    /// <summary>Decision 146: <c>Images.Keys</c> is the BCL <c>StringCollection</c>, a copy with "" for an image without a key.</summary>
+    [Fact]
+    public void ImageKeysAreACopyInTheBclStringCollection()
+    {
+        var list = new ImageList();
+        list.Images.Add("open", new Bitmap(16, 16));
+        list.Images.Add(new Bitmap(16, 16));
+        System.Collections.Specialized.StringCollection keys = list.Images.Keys;
+        Assert.Equal(new[] { "open", "" }, keys.Cast<string>());
+        keys.Add("more");
+        Assert.Equal(2, list.Images.Keys.Count);
+        Assert.Equal(typeof(System.Drawing.Drawing2D.FlushIntention), typeof(Graphics).GetMethod(nameof(Graphics.Flush), new[] { typeof(System.Drawing.Drawing2D.FlushIntention) })!.GetParameters()[0].ParameterType);
+    }
 }

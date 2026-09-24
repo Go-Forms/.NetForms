@@ -10,6 +10,7 @@
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.CoordinateSpace))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.DashStyle))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.FillMode))]
+[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.FlushIntention))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.GraphicsContainer))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.GraphicsPath))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Drawing2D.GraphicsState))]
@@ -68,4 +69,5 @@
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Text.InstalledFontCollection))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Text.PrivateFontCollection))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.Text.TextRenderingHint))]
+[assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.TextureBrush))]
 [assembly: System.Runtime.CompilerServices.TypeForwardedTo(typeof(System.Drawing.ToolboxBitmapAttribute))]

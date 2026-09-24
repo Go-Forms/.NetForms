@@ -13,6 +13,7 @@ This guide covers only what that documentation cannot tell you:
 5. [Windows-only API](#5-windows-only-api) — `Handle`, `WndProc`, P/Invoke, COM.
 6. [Intentional differences](#6-intentional-differences) from WinForms.
 7. [How compatibility is measured](#7-how-compatibility-is-measured).
+8. [What comes next](#8-what-comes-next) — the missing API real code uses, in order.
 
 The member-by-member list — what exists and what is missing for each of the 1254 public types of
 `System.Windows.Forms` and `System.Drawing.Common` — is generated: **[API coverage](api/README.md)**.
@@ -78,8 +79,11 @@ as `*.csproj.winforms.bak`. See [Migrating](migrating.md).
 
 Measured on a corpus of real projects (`tests/corpus/corpus.json`): **7 of 7** of the customer's
 .NET Framework 4.8/4.8.1 projects and **28 of 45** open-source WinForms projects convert and build with no
-manual edit. The rest fail for the reasons in the last rows of the table (8 × BinaryFormatter,
-4 × Windows-only components) or for API NetForms does not have yet (printing, stock icons).
+manual edit. Of the 17 that do not, 6 use `BinaryFormatter` and 4 Windows-only components (WebView2, CefSharp, a
+package that demands the Windows Desktop runtime) — the last rows of the table; 5 need API NetForms does not have
+yet (printing, `ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, Visual Basic's
+`Microsoft.VisualBasic.Devices`); 2 stop on a package (a build task that fails on .NET 10, a package reference the
+converter does not carry over). What gets added next: [§ 8](#8-what-comes-next).
 
 ---
 
@@ -123,8 +127,8 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 |---|---|---|
 | `Panel`, `GroupBox` | ✅ Works · 1 missing each | `AutoScroll`, `AutoSize`, `BorderStyle`. |
 | `FlowLayoutPanel` | ✅ Works · API complete | Layout engine ported from dotnet/winforms, including the `SetFlowBreak` quirk. |
-| `TableLayoutPanel` | ✅ Works · 2 missing | Percent/absolute/auto-size rows and columns, spans. |
-| `SplitContainer` | ✅ Works · 3 missing | |
+| `TableLayoutPanel` | ✅ Works · 1 missing | Percent/absolute/auto-size rows and columns, spans. |
+| `SplitContainer` | ✅ Works · 2 missing | |
 | `TabControl` | ✅ Works · 13 missing | Missing: `ImageList` on tabs, `DeselectTab`, `RightToLeftLayout`. |
 | `Splitter` | ❌ Missing | Use `SplitContainer`. |
 | `UserControl` | ✅ Works · API complete | |
@@ -236,10 +240,29 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **402/402**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **415/415**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
-  regenerates [the tables](api/README.md). Today: **662** of 1254 types complete, **162** partial,
-  **430** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
+  regenerates [the tables](api/README.md). Today: **664** of 1254 types complete, **163** partial,
+  **427** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
 - **Corpus of real projects** (`NETFORMS_CORPUS=1`, CI job `corpus`): converted and built without
   manual edits, with the reason for every failure recorded in `tests/corpus/corpus.json`.
+
+---
+
+## 8. What comes next
+
+What to add first is decided by the code people write, not by the length of the list:
+`NetForms.ApiDiff --usage` compiles every project of the corpus against the real WinForms and counts each reference
+to a type or member NetForms lacks — [Missing API by use](api/usage.md). Of 25,887 references to the WinForms API in
+63 projects (24 repositories), 11 types and members are missing, and each of them stops a build:
+
+| Next | Code that needs it |
+|---|---|
+| Printing: `PrintDocument`, `PrintPageEventArgs`, `PrintDialog` (with them `PrintPreviewDialog`, `PageSetupDialog`) | MDBEditor |
+| `ImageList.Images.Add(string, Icon)` | Surviving-WinForms (GetStockIcon sample) |
+| `LinkLabel.OverrideCursor` — the protected property a derived link label sets | xrails-login-ui (both projects) |
+| `ImageFormat.Icon`/`Tiff`/`Wmf`, `OpenFileDialog.SafeFileName`, `TabControl.TabPages.Remove`, `new Font(FontFamily, float, FontStyle, GraphicsUnit, byte)` | MDBEditor, xrails-login-ui |
+
+The corpus already builds almost entirely, so this list is short. Ranking the other missing types takes a wider
+sample of open-source WinForms code — it only has to compile against the real WinForms, not build with NetForms.

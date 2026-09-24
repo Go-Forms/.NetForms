@@ -866,10 +866,3 @@ public sealed partial class Graphics : IDeviceContext, IDisposable
         GC.SuppressFinalize(this);
     }
 }
-
-
-public enum FlushIntention
-{
-    Flush = 0,
-    Sync = 1,
-}
