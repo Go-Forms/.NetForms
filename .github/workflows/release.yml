@@ -94,9 +94,6 @@ jobs:
 
   vscode:
     runs-on: ubuntu-latest
-    env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
-      OVSX_PAT: ${{ secrets.OVSX_PAT }}
     defaults:
       run:
         working-directory: designer
@@ -125,24 +122,69 @@ jobs:
           name: vscode
           path: designer/*.vsix
 
-      # One extension id, one package per platform: VS Code downloads the one for the machine it runs on. Only
-      # the platform packages go to the Marketplace and Open VSX; the universal netforms-designer-<version>.vsix
-      # (built without --pre-release, every platform's natives) is for installing by hand from GitHub Releases.
+  # One extension id, one package per platform: VS Code downloads the one for the machine it runs on. Only
+  # the platform packages go to the Marketplace and Open VSX; the universal netforms-designer-<version>.vsix
+  # (built without --pre-release, every platform's natives) is for installing by hand from GitHub Releases.
+  #
+  # Marketplace sign-in, whichever is set up (docs/RELEASING.md): a managed identity in Microsoft Entra ID
+  # reached through GitHub OIDC (secrets AZURE_CLIENT_ID, AZURE_TENANT_ID; its federated credential names the
+  # environment "marketplace", which is why this job runs in it), or the Azure DevOps token VSCE_PAT (global
+  # tokens stop working on 2026-12-01). Neither: the step warns and the rest of the release goes on.
+  vscode-publish:
+    if: inputs.publish || startsWith(github.ref, 'refs/tags/v')
+    needs: vscode
+    runs-on: ubuntu-latest
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    defaults:
+      run:
+        working-directory: designer
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+      - uses: actions/download-artifact@v8
+        with:
+          name: vscode
+          path: designer/dist
+
+      - name: Sign in to Microsoft Entra ID
+        if: env.AZURE_CLIENT_ID != ''
+        continue-on-error: true
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          allow-no-subscriptions: true
+
+      # The identity first; VSCE_PAT (which vsce reads itself) when there is none or the Marketplace refuses it.
       - name: Publish to the VS Code Marketplace
-        if: env.PUBLISH == 'true'
         run: |
-          if [ -z "$VSCE_PAT" ]; then echo "::warning::No VSCE_PAT secret: the extension is not published to the Marketplace."; exit 0; fi
-          for f in netforms-designer-{win32,linux,darwin}-*.vsix; do npx vsce publish --packagePath "$f" --skip-duplicate; done
+          publish() { for f in dist/netforms-designer-{win32,linux,darwin}-*.vsix; do npx vsce publish --packagePath "$f" --skip-duplicate "$@" || return 1; done; }
+          if [ -n "$AZURE_CLIENT_ID" ]; then
+            if publish --azure-credential; then exit 0; fi
+            echo "::warning::The Marketplace refused the Entra ID identity: it must be a member of the publisher netforms (docs/RELEASING.md)."
+          fi
+          if [ -n "$VSCE_PAT" ]; then publish; exit $?; fi
+          if [ -n "$AZURE_CLIENT_ID" ]; then exit 1; fi
+          echo "::warning::Neither AZURE_CLIENT_ID nor VSCE_PAT: the extension is not published to the Marketplace (docs/RELEASING.md)."
 
       - name: Publish to Open VSX
-        if: env.PUBLISH == 'true'
         run: |
           if [ -z "$OVSX_PAT" ]; then echo "No OVSX_PAT secret: Open VSX skipped."; exit 0; fi
-          for f in netforms-designer-{win32,linux,darwin}-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT" --skip-duplicate; done
+          for f in dist/netforms-designer-{win32,linux,darwin}-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT" --skip-duplicate; done
 
   github-release:
     if: inputs.publish || startsWith(github.ref, 'refs/tags/v')
-    needs: [nuget, vscode]
+    needs: [nuget, vscode, vscode-publish]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

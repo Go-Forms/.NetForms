@@ -76,12 +76,44 @@ account@nuget.org): чужие пакеты с этим префиксом не 
 
 ### VS Code Marketplace
 
-1. Создайте publisher `netforms` на <https://marketplace.visualstudio.com/manage> (id должен совпадать с
-   `"publisher"` в `designer/package.json`; если занят — поменяйте там).
-2. Personal Access Token в Azure DevOps: *Organization: All accessible organizations*, scope
-   *Marketplace → Manage*. Секрет `VSCE_PAT`.
+Публикует задача `vscode-publish` в `release.yml`: шесть платформенных `.vsix` под одним id
+`netforms.netforms-designer`, в окружении GitHub `marketplace` (оно создаётся само при первом запуске).
 
-Без секрета шаг публикации в Marketplace пропускается с предупреждением, остальной выпуск идёт.
+1. **Publisher.** <https://marketplace.visualstudio.com/manage> → войти учётной записью Microsoft → *Create
+   publisher*, ID `netforms` (должен совпадать с `"publisher"` в `designer/package.json`; если занят — поменяйте
+   там и в документации: `netforms.netforms-designer`).
+2. **Вход для публикации** — один из двух способов (заданы оба — сначала B, при отказе A).
+
+**A. Токен `VSCE_PAT` — пять минут, но только до 30 ноября 2026.** 1 декабря 2026 Microsoft отключает
+глобальные токены Azure DevOps, а Marketplace принимает только их.
+
+1. <https://dev.azure.com> той же учётной записью Microsoft (попросит создать организацию — любое имя) →
+   *User settings → Personal access tokens → New Token*: **Organization: All accessible organizations** (с одной
+   организацией будет 403), *Scopes: Custom defined → Show all scopes →* **Marketplace: Manage**, срок — до
+   30.11.2026.
+2. GitHub: *Settings → Secrets and variables → Actions → Secrets* → `VSCE_PAT`.
+
+**B. Managed identity в Microsoft Entra ID — без хранимого ключа, и после 1 декабря 2026.** Нужна подписка
+Azure (сама identity бесплатна). Вход через GitHub OIDC, как Trusted Publishing у nuget.org; `vsce publish
+--oidc` Marketplace пока не поддерживает.
+
+1. Azure Portal → *Managed Identities → Create*: любая resource group, регион и имя (например
+   `netforms-marketplace`). В *Properties* — **Client ID** и **Tenant ID**.
+2. На identity: *Settings → Federated credentials → Add credential*, сценарий *GitHub Actions deploying Azure
+   resources*: Organization `Go-Forms`, Repository `.NetForms` (регистр важен), Entity type **Environment**,
+   Environment name `marketplace`.
+3. GitHub: секреты `AZURE_CLIENT_ID` и `AZURE_TENANT_ID`.
+4. *Actions → Marketplace identity → Run workflow*: он входит как identity и печатает её id Marketplace
+   (профиль Azure DevOps, не Object ID из Entra). Marketplace → publisher `netforms` → *Members → Add* → этот id,
+   роль **Contributor**.
+
+Именно managed identity: с app registration вход проходит, а публикация, по опыту других проектов, падает с
+`InvalidAccessException`.
+
+Без обоих способов шаг публикации в Marketplace пропускается с предупреждением, остальной выпуск идёт.
+
+**Расширение для уже вышедшей версии** (секреты добавлены после выпуска): *Actions → Release → Run workflow* с
+галочкой *publish*. NuGet-пакеты и GitHub Release уже есть — они пропускаются, уйдёт только расширение.
 
 ### Open VSX (VSCodium, Cursor и др.) — по желанию
 
