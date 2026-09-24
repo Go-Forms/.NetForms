@@ -1,0 +1,13 @@
+{
+	"name": "netforms-site",
+	"private": true,
+	"description": "Builds the NetForms website: the static pages of site/ plus docs/ rendered into them (build.mjs).",
+	"type": "module",
+	"scripts": {
+		"build": "node build.mjs",
+		"serve": "npx --yes http-server ../_site -c-1"
+	},
+	"devDependencies": {
+		"marked": "18.0.14"
+	}
+}

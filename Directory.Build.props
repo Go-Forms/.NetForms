@@ -25,7 +25,7 @@
     <IsPackable>false</IsPackable>
     <Copyright>Copyright (c) 2026 NetForms contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/Go-Forms/.NetForms</PackageProjectUrl>
+    <PackageProjectUrl>https://go-forms.github.io/.NetForms/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Go-Forms/.NetForms</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageIcon>icon.png</PackageIcon>

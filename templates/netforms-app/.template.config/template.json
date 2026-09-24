@@ -4,23 +4,10 @@
   "classifications": [ "Common", "WinForms", "NetForms", "Desktop", "Linux" ],
   "identity": "NetForms.App.CSharp",
   "name": "NetForms Application",
-  "description": "A Windows Forms application that runs on Windows and Linux (NetForms): Program.cs, MainForm.cs and MainForm.Designer.cs, as Visual Studio creates them.",
+  "description": "A Windows Forms application that runs on Windows and Linux (NetForms): Program.cs, MainForm.cs and MainForm.Designer.cs, as Visual Studio creates them, referencing the NetForms package from NuGet.",
   "shortName": "netforms",
   "sourceName": "NetFormsApp1",
   "preferNameDirectory": true,
   "tags": { "language": "C#", "type": "project" },
-  "symbols": {
-    "FrameworkPath": {
-      "type": "parameter",
-      "datatype": "string",
-      "defaultValue": "",
-      "replaces": "NETFORMS_FRAMEWORK_PATH",
-      "description": "A NetForms checkout to reference instead of the NetForms package (its src/NetForms/NetForms.csproj)."
-    },
-    "HasFrameworkPath": {
-      "type": "computed",
-      "value": "(FrameworkPath != \"\")"
-    }
-  },
   "primaryOutputs": [ { "path": "NetFormsApp1.csproj" } ]
 }

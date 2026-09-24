@@ -57,15 +57,20 @@ dotnet new netforms -n MyApp
 
 - .NET 10 SDK. The target framework is `net10.0` (not `net10.0-windows`).
 - Windows 10+ (x64, arm64) or Linux with X11 or XWayland (x64, arm64). macOS is not a goal of this release.
-- .NET Framework and `packages.config` projects must be moved to the SDK-style format first
-  (`upgrade-assistant`); the converter tells you so.
+- .NET Framework projects (old `.csproj` format, `packages.config`) are rewritten to SDK style by
+  `netforms-convert` itself.
+- Third-party WinForms control packages from NuGet do not work yet (they compile against the real,
+  strong-named `System.Windows.Forms`).
 
 ## Documentation
+
+Website and documentation (English and Russian): <https://go-forms.github.io/.NetForms/>. Installing on
+Windows and each Linux family: <https://go-forms.github.io/.NetForms/docs/install.html>.
 
 The API is the WinForms API, documented by Microsoft at
 <https://learn.microsoft.com/dotnet/desktop/winforms/> and
 <https://learn.microsoft.com/dotnet/api/system.windows.forms>.
 What NetForms implements, what it does not yet, and where it differs on purpose:
-<https://github.com/Go-Forms/.NetForms/tree/main/docs>.
+<https://go-forms.github.io/.NetForms/docs/compatibility.html>.
 
 MIT licensed. Source, issues and the visual designer for VS Code: <https://github.com/Go-Forms/.NetForms>.

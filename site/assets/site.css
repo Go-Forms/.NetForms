@@ -271,3 +271,59 @@ footer a { color: var(--ink-2); }
   .stat + .stat { border-left: 0; border-top: 1px solid var(--rule); }
   .grid-mini th:nth-child(3), .grid-mini td:nth-child(3) { display: none; }
 }
+
+/* ---- documentation pages (build.mjs) ----------------------------------- */
+.docs { display: grid; grid-template-columns: 220px minmax(0, 1fr) 200px; gap: 32px; align-items: start; padding-block: 12px 48px; }
+.docs-nav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); font-size: var(--step--1); }
+.docs-nav summary { font: 600 var(--step--1)/1.2 var(--mono); letter-spacing: .04em; color: var(--ink-3); cursor: pointer; list-style: none; padding-block: 6px; }
+.docs-nav summary::-webkit-details-marker { display: none; }
+.docs-nav ul, .toc ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.docs-nav a { display: block; padding: 6px 10px; border-radius: 4px; color: var(--ink-2); text-decoration: none; border-left: 2px solid transparent; }
+.docs-nav a:hover { color: var(--accent); background: var(--paper); }
+.docs-nav a[aria-current="page"] { color: var(--ink); background: var(--paper); border-left-color: var(--accent); font-weight: 600; }
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); font-size: .8rem; border-left: 1px solid var(--rule); padding-left: 14px; }
+.toc a { color: var(--ink-3); text-decoration: none; display: block; padding: 3px 0; }
+.toc a:hover { color: var(--accent); }
+
+.prose { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: clamp(18px, 3vw, 40px); min-width: 0; }
+.prose > * + * { margin-top: 1em; }
+.prose h1 { font-size: var(--step-3); margin-bottom: .4em; }
+.prose h2 { font-size: var(--step-2); margin-top: 1.8em; padding-top: .6em; border-top: 1px solid var(--rule); }
+.prose h3 { font-size: var(--step-1); margin-top: 1.4em; }
+.prose h1, .prose h2, .prose h3, .prose h4 { position: relative; scroll-margin-top: 16px; }
+.prose .anchor { position: absolute; left: -1em; width: 1em; color: var(--ink-3); text-decoration: none; opacity: 0; font-weight: 400; }
+.prose h1:hover .anchor, .prose h2:hover .anchor, .prose h3:hover .anchor, .prose .anchor:focus { opacity: 1; }
+.prose p, .prose li { max-width: 78ch; }
+.prose ul, .prose ol { padding-left: 1.4em; }
+.prose li + li { margin-top: .35em; }
+.prose hr { border: 0; border-top: 1px solid var(--rule); margin-block: 2em; }
+.prose hr + h2 { border-top: 0; padding-top: 0; margin-top: 0; }
+.prose img { border: 1px solid var(--rule); border-radius: 6px; }
+.prose blockquote { margin-inline: 0; padding: 8px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 4px 4px 0; }
+.prose pre.code {
+  margin: 0; background: var(--term-bg); color: var(--term-ink); border-radius: 6px; padding: 14px 16px;
+  font: 400 13px/1.55 var(--mono); overflow-x: auto; white-space: pre;
+}
+.prose pre.code code { background: none; color: inherit; padding: 0; font-size: inherit; }
+.prose .table-scroll { overflow-x: auto; }
+.prose table { border-collapse: collapse; width: 100%; font-size: var(--step--1); }
+.prose th, .prose td { border: 1px solid var(--rule); padding: 7px 10px; text-align: left; vertical-align: top; }
+.prose th { background: var(--paper-2); font-weight: 700; }
+.prose tr:nth-child(even) td { background: color-mix(in srgb, var(--paper-2) 50%, transparent); }
+.prose td code, .prose th code { overflow-wrap: anywhere; }
+.prose .edit { margin-top: 2.5em; font-size: var(--step--1); }
+.docs-page footer { margin-top: 0; }
+.docs-page .wrap { max-width: 1360px; }
+
+@media (max-width: 1100px) {
+  .docs { grid-template-columns: 200px minmax(0, 1fr); }
+  .toc { display: none; }
+}
+@media (max-width: 760px) {
+  .docs { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .docs-nav { position: static; }
+  .docs-nav details:not([open]) ul { display: none; }
+  .prose .anchor { display: none; }
+}
+.prose p, .prose li, .prose h1, .prose h2, .prose h3, .prose h4 { overflow-wrap: anywhere; }
+.prose td, .prose th { overflow-wrap: break-word; }

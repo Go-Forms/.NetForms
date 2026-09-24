@@ -11,3 +11,5 @@ render-out/
 # session logs exported from Claude Code
 /*local-command-caveat*.txt
 artifacts/
+_site/
+site/node_modules/
