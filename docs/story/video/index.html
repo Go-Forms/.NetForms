@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Злой csproj</title>
+<link rel="stylesheet" href="node_modules/@fontsource/onest/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/onest/500.css">
+<link rel="stylesheet" href="node_modules/@fontsource/onest/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/onest/800.css">
+<link rel="stylesheet" href="node_modules/@fontsource/unbounded/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/unbounded/900.css">
+<link rel="stylesheet" href="node_modules/@fontsource/jetbrains-mono/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/jetbrains-mono/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/jetbrains-mono/800.css">
+<link rel="stylesheet" href="node_modules/@fontsource/caveat/600.css">
+<link rel="stylesheet" href="node_modules/@fontsource/caveat/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/pt-serif/400.css">
+<link rel="stylesheet" href="node_modules/@fontsource/pt-serif/700.css">
+<link rel="stylesheet" href="node_modules/@fontsource/pt-serif/400-italic.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="stage">
+  <div id="shake">
+    <svg id="world" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice"></svg>
+    <div id="screen" class="layer"></div>
+    <div id="win" class="layer">
+      <div class="wnd" id="wMain"><div class="wbar"><span class="wtitle"></span><span class="wclose">×</span></div><img class="wclient" alt=""></div>
+      <div class="wnd" id="wDlg"><div class="wbar"><span class="wtitle"></span><span class="wclose">×</span></div><img class="wclient" alt=""></div>
+    </div>
+    <div id="fg" class="layer"></div>
+    <div id="cursor"><svg viewBox="0 0 24 36" width="30" height="45"><path d="M2,2 L2,28 L8.5,22 L13,33 L17.5,31 L13,20.5 L22,20.5 Z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/></svg></div>
+    <div id="cam"></div>
+    <div id="toast" class="layer"></div>
+  </div>
+  <div id="overlay" class="layer"></div>
+  <div id="subs"></div>
+  <div id="fade"></div>
+</div>
+<div id="fontwarm" aria-hidden="true">
+  <span style="font-family:Onest;font-weight:400">Аа Aa</span><span style="font-family:Onest;font-weight:500">Аа</span>
+  <span style="font-family:Onest;font-weight:700">Аа</span><span style="font-family:Onest;font-weight:800">Аа</span>
+  <span style="font-family:Unbounded;font-weight:700">Аа</span><span style="font-family:Unbounded;font-weight:900">Аа Aa</span>
+  <span style="font-family:'JetBrains Mono';font-weight:400">Аа Aa</span><span style="font-family:'JetBrains Mono';font-weight:700">Аа</span>
+  <span style="font-family:'JetBrains Mono';font-weight:800">Aa</span>
+  <span style="font-family:Caveat;font-weight:600">Аа Aa</span><span style="font-family:Caveat;font-weight:700">Аа</span>
+  <span style="font-family:'PT Serif';font-weight:400">Аа</span><span style="font-family:'PT Serif';font-weight:700">Аа</span>
+  <span style="font-family:'PT Serif';font-style:italic">Аа</span><span style="font-family:'Noto Color Emoji'">☕</span>
+</div>
+<script src="build/timeline.js"></script>
+<script src="lib.js"></script>
+<script src="ui.js"></script>
+<script src="scenes.js"></script>
+<script src="engine.js"></script>
+</body>
+</html>

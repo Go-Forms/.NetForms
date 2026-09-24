@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- «Склад» из ролика «Злой csproj»: обычное WinForms-приложение на NetForms.
+       «dotnet run» открывает окно; с аргументами «film ПАПКА» снимает кадры для ролика без окна (Film.cs). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Sklad</RootNamespace>
+    <AssemblyName>Sklad</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../../src/NetForms/NetForms.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="System.Drawing" />
+    <Using Include="System.Windows.Forms" />
+  </ItemGroup>
+</Project>

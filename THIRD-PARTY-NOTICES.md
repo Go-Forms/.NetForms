@@ -69,3 +69,16 @@ It is the reference that NetForms reads the comctl32 image list format correctly
 `tests/NetForms.Tests/Fonts/DejaVuSans*.ttf` — Bitstream Vera / DejaVu licence, see
 `tests/NetForms.Tests/Fonts/LICENSE-DejaVu.txt`. Used only by the test suite, to make golden renders
 reproducible; not shipped with the library.
+
+---
+
+## The short film `docs/story/angry-csproj.mp4`
+
+Not part of the library. The video carries material produced with the tools below; everything else in it
+(drawings, music, sound effects, the «Склад» app) comes from this repository — see `docs/story/video/README.md`.
+
+- **Voices** — synthesized with [RHVoice](https://github.com/RHVoice/RHVoice): `aleksandr-hq` — CC BY-SA 4.0,
+  Copyright Artem Plaksin, Sergey Parshakov, Beka Gozalishvili, Aleksander Karlov; `aleksandr`, `irina`, `elena` —
+  LGPL-2.1+, Copyright Olga Yakovleva (as packaged in Ubuntu's `rhvoice-russian`).
+- **Fonts** rendered into the frames — Onest, Unbounded, JetBrains Mono, Caveat, PT Serif, Noto Sans — SIL Open Font
+  License 1.1. They are installed at build time (npm `@fontsource/*`, `fonts-noto-core`) and not stored in the repository.

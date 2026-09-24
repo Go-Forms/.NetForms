@@ -1,0 +1,122 @@
+/* «Злой csproj»: сцена 1920×1080. Цвета — из палитры сайта NetForms (site/assets/site.css). */
+:root {
+  --ink: #1a1730; --accent: #5b34d6; --accent-2: #9c83ff; --signal: #d63f6e; --ok: #4cc98a;
+  --term-bg: #15131e; --term-ink: #d9d5ea; --term-dim: #8a86a3; --err: #ff6f98;
+  --lesha: #6fc3e8; --marina: #f39bb4; --gena: #a6dca0; --term: #c4b5ff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #000; }
+body { width: 1920px; height: 1080px; overflow: hidden; font-family: Onest, sans-serif; }
+#stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #0f0d17; }
+#shake { position: absolute; inset: 0; }
+#world { position: absolute; inset: 0; width: 1920px; height: 1080px; display: block; }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+#fade { position: absolute; inset: 0; background: #000; opacity: 0; }
+#fontwarm { position: absolute; left: -9999px; top: 0; }
+
+/* ── субтитры ── */
+#subs { position: absolute; left: 0; right: 0; bottom: 54px; display: flex; justify-content: center; }
+.sub { max-width: 1380px; padding: 14px 30px 16px; background: rgba(12, 10, 22, .78); border-radius: 14px;
+       color: #fff; font: 500 40px/1.28 Onest; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.sub .who { display: block; font: 800 20px/1 Onest; letter-spacing: .14em; margin-bottom: 8px; }
+.sub.whisper { font-style: italic; opacity: .92; }
+
+/* ── окно «Склада»: рамка в духе GNOME, клиентская область — кадр NetForms ── */
+.wnd { position: absolute; left: 0; top: 0; transform-origin: 0 0; display: none; border-radius: 12px 12px 4px 4px;
+       background: #fafafa; box-shadow: 0 30px 80px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.18); overflow: hidden; }
+.wbar { height: 38px; background: linear-gradient(#f6f5f4, #ebebeb); border-bottom: 1px solid #d6d6d6; display: flex;
+        align-items: center; justify-content: center; position: relative; font: 700 15px/1 'Noto Sans', Onest; color: #2e3436; }
+.wclose { position: absolute; right: 10px; top: 8px; width: 22px; height: 22px; border-radius: 50%; background: #dcdcdc;
+          font: 700 16px/22px Onest; text-align: center; color: #333; }
+.wclient { display: block; }
+#cursor { position: absolute; left: 0; top: 0; display: none; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+#cursor.press svg { transform: scale(.85); transform-origin: 2px 2px; }
+
+/* ── «веб-камера» Лёши ── */
+#cam { position: absolute; right: 44px; bottom: 44px; width: 300px; height: 300px; border-radius: 50%; overflow: hidden;
+       display: none; box-shadow: 0 0 0 6px rgba(255,255,255,.9), 0 20px 50px rgba(0,0,0,.45); }
+#cam svg { display: block; }
+
+/* ── терминал ── */
+.term { position: absolute; background: var(--term-bg); color: var(--term-ink); border-radius: 14px; overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0,0,0,.5); font-family: 'JetBrains Mono'; }
+.term .bar { height: 46px; background: #221f2e; display: flex; align-items: center; justify-content: center;
+             color: #b7b2cc; font: 500 17px/1 Onest; position: relative; }
+.term .bar::after { content: '×'; position: absolute; right: 16px; top: 11px; width: 24px; height: 24px; border-radius: 50%;
+                    background: #34304a; color: #cfc9e6; font: 700 17px/24px Onest; text-align: center; }
+.term .body { position: absolute; left: 0; right: 0; top: 46px; bottom: 0; padding: 26px 44px; overflow: hidden;
+              font-size: 28px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+.term .ln { min-height: 1.5em; }
+.pr { color: #7ee2a8; font-weight: 700; }
+.dim { color: var(--term-dim); }
+.err { color: var(--err); }
+.okc { color: var(--ok); font-weight: 700; }
+.lnk { color: #8ab4ff; text-decoration: underline; text-decoration-color: rgba(138,180,255,.5); }
+.lnk.hover { background: rgba(138,180,255,.18); }
+.hl { background: rgba(255, 111, 152, .18); box-shadow: 0 0 0 6px rgba(255, 111, 152, .18); border-radius: 4px; }
+.cur { display: inline-block; width: .6em; height: 1.1em; background: #d9d5ea; vertical-align: -0.18em; margin-left: 2px; }
+.add { color: #7ee2a8; } .del { color: #ff8a8a; }
+
+/* ── редактор ── */
+.editor { position: absolute; inset: 0; background: #1b1a24; font-family: 'JetBrains Mono'; color: #e4e1f0; }
+.editor .tabs { height: 58px; background: #14131b; display: flex; align-items: flex-end; padding-left: 80px; }
+.editor .tab { height: 50px; padding: 0 26px; background: #1b1a24; color: #e8e6f2; font: 500 21px/50px Onest;
+               border-top: 3px solid var(--accent-2); border-radius: 8px 8px 0 0; }
+.editor .tab .dot { color: #e9c46a; margin-left: 12px; }
+.editor .crumbs { height: 40px; padding-left: 110px; color: #8c88a6; font: 400 18px/40px Onest; }
+.editor .code { position: absolute; left: 0; right: 0; top: 118px; bottom: 0; font-size: 34px; line-height: 58px; overflow: hidden; }
+.selb { background: #264f9e; border-radius: 4px; }
+.editor .row { position: relative; height: 58px; white-space: pre; padding-left: 170px; }
+.editor .num { position: absolute; left: 30px; width: 80px; text-align: right; color: #5d5a73; }
+.editor .gut { position: absolute; left: 124px; top: 6px; bottom: 6px; width: 6px; border-radius: 3px; }
+.editor .gut.a { background: #4cc98a; } .editor .gut.m { background: #6ea8ff; }
+.editor .row.cur-row { background: rgba(255,255,255,.035); }
+.x-tag { color: #7fb4ff; } .x-attr { color: #b9a6ff; } .x-str { color: #f0a47a; } .x-txt { color: #e4e1f0; } .x-pun { color: #8c88a6; }
+.caret { display: inline-block; width: 3px; height: 42px; background: #fff; vertical-align: -8px; margin: 0 -1.5px; }
+.glow { border-radius: 6px; background: rgba(255, 80, 110, .28); box-shadow: 0 0 0 5px rgba(255, 80, 110, .28), 0 0 30px rgba(255, 80, 110, .5); }
+.editor .panel { position: absolute; left: 0; right: 0; bottom: 0; background: #121119; border-top: 2px solid #2b2839; }
+.editor .panel .ph { height: 44px; padding-left: 40px; color: #b7b2cc; font: 700 16px/44px Onest; letter-spacing: .12em; }
+.editor .panel .pb { padding: 10px 44px; font-size: 32px; line-height: 1.5; white-space: pre; }
+
+/* ── браузер ── */
+.browser { position: absolute; inset: 0; background: #fff; font-family: Onest; }
+.browser .chrome { height: 116px; background: #dee1e6; }
+.browser .tabrow { height: 56px; display: flex; align-items: flex-end; padding: 0 16px; gap: 2px; overflow: hidden; }
+.browser .btab { height: 46px; background: #eef0f3; border-radius: 10px 10px 0 0; padding: 0 16px; font: 500 17px/46px Onest;
+                 color: #3c4043; white-space: nowrap; overflow: hidden; flex: 0 0 auto; }
+.browser .btab.on { background: #fff; }
+.browser .addr { height: 60px; background: #fff; display: flex; align-items: center; padding: 0 24px; }
+.browser .url { flex: 1; height: 42px; border-radius: 21px; background: #f1f3f4; font: 400 20px/42px Onest; color: #202124; padding-left: 26px; }
+.browser .page { position: absolute; left: 0; right: 0; top: 116px; bottom: 0; overflow: hidden; }
+
+/* ── рабочий стол «старого» компьютера ── */
+.desk-screen { position: absolute; inset: 0; background: #0b0d12; }
+.desk-screen .mon { position: absolute; left: 70px; top: 40px; right: 70px; bottom: 40px; border-radius: 26px; background: #1d2026; padding: 34px; }
+.desk-screen .wp { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 6px;
+                   background: radial-gradient(120% 90% at 70% 30%, #3b8fbf 0%, #1f5a86 55%, #163f63 100%); }
+.icon { position: absolute; width: 150px; text-align: center; color: #fff; font: 500 22px/1.2 'Noto Sans', Onest; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.icon .pic { width: 96px; height: 96px; margin: 0 auto 8px; }
+.icon.sel { background: rgba(120, 170, 255, .35); outline: 2px solid rgba(160, 200, 255, .7); border-radius: 6px; }
+.tip { position: absolute; background: #ffffe1; color: #000; border: 1px solid #767676; font: 400 20px/1.35 'Noto Sans', Onest;
+       padding: 8px 12px; box-shadow: 2px 3px 6px rgba(0,0,0,.35); white-space: pre; }
+.taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: rgba(12, 20, 30, .92); color: #dfe7ef;
+           font: 500 22px/64px 'Noto Sans', Onest; text-align: right; padding-right: 30px; }
+
+/* ── чат ── */
+.toast { position: absolute; width: 520px; background: #ffffff; border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.45); padding: 20px 22px; font-family: Onest; }
+.toast .hd { display: flex; align-items: center; gap: 14px; }
+.toast .ava { width: 52px; height: 52px; border-radius: 50%; background: #557a5b; color: #fff; font: 800 26px/52px Onest; text-align: center; }
+.toast .nm { font: 800 21px/1.2 Onest; color: #1a1730; } .toast .app { font: 500 16px/1.2 Onest; color: #8a86a3; }
+.toast .msg { margin: 14px 0 12px; font: 500 24px/1.3 Onest; color: #1a1730; }
+.toast .card { display: flex; gap: 14px; align-items: center; border-radius: 12px; background: #f1eefb; padding: 12px; }
+.toast .card .t1 { font: 700 19px/1.25 Onest; color: #3b2a9a; } .toast .card .t2 { font: 400 16px/1.2 Onest; color: #75728c; margin-top: 4px; }
+
+/* ── оверлеи ── */
+.keycap { position: absolute; padding: 18px 34px 22px; border-radius: 18px; background: linear-gradient(#fdfdfd, #e3e3e8);
+          box-shadow: 0 10px 0 #a9a9b3, 0 24px 40px rgba(0,0,0,.45); font: 800 54px/1 Onest; color: #22202c; white-space: nowrap; }
+.titr { position: absolute; color: #fff; font-family: Onest; }
+.stage-label { position: absolute; left: 70px; top: 54px; padding: 16px 34px 20px; border-radius: 18px; background: rgba(12,10,22,.82);
+               font: 800 italic 76px/1 Onest; color: #fff; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+.coffee { position: absolute; right: 70px; top: 60px; padding: 14px 26px; border-radius: 40px; background: rgba(10,10,20,.7);
+          color: #fff; font: 800 44px/1 Onest; display: flex; align-items: center; gap: 12px; }
+.coffee .e { font-family: 'Noto Color Emoji'; font-size: 44px; }
