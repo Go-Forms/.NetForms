@@ -15,6 +15,5 @@ NetForms — копия Windows Forms. **Справочник по API — от 
 | [Покрытие API](../api/README.md) (англ.) | Генерируется автоматически: каждый публичный тип WinForms и `System.Drawing.Common` — полный, частичный или отсутствующий, со списком недостающих членов и ссылкой на страницу Microsoft. |
 | [Визуальный дизайнер](designer.md) | Расширение VS Code: как устроено, команды, настройки. |
 | [Выпуск версий](../RELEASING.md) | Для разработчиков NetForms: публикация в NuGet, VS Code Marketplace, Open VSX, GitHub Pages. |
-| [Сценарий «Злой csproj»](../story/angry-csproj.md) | Как люди не смогли открыть WinForms-проект на Linux и от злости переписали `.csproj`. |
 | [План и журнал решений](../PLAN.md) | Архитектура, дорожная карта и каждое принятое решение. |
 | [English documentation](../README.md) | Те же страницы на английском. |

@@ -65,7 +65,6 @@ NetForms (тот же Markdown лежит в [docs/ru/](docs/ru/README.md)):
 - [Совместимость](https://go-forms.github.io/.NetForms/ru/docs/compatibility.html) — версии .NET, ОС, состояние каждого контрола, чего нет
 - [Покрытие API](https://go-forms.github.io/.NetForms/docs/api/) — генерируется автоматически, по типам (англ.)
 - [Визуальный дизайнер](https://go-forms.github.io/.NetForms/ru/docs/designer.html)
-- [Сценарий «Злой csproj»](https://go-forms.github.io/.NetForms/ru/docs/angry-csproj.html)
 
 ## Состояние
 

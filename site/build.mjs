@@ -41,7 +41,6 @@ const sections = {
 			['docs/ru/designer.md', 'ru/docs/designer.html', 'Визуальный дизайнер'],
 			['docs/api/README.md', 'docs/api/index.html', 'Покрытие API (англ.)'],
 			['docs/RELEASING.md', 'ru/docs/releasing.html', 'Выпуск версий (для разработчиков)'],
-			['docs/story/angry-csproj.md', 'ru/docs/angry-csproj.html', 'Сценарий «Злой csproj»'],
 		],
 		ui: { menu: 'Содержание', edit: 'Исправить страницу на GitHub', start: 'Начать', site: 'Главная', notice: '' },
 	},
