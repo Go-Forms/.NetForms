@@ -8,9 +8,39 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Authors>NetForms contributors</Authors>
     <Product>NetForms</Product>
-    <Version>0.0.1</Version>
+    <!-- One version for every package, the templates and the converter (docs/RELEASING.md).
+         templates/netforms-app/NetFormsApp1.csproj names it too; TemplateTests keeps the two equal. -->
+    <Version>0.1.0-preview.1</Version>
     <!-- CS1591: missing XML comment; CS8622/CS8618 designer-style handlers with non-nullable sender -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
+  <!--
+    NuGet. Nothing is packed unless the project says IsPackable: the five runtime packages under src/
+    (NetForms and the four it depends on), the templates and the converter tool. Tests, samples, the
+    designer libraries and the internal tools stay out.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Copyright>Copyright (c) 2026 NetForms contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/Go-Forms/.NetForms</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Go-Forms/.NetForms</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>winforms;windows-forms;system.windows.forms;linux;cross-platform;desktop;gui;avalonia;skiasharp</PackageTags>
+    <PackageReleaseNotes>https://github.com/Go-Forms/.NetForms/blob/main/CHANGELOG.md</PackageReleaseNotes>
+    <!-- Source Link (built into the .NET SDK) and symbol packages: stepping into NetForms from an application. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <None Include="$(MSBuildThisFileDirectory)eng/branding/icon.png" Pack="true" PackagePath="\" Visible="false" />
+    <None Include="$(MSBuildThisFileDirectory)eng/package/README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 </Project>

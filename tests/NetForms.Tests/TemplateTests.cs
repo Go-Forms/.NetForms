@@ -30,6 +30,18 @@ public sealed class TemplateTests : IDisposable
         { "netforms-usercontrol", "UserControl1.Designer.cs" },
     };
 
+    /// <summary>
+    /// A new project references the NetForms package of this very release: the version in the app template is
+    /// the one Directory.Build.props gives every package, as the converter writes it (docs/RELEASING.md).
+    /// </summary>
+    [Fact]
+    public void TheAppTemplateReferencesTheReleasedPackageVersion()
+    {
+        var csproj = File.ReadAllText(Path.Combine(Templates, "netforms-app", "NetFormsApp1.csproj"));
+        Assert.Contains($"<PackageReference Include=\"NetForms\" Version=\"{NetForms.Converter.ProjectConverter.PackageVersion}\" />", csproj);
+        Assert.DoesNotContain("0.0.0", NetForms.Converter.ProjectConverter.PackageVersion);
+    }
+
     [Theory]
     [MemberData(nameof(DesignerFiles))]
     public void ATemplateDesignerFileIsWhatTheDesignerWrites(string template, string file)

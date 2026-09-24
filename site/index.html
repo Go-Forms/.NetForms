@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NetForms</title>
+<meta name="description" content="Windows Forms for Windows and Linux. The same System.Windows.Forms API, the same designer workflow, on .NET 10.">
+<meta property="og:title" content="NetForms — Windows Forms for Windows and Linux">
+<meta property="og:description" content="Change the .csproj, keep the code. Your WinForms app runs on Linux.">
+<meta property="og:image" content="assets/gallery-controls.png">
+<link rel="icon" href="assets/favicon.png" type="image/png">
+<link rel="alternate" hreflang="ru" href="ru/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="topbar">
+  <a class="brand" href="./"><img src="assets/logo.svg" alt="" width="32" height="32">NetForms</a>
+  <nav class="nav" aria-label="Main">
+    <a href="#story">Why</a>
+    <a href="#status">Status</a>
+    <a href="#start">Get started</a>
+    <a href="https://github.com/Go-Forms/.NetForms/tree/main/docs">Docs</a>
+    <a href="https://github.com/Go-Forms/.NetForms">GitHub</a>
+    <a class="lang" href="ru/" hreflang="ru" lang="ru">RU</a>
+  </nav>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">System.Windows.Forms · .NET 10 · Windows + Linux</span>
+      <h1>WinForms, <span class="strike">Windows only</span> everywhere.</h1>
+      <p class="lede">NetForms is Windows Forms for .NET 10 that runs the same on Windows and Linux.
+        Same namespaces, same <code>Application.Run(new MainForm())</code>, same
+        <code>InitializeComponent()</code>. You change the project file, not the code.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#start">Get started</a>
+        <a class="btn" href="https://github.com/Go-Forms/.NetForms/blob/main/docs/migrating.md">Move an existing app</a>
+      </div>
+    </div>
+
+    <div class="surface" aria-label="A WinForms form in the designer; its button is anchored to the bottom-right corner and follows it as the form resizes">
+      <div class="form">
+        <div class="form-title"><span>Inventory</span><span class="caption-btns" aria-hidden="true"><span>–</span><span>□</span><span>×</span></span></div>
+        <div class="form-body">
+          <table class="grid-mini">
+            <thead><tr><th>Item</th><th>Qty</th><th>Warehouse</th></tr></thead>
+            <tbody>
+              <tr><td>Copper wire 2.5 mm²</td><td class="num">1,200 m</td><td>A-3</td></tr>
+              <tr class="sel"><td>Circuit breaker 16 A</td><td class="num">84</td><td>B-1</td></tr>
+              <tr><td>Cable tray 60×50</td><td class="num">36</td><td>A-1</td></tr>
+            </tbody>
+          </table>
+          <button type="button" class="anchored selected" tabindex="-1">Save
+            <i class="grip tl"></i><i class="grip tc"></i><i class="grip tr"></i><i class="grip ml"></i><i class="grip mr"></i><i class="grip bl"></i><i class="grip bc"></i><i class="grip br"></i>
+          </button>
+        </div>
+        <i class="form-grip" aria-hidden="true"></i>
+      </div>
+      <div class="propchip" aria-hidden="true"><span>Anchor</span><span><b>Bottom, Right</b></span></div>
+    </div>
+  </div>
+
+  <section id="story">
+    <div class="section-head">
+      <span class="eyebrow">What happens today</span>
+      <h2>A WinForms project on Linux fails twice. Then you fix one file.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-label">Build it</div>
+<pre class="term"><span class="p">$</span> dotnet build
+<span class="err">error NETSDK1100:</span> To build a project
+targeting Windows on this operating
+system, set the EnableWindowsTargeting
+property to true.</pre>
+      </div>
+      <div class="step">
+        <div class="step-label">Force it</div>
+<pre class="term"><span class="p">$</span> dotnet run -p:EnableWindowsTargeting=true
+You must install or update .NET
+to run this application.
+Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
+<span class="err">No frameworks were found.</span></pre>
+      </div>
+      <div class="step">
+        <div class="step-label">Change the project file</div>
+<pre class="term"><span class="del">-  &lt;TargetFramework&gt;net8.0-windows&lt;/…&gt;</span>
+<span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
+<span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
+<span class="add">+  &lt;PackageReference Include="NetForms"</span>
+<span class="add">+     Version="0.1.0-preview.1" /&gt;</span></pre>
+      </div>
+    </div>
+    <div class="fix">
+      <div class="section-head" style="margin:0">
+        <h3>The same app, running on Linux</h3>
+        <p>A project exactly as Visual Studio creates it, after <code>netforms-convert --apply</code>, built from the NuGet
+          packages and started under X11. Not one line of C# changed. <code>netforms-convert</code> also moves
+          .NET Framework 4.x projects and tells you up front what will not carry over, with file and line.</p>
+        <p><a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/story/angry-csproj.md">“The angry .csproj”</a> — this story as a short film script (in Russian).</p>
+      </div>
+      <figure class="shot">
+        <img src="assets/hello-linux.png" alt="HelloForms window with a label and a Click me button, running on Linux" width="284" height="140">
+        <figcaption>HelloForms, Ubuntu 24.04, .NET 10</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="look">
+    <div class="section-head">
+      <span class="eyebrow">Painted by NetForms, designed in VS Code</span>
+      <h2>Your controls, your designer.</h2>
+      <p>Every control is drawn by NetForms with SkiaSharp, so a form looks the same on both systems. Avalonia 12
+        does only what Win32 did: windows, input, IME, clipboard, native file dialogs, DPI. The VS Code
+        extension opens any <code>*.Designer.cs</code> as a canvas and writes it back the way Visual Studio does.</p>
+    </div>
+    <div class="shots">
+      <figure>
+        <img src="assets/designer.png" alt="The NetForms designer in VS Code: toolbox, form canvas and property grid" width="1100" height="700">
+        <figcaption>NetForms Designer: toolbox, component tray, properties and events, snap lines. Works offline.</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/gallery-controls.png" alt="Control gallery: tabs, group box, check boxes, radio buttons, text boxes, combo boxes, numeric up-down, track bar, progress bar, list box" width="584" height="340">
+        <figcaption>The control gallery. The golden test image is pixel-identical on Windows and Linux.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="status">
+    <div class="section-head">
+      <span class="eyebrow">Preview 0.1 · measured, not guessed</span>
+      <h2>How close to WinForms is it?</h2>
+      <p>Every number comes from a test that runs in CI: the API is compared with the reference assemblies of
+        the real WinForms, behaviour is diffed against it on Windows, real projects are converted and built.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="n">633<small> / 1254</small></span><span class="l">WinForms and System.Drawing types with the complete API; 164 more partial</span></div>
+      <div class="stat"><span class="n">380<small> / 380</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
+      <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">.NET Framework 4.8 business apps convert and build with no manual edit</span></div>
+      <div class="stat"><span class="n">27<small> / 45</small></span><span class="l">open-source WinForms projects convert and build with no manual edit</span></div>
+    </div>
+
+    <div class="two" style="margin-top:28px">
+      <div class="table-scroll">
+        <table class="propgrid">
+          <tbody>
+            <tr><th colspan="2">Works</th></tr>
+            <tr><td>Layout</td><td>Anchor, Dock, TableLayoutPanel, FlowLayoutPanel, AutoSize, AutoScroll</td></tr>
+            <tr><td>Controls</td><td>Button to DataGridView: text, lists, trees, ListView (all views), RichTextBox, pickers, MDI</td></tr>
+            <tr><td>Menus</td><td>MenuStrip, ToolStrip, StatusStrip, ContextMenuStrip, NotifyIcon</td></tr>
+            <tr><td>Drawing</td><td>System.Drawing on Skia, TextRenderer metrics, custom OnPaint</td></tr>
+            <tr><td>Resources</td><td>.resx images and icons, Properties.Settings, app.config</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-scroll">
+        <table class="propgrid">
+          <tbody>
+            <tr><th colspan="2">Not yet</th></tr>
+            <tr><td>Printing</td><td><span class="status no">missing</span> PrintDocument, PrintPreviewDialog</td></tr>
+            <tr><td>Accessibility</td><td><span class="status no">missing</span> screen readers do not see controls</td></tr>
+            <tr><td>Drag and drop</td><td><span class="status part">declared</span> events compile, no drags yet</td></tr>
+            <tr><td>Dark theme, DPI</td><td><span class="status part">partial</span> one light theme; scaled, but DeviceDpi is 96</td></tr>
+            <tr><td>Win32</td><td><span class="status no">by design</span> Handle is zero, WndProc is never called</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p style="margin-top:18px"><a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/compatibility.md">Full compatibility guide</a> ·
+      <a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/api/README.md">API coverage, type by type</a></p>
+  </section>
+
+  <section id="start">
+    <div class="section-head">
+      <span class="eyebrow">.NET 10 SDK · Windows 10+ or Linux x64/arm64</span>
+      <h2>Get started</h2>
+      <p>The API documentation is Microsoft's: everything on
+        <a href="https://learn.microsoft.com/dotnet/desktop/winforms/">learn.microsoft.com/dotnet/desktop/winforms</a> applies.</p>
+    </div>
+    <div class="start">
+      <div class="codebox">
+        <h3>New app</h3>
+<pre class="term" id="new-app"><span class="p"># project and item templates</span>
+dotnet new install NetForms.Templates::0.1.0-preview.1
+dotnet new netforms -n MyApp
+cd MyApp
+dotnet run</pre>
+        <button class="copy" type="button">Copy</button>
+      </div>
+      <div class="codebox">
+        <h3>Existing WinForms app</h3>
+<pre class="term" id="convert"><span class="p"># report first, then --apply</span>
+dotnet tool install -g NetForms.Convert --prerelease
+netforms-convert MyApp.csproj
+netforms-convert MyApp.csproj --apply
+dotnet run</pre>
+        <button class="copy" type="button">Copy</button>
+      </div>
+    </div>
+    <p style="margin-top:20px">Visual designer: install <b>NetForms Designer</b> from the VS Code Marketplace or Open VSX
+      (<code>netforms.netforms-designer</code>) and open any <code>*.Designer.cs</code>.</p>
+  </section>
+</main>
+
+<footer>
+  <span>NetForms · MIT licence · Windows is a trademark of Microsoft Corporation; NetForms is an independent project, not affiliated with Microsoft.</span>
+  <nav aria-label="Footer">
+    <a href="https://github.com/Go-Forms/.NetForms">GitHub</a>
+    <a href="https://www.nuget.org/packages/NetForms">NuGet</a>
+    <a href="https://github.com/Go-Forms/.NetForms/tree/main/docs">Documentation</a>
+    <a href="https://github.com/Go-Forms/.NetForms/blob/main/CHANGELOG.md">Changelog</a>
+  </nav>
+</footer>
+
+</div>
+<script src="assets/site.js" defer></script>
+</body>
+</html>

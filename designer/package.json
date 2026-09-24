@@ -5,6 +5,22 @@
 	"version": "0.1.0",
 	"publisher": "netforms",
 	"license": "MIT",
+	"icon": "images/icon.png",
+	"preview": true,
+	"pricing": "Free",
+	"galleryBanner": {
+		"color": "#2A1A8A",
+		"theme": "dark"
+	},
+	"homepage": "https://github.com/Go-Forms/.NetForms#readme",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Go-Forms/.NetForms.git",
+		"directory": "designer"
+	},
+	"bugs": {
+		"url": "https://github.com/Go-Forms/.NetForms/issues"
+	},
 	"engines": {
 		"vscode": "^1.85.0"
 	},
@@ -20,7 +36,9 @@
 		"form designer",
 		"c#",
 		"linux",
-		"netforms"
+		"netforms",
+		"cross-platform",
+		"visual designer"
 	],
 	"activationEvents": [
 		"workspaceContains:**/*.Designer.cs",
@@ -164,14 +182,16 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run build && npm run build:host && npm run copy:templates",
+		"vscode:prepublish": "npm run build && npm run build:host && npm run copy:templates && npm run copy:license",
 		"build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
 		"build:host": "dotnet publish ../tools/NetFormsDesigner.Host -c Release -o host --nologo && dotnet publish ../tools/NetForms.Convert -c Release -o host --nologo && node scripts/prune-host.js",
 		"typecheck": "tsc --noEmit -p .",
 		"watch": "npm run build -- --watch",
-		"package": "vsce package --allow-missing-repository",
+		"package": "vsce package",
 		"test": "node --test test/geometry.test.js test/l10n.test.js test/protocol.test.js test/ui/ui.test.js",
-		"copy:templates": "node scripts/copy-templates.js"
+		"copy:templates": "node scripts/copy-templates.js",
+		"package:targets": "node scripts/package-targets.js",
+		"copy:license": "node -e \"require('fs').copyFileSync('../LICENSE', 'LICENSE')\""
 	},
 	"devDependencies": {
 		"@types/node": "^20.0.0",

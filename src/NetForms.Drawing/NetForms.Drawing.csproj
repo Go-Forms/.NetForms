@@ -3,6 +3,8 @@
     <RootNamespace>System.Drawing</RootNamespace>
     <AssemblyName>NetForms.Drawing</AssemblyName>
     <Description>System.Drawing (Graphics, Font, Pen, Brush, Bitmap) implemented on SkiaSharp.</Description>
+    <!-- A package of its own, a dependency of NetForms; applications reference NetForms. -->
+    <IsPackable>true</IsPackable>
     <!-- LockBits hands out and converts raw pixel memory. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

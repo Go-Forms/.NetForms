@@ -1,0 +1,105 @@
+name: Release
+
+# A tag v<Version> (Directory.Build.props, e.g. v0.1.0-preview.1) builds, tests and packs everything, then
+# publishes: the NuGet packages to nuget.org, the VS Code extension to the Marketplace and Open VSX, and a
+# GitHub release with all the files. Run by hand (workflow_dispatch) it only builds the packages, as a
+# dry run. Checklist and the secrets it needs: docs/RELEASING.md.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  nuget:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: The tag is the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(dotnet msbuild src/NetForms/NetForms.csproj -getProperty:Version)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME, but Directory.Build.props says $version"; exit 1
+          fi
+
+      - run: dotnet build NetForms.slnx -c Release
+      - run: dotnet test NetForms.slnx --no-build -c Release
+      - run: dotnet pack NetForms.slnx --no-build -c Release -o artifacts/pkg
+      - run: dotnet pack templates/NetForms.Templates.csproj -c Release -o artifacts/pkg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuget
+          path: artifacts/pkg/
+
+      # The .snupkg symbol packages go with their .nupkg.
+      - name: Push to nuget.org
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/pkg/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  vscode:
+    runs-on: ubuntu-latest
+    env:
+      # Open VSX is optional: without the secret that step is skipped.
+      OVSX_PAT: ${{ secrets.OVSX_PAT }}
+    defaults:
+      run:
+        working-directory: designer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run typecheck
+      - run: dotnet build ../tools/NetFormsDesigner.Host -c Release
+      - run: npm test
+      # One .vsix per platform (only that platform's SkiaSharp natives), plus the universal one. Previews
+      # (a version with a dash) go out as Marketplace pre-releases.
+      - run: npm run package:targets -- ${{ contains(github.ref_name, '-') && '--pre-release' || '' }}
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vscode
+          path: designer/*.vsix
+
+      - name: Publish to the VS Code Marketplace
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          for f in netforms-designer-*.vsix; do npx vsce publish --packagePath "$f"; done
+
+      - name: Publish to Open VSX
+        if: startsWith(github.ref, 'refs/tags/v') && env.OVSX_PAT != ''
+        run: |
+          for f in netforms-designer-*.vsix; do npx --yes ovsx publish "$f" -p "$OVSX_PAT"; done
+
+  github-release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [nuget, vscode]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/nuget/* dist/vscode/* \
+            --title "NetForms $GITHUB_REF_NAME" --notes-file CHANGELOG.md \
+            $([[ "$GITHUB_REF_NAME" == *-* ]] && echo --prerelease)

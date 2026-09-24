@@ -2,6 +2,8 @@
   <PropertyGroup>
     <RootNamespace>NetForms.Platform</RootNamespace>
     <Description>Platform abstraction for NetForms: window, input, clipboard, native dialogs. No UI toolkit types leak through.</Description>
+    <!-- A package of its own, a dependency of NetForms; applications reference NetForms. -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="SkiaSharp" />

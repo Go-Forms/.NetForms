@@ -2,6 +2,8 @@
   <PropertyGroup>
     <RootNamespace>NetForms.Platform.Avalonia</RootNamespace>
     <Description>Avalonia 12 implementation of the NetForms platform layer: one Avalonia Window per Form, one custom-drawn control, Skia lease for painting.</Description>
+    <!-- A package of its own, a dependency of NetForms; applications reference NetForms. -->
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <!-- Avalonia is how NetForms reaches the platform, not something an application builds with: its

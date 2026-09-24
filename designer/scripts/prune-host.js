@@ -4,8 +4,18 @@
 const fs = require('fs');
 const path = require('path');
 
+//
+// NETFORMS_VSCE_TARGET (set by scripts/package-targets.js for `vsce package --target`) narrows the natives to
+// that one platform: a platform-specific .vsix is ~10 MB instead of 41 MB (docs/RELEASING.md).
 const host = path.join(__dirname, '..', 'host');
-const keep = new Set(['win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx']);
+const targets = {
+	'win32-x64': ['win-x64'], 'win32-arm64': ['win-arm64'],
+	'linux-x64': ['linux-x64'], 'linux-arm64': ['linux-arm64'],
+	'darwin-x64': ['osx'], 'darwin-arm64': ['osx'],
+};
+const target = process.env.NETFORMS_VSCE_TARGET;
+if (target && !targets[target]) throw new Error(`Unknown NETFORMS_VSCE_TARGET ${target}; one of ${Object.keys(targets).join(', ')}.`);
+const keep = new Set(target ? targets[target] : ['win-x64', 'win-arm64', 'linux-x64', 'linux-arm64', 'osx']);
 
 const runtimes = path.join(host, 'runtimes');
 if (fs.existsSync(runtimes)) {

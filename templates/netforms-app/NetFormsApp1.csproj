@@ -17,7 +17,7 @@
 <!--#if (HasFrameworkPath) -->
     <ProjectReference Include="NETFORMS_FRAMEWORK_PATH/src/NetForms/NetForms.csproj" />
 <!--#else -->
-    <PackageReference Include="NetForms" Version="0.0.1" />
+    <PackageReference Include="NetForms" Version="0.1.0-preview.1" />
 <!--#endif -->
   </ItemGroup>
 
