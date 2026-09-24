@@ -9,7 +9,8 @@ const path = require('node:path');
 const readline = require('node:readline');
 
 const repo = path.resolve(__dirname, '..', '..');
-const host = ['Release', 'Debug'].map((c) => path.join(repo, 'tools', 'NetFormsDesigner.Host', 'bin', c, 'net10.0', 'NetFormsDesigner.Host.dll')).find(fs.existsSync);
+// NETFORMS_TEST_HOST: another host, e.g. the one inside a packaged .vsix (docs/RELEASING.md).
+const host = process.env.NETFORMS_TEST_HOST || ['Release', 'Debug'].map((c) => path.join(repo, 'tools', 'NetFormsDesigner.Host', 'bin', c, 'net10.0', 'NetFormsDesigner.Host.dll')).find(fs.existsSync);
 
 function startHost() {
 	const proc = cp.spawn('dotnet', [host], { stdio: ['pipe', 'pipe', 'pipe'] });

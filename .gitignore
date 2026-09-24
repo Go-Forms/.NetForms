@@ -10,3 +10,4 @@ node_modules/
 render-out/
 # session logs exported from Claude Code
 /*local-command-caveat*.txt
+artifacts/

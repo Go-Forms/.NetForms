@@ -5,3 +5,4 @@ host/
 templates/
 *.vsix
 test/ui/out/
+LICENSE

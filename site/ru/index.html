@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NetForms</title>
+<meta name="description" content="Windows Forms для Windows и Linux. Тот же API System.Windows.Forms, тот же дизайнер, на .NET 10.">
+<meta property="og:title" content="NetForms — Windows Forms для Windows и Linux">
+<meta property="og:description" content="Меняете .csproj, код остаётся. Ваше WinForms-приложение работает на Linux.">
+<meta property="og:image" content="../assets/gallery-controls.png">
+<link rel="icon" href="../assets/favicon.png" type="image/png">
+<link rel="alternate" hreflang="en" href="../">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="topbar">
+  <a class="brand" href="./"><img src="../assets/logo.svg" alt="" width="32" height="32">NetForms</a>
+  <nav class="nav" aria-label="Главное меню">
+    <a href="#story">Зачем</a>
+    <a href="#status">Состояние</a>
+    <a href="#start">Начать</a>
+    <a href="https://github.com/Go-Forms/.NetForms/tree/main/docs">Документация</a>
+    <a href="https://github.com/Go-Forms/.NetForms">GitHub</a>
+    <a class="lang" href="../" hreflang="en" lang="en">EN</a>
+  </nav>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">System.Windows.Forms · .NET 10 · Windows + Linux</span>
+      <h1>WinForms <span class="strike">только для Windows</span> везде.</h1>
+      <p class="lede">NetForms — это Windows Forms для .NET 10, одинаково работающий на Windows и Linux.
+        Те же пространства имён, тот же <code>Application.Run(new MainForm())</code>, тот же
+        <code>InitializeComponent()</code>. Меняется файл проекта, а не код.</p>
+      <div class="cta-row">
+        <a class="btn primary" href="#start">Начать</a>
+        <a class="btn" href="https://github.com/Go-Forms/.NetForms/blob/main/docs/migrating.md">Перевести готовое приложение</a>
+      </div>
+    </div>
+
+    <div class="surface" aria-label="Форма WinForms в дизайнере; кнопка привязана к правому нижнему углу и едет за ним при изменении размера">
+      <div class="form">
+        <div class="form-title"><span>Склад</span><span class="caption-btns" aria-hidden="true"><span>–</span><span>□</span><span>×</span></span></div>
+        <div class="form-body">
+          <table class="grid-mini">
+            <thead><tr><th>Позиция</th><th>Кол-во</th><th>Место</th></tr></thead>
+            <tbody>
+              <tr><td>Провод ПВ1 2,5 мм²</td><td class="num">1 200 м</td><td>A-3</td></tr>
+              <tr class="sel"><td>Автомат 16 А</td><td class="num">84</td><td>B-1</td></tr>
+              <tr><td>Лоток 60×50</td><td class="num">36</td><td>A-1</td></tr>
+            </tbody>
+          </table>
+          <button type="button" class="anchored selected" tabindex="-1">Сохранить
+            <i class="grip tl"></i><i class="grip tc"></i><i class="grip tr"></i><i class="grip ml"></i><i class="grip mr"></i><i class="grip bl"></i><i class="grip bc"></i><i class="grip br"></i>
+          </button>
+        </div>
+        <i class="form-grip" aria-hidden="true"></i>
+      </div>
+      <div class="propchip" aria-hidden="true"><span>Anchor</span><span><b>Bottom, Right</b></span></div>
+    </div>
+  </div>
+
+  <section id="story">
+    <div class="section-head">
+      <span class="eyebrow">Что происходит сейчас</span>
+      <h2>WinForms-проект на Linux падает дважды. Потом вы правите один файл.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-label">Собрать</div>
+<pre class="term"><span class="p">$</span> dotnet build
+<span class="err">error NETSDK1100:</span> To build a project
+targeting Windows on this operating
+system, set the EnableWindowsTargeting
+property to true.</pre>
+      </div>
+      <div class="step">
+        <div class="step-label">Заставить</div>
+<pre class="term"><span class="p">$</span> dotnet run -p:EnableWindowsTargeting=true
+You must install or update .NET
+to run this application.
+Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
+<span class="err">No frameworks were found.</span></pre>
+      </div>
+      <div class="step">
+        <div class="step-label">Поправить файл проекта</div>
+<pre class="term"><span class="del">-  &lt;TargetFramework&gt;net8.0-windows&lt;/…&gt;</span>
+<span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
+<span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
+<span class="add">+  &lt;PackageReference Include="NetForms"</span>
+<span class="add">+     Version="0.1.0-preview.1" /&gt;</span></pre>
+      </div>
+    </div>
+    <div class="fix">
+      <div class="section-head" style="margin:0">
+        <h3>То же приложение, на Linux</h3>
+        <p>Проект ровно в том виде, в каком его создаёт Visual Studio, после <code>netforms-convert --apply</code>:
+          собран из пакетов NuGet и запущен под X11. Ни одна строка C# не менялась. <code>netforms-convert</code>
+          переводит и проекты .NET Framework 4.x и заранее говорит, что не перенесётся, — с файлом и строкой.</p>
+        <p><a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/story/angry-csproj.md">«Злой csproj»</a> — эта история в виде сценария короткого ролика.</p>
+      </div>
+      <figure class="shot">
+        <img src="../assets/hello-linux.png" alt="Окно HelloForms с надписью и кнопкой Click me на Linux" width="284" height="140">
+        <figcaption>HelloForms, Ubuntu 24.04, .NET 10</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="look">
+    <div class="section-head">
+      <span class="eyebrow">Рисует NetForms, проектируется в VS Code</span>
+      <h2>Ваши контролы, ваш дизайнер.</h2>
+      <p>Каждый контрол NetForms рисует сам через SkiaSharp, поэтому форма выглядит одинаково на обеих системах.
+        Avalonia 12 делает только то, что делал Win32: окна, ввод, IME, буфер обмена, системные диалоги файлов, DPI.
+        Расширение VS Code открывает любой <code>*.Designer.cs</code> как холст и записывает его так же, как Visual Studio.</p>
+    </div>
+    <div class="shots">
+      <figure>
+        <img src="../assets/designer-ru.png" alt="Дизайнер NetForms в VS Code на русском: панель элементов, холст формы и свойства" width="1200" height="720">
+        <figcaption>NetForms Designer: панель элементов, лоток компонентов, свойства и события, линии привязки. Работает без сети, интерфейс на русском.</figcaption>
+      </figure>
+      <figure>
+        <img src="../assets/gallery-controls.png" alt="Витрина контролов: вкладки, группа, флажки, переключатели, поля ввода, списки, счётчик, ползунок, индикатор" width="584" height="340">
+        <figcaption>Витрина контролов. Эталонное изображение теста совпадает по пикселям на Windows и Linux.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="status">
+    <div class="section-head">
+      <span class="eyebrow">Превью 0.1 · измерено, а не на глаз</span>
+      <h2>Насколько это WinForms?</h2>
+      <p>Каждое число — результат теста в CI: API сверяется с эталонными сборками настоящего WinForms, поведение
+        сравнивается с ним на Windows, реальные проекты переводятся и собираются.</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><span class="n">633<small> / 1254</small></span><span class="l">типов WinForms и System.Drawing с полным API; ещё 164 — частично</span></div>
+      <div class="stat"><span class="n">380<small> / 380</small></span><span class="l">тестов проходят; раскладка, порядок событий и метрики текста сверяются с настоящим WinForms</span></div>
+      <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">рабочих приложений на .NET Framework 4.8 переводятся и собираются без ручных правок</span></div>
+      <div class="stat"><span class="n">27<small> / 45</small></span><span class="l">открытых WinForms-проектов переводятся и собираются без ручных правок</span></div>
+    </div>
+
+    <div class="two" style="margin-top:28px">
+      <div class="table-scroll">
+        <table class="propgrid">
+          <tbody>
+            <tr><th colspan="2">Работает</th></tr>
+            <tr><td>Раскладка</td><td>Anchor, Dock, TableLayoutPanel, FlowLayoutPanel, AutoSize, AutoScroll</td></tr>
+            <tr><td>Контролы</td><td>От Button до DataGridView: текст, списки, деревья, ListView (все виды), RichTextBox, выбор дат, MDI</td></tr>
+            <tr><td>Меню</td><td>MenuStrip, ToolStrip, StatusStrip, ContextMenuStrip, NotifyIcon</td></tr>
+            <tr><td>Рисование</td><td>System.Drawing на Skia, метрики TextRenderer, свой OnPaint</td></tr>
+            <tr><td>Ресурсы</td><td>картинки и значки в .resx, Properties.Settings, app.config</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-scroll">
+        <table class="propgrid">
+          <tbody>
+            <tr><th colspan="2">Пока нет</th></tr>
+            <tr><td>Печать</td><td><span class="status no">нет</span> PrintDocument, PrintPreviewDialog</td></tr>
+            <tr><td>Доступность</td><td><span class="status no">нет</span> экранные дикторы не видят контролы</td></tr>
+            <tr><td>Drag and drop</td><td><span class="status part">объявлено</span> события компилируются, перетаскивания нет</td></tr>
+            <tr><td>Тёмная тема, DPI</td><td><span class="status part">частично</span> одна светлая тема; масштабируется, но DeviceDpi = 96</td></tr>
+            <tr><td>Win32</td><td><span class="status no">так задумано</span> Handle равен нулю, WndProc не вызывается</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p style="margin-top:18px"><a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/compatibility.md">Полное руководство по совместимости</a> ·
+      <a href="https://github.com/Go-Forms/.NetForms/blob/main/docs/api/README.md">Покрытие API по типам</a></p>
+  </section>
+
+  <section id="start">
+    <div class="section-head">
+      <span class="eyebrow">.NET 10 SDK · Windows 10+ или Linux x64/arm64</span>
+      <h2>Начать</h2>
+      <p>Документация по API — от Microsoft: всё, что написано на
+        <a href="https://learn.microsoft.com/ru-ru/dotnet/desktop/winforms/">learn.microsoft.com/ru-ru/dotnet/desktop/winforms</a>, относится и к NetForms.</p>
+    </div>
+    <div class="start">
+      <div class="codebox">
+        <h3>Новое приложение</h3>
+<pre class="term" id="new-app"><span class="p"># шаблоны проекта и форм</span>
+dotnet new install NetForms.Templates::0.1.0-preview.1
+dotnet new netforms -n MyApp
+cd MyApp
+dotnet run</pre>
+        <button class="copy" type="button" data-done="Скопировано" data-select="Выделено — нажмите Ctrl+C">Копировать</button>
+      </div>
+      <div class="codebox">
+        <h3>Готовое WinForms-приложение</h3>
+<pre class="term" id="convert"><span class="p"># сначала отчёт, потом --apply</span>
+dotnet tool install -g NetForms.Convert --prerelease
+netforms-convert MyApp.csproj
+netforms-convert MyApp.csproj --apply
+dotnet run</pre>
+        <button class="copy" type="button" data-done="Скопировано" data-select="Выделено — нажмите Ctrl+C">Копировать</button>
+      </div>
+    </div>
+    <p style="margin-top:20px">Визуальный дизайнер: установите <b>NetForms Designer</b> из VS Code Marketplace или Open VSX
+      (<code>netforms.netforms-designer</code>) и откройте любой <code>*.Designer.cs</code>.</p>
+  </section>
+</main>
+
+<footer>
+  <span>NetForms · лицензия MIT · Windows — товарный знак Microsoft Corporation; NetForms — независимый проект, не связанный с Microsoft.</span>
+  <nav aria-label="Ссылки">
+    <a href="https://github.com/Go-Forms/.NetForms">GitHub</a>
+    <a href="https://www.nuget.org/packages/NetForms">NuGet</a>
+    <a href="https://github.com/Go-Forms/.NetForms/tree/main/docs">Документация</a>
+    <a href="https://github.com/Go-Forms/.NetForms/blob/main/CHANGELOG.md">Изменения</a>
+  </nav>
+</footer>
+
+</div>
+<script src="../assets/site.js" defer></script>
+</body>
+</html>

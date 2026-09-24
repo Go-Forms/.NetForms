@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- NetForms logo: a WinForms window (title bar, a label, a button anchored bottom-right) on .NET purple. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6A3DE8"/>
+      <stop offset="1" stop-color="#2A1A8A"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="52" fill="url(#bg)"/>
+  <!-- the form -->
+  <rect x="44" y="60" width="168" height="136" rx="10" fill="#F4F2FB"/>
+  <path d="M44 70a10 10 0 0 1 10-10h148a10 10 0 0 1 10 10v18H44z" fill="#FFFFFF"/>
+  <rect x="44" y="87" width="168" height="2" fill="#D9D3F2"/>
+  <circle cx="186" cy="74" r="5" fill="#E0457B"/>
+  <circle cx="170" cy="74" r="5" fill="#C9C2E8"/>
+  <circle cx="154" cy="74" r="5" fill="#C9C2E8"/>
+  <rect x="56" y="70" width="52" height="8" rx="4" fill="#B7AEE0"/>
+  <!-- a label and a text box -->
+  <rect x="60" y="104" width="64" height="9" rx="4.5" fill="#6A3DE8"/>
+  <rect x="60" y="122" width="136" height="20" rx="4" fill="#FFFFFF" stroke="#B7AEE0" stroke-width="2"/>
+  <!-- the button, Anchor = Bottom | Right -->
+  <rect x="138" y="160" width="60" height="24" rx="5" fill="#6A3DE8"/>
+  <rect x="152" y="169.5" width="32" height="5" rx="2.5" fill="#FFFFFF"/>
+</svg>

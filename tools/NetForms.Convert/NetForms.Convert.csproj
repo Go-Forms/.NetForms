@@ -9,10 +9,33 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>NetForms.Convert</AssemblyName>
     <RootNamespace>NetForms.Converter</RootNamespace>
+    <!-- Also a .NET tool: dotnet tool install -g NetForms.Convert, then netforms-convert App.csproj (with apply to rewrite). -->
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>netforms-convert</ToolCommandName>
+    <PackageId>NetForms.Convert</PackageId>
+    <Title>NetForms project converter</Title>
+    <Description>Moves a Windows Forms project to NetForms so it builds and runs on Linux: reports what carries over, then rewrites the .csproj (UseWindowsForms to the NetForms package, net8.0-windows to net10.0).</Description>
+    <PackageTags>$(PackageTags);dotnet-tool;migration;converter</PackageTags>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
   </ItemGroup>
+  <!--
+    The tool package carries what publish gives, and SkiaSharp/HarfBuzz bring natives for twenty runtimes plus
+    300 MB of Windows symbols: 600 MB, over nuget.org's limit. Kept, as in the VS Code extension
+    (designer/scripts/prune-host.js): the desktop runtimes, no native symbols, no Roslyn satellite assemblies.
+  -->
+  <PropertyGroup>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <Target Name="PruneToolRuntimes" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <_ToolNative Include="@(ResolvedFileToPublish)" Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\', '/').StartsWith('runtimes/'))" />
+      <_ToolNativeDropped Include="@(_ToolNative)" Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch($([System.String]::Copy('%(_ToolNative.RelativePath)').Replace('\', '/')), '^runtimes/(win-x64|win-arm64|linux-x64|linux-arm64|osx)/')) Or '%(_ToolNative.Extension)' == '.pdb'" />
+      <ResolvedFileToPublish Remove="@(_ToolNativeDropped)" />
+    </ItemGroup>
+  </Target>
   <ItemGroup>
     <!-- The real WinForms type list (dumped by tests/NetForms.Compat, types mode), to tell "missing in NetForms" apart. -->
     <EmbeddedResource Include="winforms-types.txt" LogicalName="NetForms.Converter.winforms-types.txt" />

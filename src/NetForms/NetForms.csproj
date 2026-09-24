@@ -3,6 +3,10 @@
     <RootNamespace>System.Windows.Forms</RootNamespace>
     <AssemblyName>NetForms</AssemblyName>
     <Description>System.Windows.Forms, cross-platform: own Control tree, own painting via SkiaSharp, Avalonia as the platform layer.</Description>
+    <!-- The package applications reference instead of <UseWindowsForms>true</UseWindowsForms>. -->
+    <IsPackable>true</IsPackable>
+    <PackageId>NetForms</PackageId>
+    <Title>NetForms - Windows Forms for Windows and Linux</Title>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../NetForms.Drawing/NetForms.Drawing.csproj" />
@@ -34,6 +38,9 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(WinFormsFacadeOutput)" Link="System.Windows.Forms.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" Pack="false" />
+    <!-- In the package the facade sits next to NetForms.dll in lib/: it is a compile reference too, so a library
+         built against WinForms that an application references compiles (no CS0012), and it is copied to the output. -->
+    <None Include="$(WinFormsFacadeOutput)" Pack="true" PackagePath="lib/$(TargetFramework)/System.Windows.Forms.dll" Visible="false" />
   </ItemGroup>
   <Target Name="BuildWinFormsFacade" AfterTargets="CoreCompile" BeforeTargets="CopyFilesToOutputDirectory" Condition="'$(DesignTimeBuild)' != 'true'">
     <ItemGroup>

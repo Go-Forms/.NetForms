@@ -6,6 +6,9 @@
   -->
   <PropertyGroup>
     <PackageType>Template</PackageType>
+    <IsPackable>true</IsPackable>
+    <IncludeSymbols>false</IncludeSymbols>
+    <PackageTags>$(PackageTags);dotnet-new;templates</PackageTags>
     <PackageId>NetForms.Templates</PackageId>
     <Title>NetForms templates</Title>
     <Description>Project and item templates for NetForms, WinForms for Windows and Linux.</Description>

@@ -1111,11 +1111,8 @@ DPI-масштабирование, темы (классическая + сов�
 - **Корпус для конвертера** (ворота Ф5.7 в полном виде): набор реальных WinForms-проектов (примеры
   dotnet/winforms, открытые приложения) в CI с процентом «собралось без правки» в README. Нужен выбор корпуса
   и лицензий — это решение заказчика.
-- **LICENSE.** В `package.json` расширения стоит `"license": "MIT"` (так в §9), но файла LICENSE в репозитории
-  нет, и `vsce` об этом предупреждает. Лицензия и правообладатель — решение заказчика; до него файл не
-  создаётся.
-- **Платформенные `.vsix`.** Сейчас один пакет на все платформы (41 МБ). `vsce package --target win32-x64` и
-  т.д. дали бы ~10 МБ каждый; стоит сделать вместе с публикацией в Marketplace/Open VSX.
+- ~~**LICENSE.**~~ Создан при подготовке к публикации, решение 127.
+- ~~**Платформенные `.vsix`.**~~ Сделаны, решение 129.
 - **Хост требует установленный .NET 10.** Self-contained-публикация хоста увеличит пакет на ~70 МБ на
   платформу; решать вместе с платформенными пакетами. `Check Setup` показывает, найден ли dotnet.
 - ~~**Остаток Ф5.5:** переименование ссылок в коде, коллекции без кодовой формы.~~ Закрыто, решения 99–104.
@@ -1595,8 +1592,8 @@ MSBuild молча оставила устаревшие сборки — тес
   же путём `System.Resources.Extensions`, если тип находится по имени.
 - **Недостающие типы `System.Drawing.Common`** — 132 (см. решение 107); порядок — по частоте в корпусе Ф5.7.
 - **Фасад `System.Windows.Forms`** — сделан для времени выполнения (решение 123). Осталось: при компиляции он не
-  виден, поэтому код, использующий WinForms-тип из сторонней библиотеки, получает `CS0012`; решится NuGet-пакетом
-  NetForms, где фасад лежит в `lib/`. Пакеты с `FrameworkReference` на WindowsDesktop (NETSDK1136) так не спасти.
+  виден, поэтому код, использующий WinForms-тип из сторонней библиотеки, получает `CS0012`; решено NuGet-пакетом
+  NetForms, где фасад лежит в `lib/` (решение 128; для `ProjectReference` на копию NetForms — по-прежнему `CS0012`). Пакеты с `FrameworkReference` на WindowsDesktop (NETSDK1136) так не спасти.
 - **Свойства-расширители в панели свойств дизайнера** («Error on errorProvider1», «ToolTip on toolTip1»): писатель их
   пишет, читатель читает, но хост не показывает их в панели свойств — нужен `IExtenderProviderService` у `DesignSite`.
 - **Оставшиеся провалы корпуса** — `tests/corpus/corpus.json`, `knownFailures` с причинами; по порядку:
@@ -1612,6 +1609,65 @@ MSBuild молча оставила устаревшие сборки — тес
 - **Запуск проектов заказчика на Linux** проверен сборкой и тестами конвертера; ручной прогон окон
   (Sapper и др.) — за заказчиком.
 
+
+
+### Ф7 — подготовка к публикации (2026-09-24, Linux)
+
+Сессия на Linux (Ubuntu 24.04, .NET SDK 10.0.112 из `noble-updates`; `dot.net`/`builds.dotnet.microsoft.com` в этой
+среде закрыты прокси, apt — открыт).
+
+127. **Лицензия и метаданные пакетов.** `LICENSE` — MIT, правообладатель «NetForms contributors» (как `Authors`;
+    §9 назвал MIT, правообладателя заказчик может поменять в `LICENSE` и `Copyright`). В `Directory.Build.props`:
+    `PackageLicenseExpression`, иконка (`eng/branding/icon.png`, из `logo.svg` скриптом `render-icons.js`), README
+    пакета (`eng/package/README.md` — отдельный от корневого: nuget.org не показывает относительные ссылки и картинки),
+    Source Link и `.snupkg`, `ContinuousIntegrationBuild` в Actions. **`IsPackable=false` по умолчанию**, включён
+    явно у пяти пакетов времени выполнения, шаблонов и конвертера. Имя `NetForms` на nuget.org 2026-09-24 свободно.
+128. **Пакеты: по одному на сборку, приложение ссылается на `NetForms`.** `NetForms` → `NetForms.Drawing`,
+    `NetForms.Drawing.Common` (`PackageId` задан явно: сборка называется `System.Drawing.Common`, а этот id —
+    Microsoft), `NetForms.Platform`, `NetForms.Platform.Avalonia`. Фасад `System.Windows.Forms.dll` лежит в
+    `lib/net10.0` пакета `NetForms` рядом с `NetForms.dll` — ссылка компиляции, как и планировалось в «Открытых
+    вопросах Ф6» (`CS0012` для библиотек, собранных против WinForms, при ссылке на пакет не возникает).
+    Исключения build-логики Avalonia (`PrivateAssets`) переходят в `exclude="Build,Analyzers,BuildTransitive"`
+    зависимостей. **Одна версия** — `0.1.0-preview.1` в `Directory.Build.props`; конвертер берёт её из своей
+    сборки (`AssemblyInformationalVersion` без `+commit`), шаблон `netforms-app` называет её в тексте, равенство
+    держит `TemplateTests.TheAppTemplateReferencesTheReleasedPackageVersion`.
+    **`NetForms.Convert` — .NET tool** (`netforms-convert`): 600 МБ натива Skia/HarfBuzz на 20 платформ и символов
+    Windows превышали лимит nuget.org; цель `PruneToolRuntimes` оставляет, как `prune-host.js`, только настольные
+    платформы и без `.pdb` — 42 МБ.
+    **Проверено сквозным путём** (локальный фид из `artifacts/pkg`, изолированные `NUGET_PACKAGES` и hive шаблонов):
+    `dotnet new netforms` + `netforms-form` → сборка из пакетов, фасады в выводе; проект «как из VS»
+    (`net10.0-windows` + `UseWindowsForms`) — `NETSDK1100`, с `EnableWindowsTargeting` — «Microsoft.WindowsDesktop.App …
+    No frameworks were found»; после `netforms-convert --apply` (tool из пакета) — собирается и **открывает окно
+    под Xvfb** (`docs/images/hello-linux.png`).
+129. **Расширение — к Marketplace и Open VSX.** `package.json`: иконка, `preview`, `galleryBanner`, `repository`/
+    `homepage`/`bugs` (флаг `--allow-missing-repository` убран), README страницы расширения со скриншотом UI-теста,
+    CHANGELOG, `LICENSE` копируется из корня в `vscode:prepublish`. **Пакеты по платформам**:
+    `npm run package:targets` → `vsce package --target` для win32/linux/darwin × x64/arm64, `prune-host.js` по
+    `NETFORMS_VSCE_TARGET` оставляет натив одной платформы — 13 МБ вместо 41; универсальный пакет остаётся для
+    ручной установки. `NETFORMS_TEST_HOST` направляет protocol-тест на хост из распакованного `.vsix` — хост из
+    `linux-x64` прошёл. `npm test` — 20/20 (headless Chromium из Playwright через `NETFORMS_TEST_BROWSER`).
+130. **Выпуск — по тегу** (`.github/workflows/release.yml`): тег `v<Version>` сверяется с `Directory.Build.props`,
+    сборка, тесты, `dotnet pack`, `dotnet nuget push` (секрет `NUGET_API_KEY`), `vsce publish` каждого платформенного
+    `.vsix` (`VSCE_PAT`; версия с дефисом → `--pre-release`), `ovsx publish` (`OVSX_PAT`, необязателен), GitHub
+    Release с файлами и корневым `CHANGELOG.md`. Ручной запуск — сухой прогон. Регламент и разовые действия
+    владельца (publisher, токены, Pages) — `docs/RELEASING.md`.
+131. **Документация — «эталон Microsoft + наше».** Справочник API не пишется: NetForms — копия, и страницы
+    learn.microsoft.com — его документация. Свои страницы (`docs/`, английский — для nuget.org/Marketplace):
+    getting-started, migrating (настоящие тексты ошибок, отчёт конвертера по его реальным категориям),
+    **compatibility** (какие TFM/ОС/проекты работают и какие нет, статус каждого контрола и подсистемы,
+    Win32-API, осознанные разницы — утверждения сверены с кодом), designer. **Покрытие API генерируется**:
+    `NetForms.ApiDiff --markdown docs/api` — по странице на пространство имён, у каждого типа статус и ссылка на
+    страницу Microsoft, у частичных — список недостающих членов. Итог: **633 полных, 164 частичных, 457 нет из
+    1254; 1841 недостающий член** (совпадает с прежней метрикой).
+132. **Сайт** — `site/` (статический, английский + `ru/`), публикуется `.github/workflows/pages.yml`. Идея
+    оформления — поверхность дизайнера WinForms: точечная сетка привязки, форма с маркерами выделения, у которой
+    кнопка с `Anchor = Bottom, Right` едет за краем при «дыхании» ширины (единственная анимация, выключается
+    `prefers-reduced-motion`), таблицы в стиле PropertyGrid. Цифры состояния — из `compatibility.md`.
+    Сценарий ролика «Злой csproj» (`docs/story/angry-csproj.md`) — ошибки и `git diff --stat` в нём сняты вживую.
+
+**Состояние тестов на конец сессии (Ф7, 2026-09-24, Linux):** .NET — **380/380** (+1: версия шаблона); оракулы WinForms
+не запускались (нужен Windows), код библиотеки не менялся. Расширение — 20/20, плюс protocol-тест на хосте из
+`linux-x64.vsix`.
 
 ---
 
@@ -1839,6 +1895,10 @@ Windows и Linux CI; процент собравшихся без ручной �
 
 ## С чего начать следующую сессию
 
+0. **Публикация (Ф7, решения 127–132) подготовлена**, но не выполнена: нужны разовые действия владельца из
+   `docs/RELEASING.md` (секреты `NUGET_API_KEY`, `VSCE_PAT`, `OVSX_PAT`, publisher `netforms`, Pages), затем тег
+   `v0.1.0-preview.1`. После изменений API — `NetForms.ApiDiff --markdown docs/api` и цифры в `docs/compatibility.md`,
+   `README.md`, `site/`.
 1. Прочитать этот план и журнал решений: Ф4 (33–50), Ф5.0 (51–59), Ф5.1 (60–66), Ф5.2 (67–78), Ф5.3 (79–86),
    Ф5.4–Ф5.7 (87–98), остаток Ф5.5 (99–104).
 2. **Ф6.К (решения 111–126) — перевод реальных проектов «по кнопке».** Корпус: `tests/corpus/corpus.json`

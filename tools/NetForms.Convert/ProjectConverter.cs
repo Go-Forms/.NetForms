@@ -58,7 +58,13 @@ public enum ConvertTarget
 /// </summary>
 public sealed class ProjectConverter
 {
-    public const string PackageVersion = "0.0.1";
+    /// <summary>
+    /// The NetForms package version a converted project references: the version this converter was built as
+    /// (Directory.Build.props), without the "+commit" suffix the SDK appends to the informational version.
+    /// </summary>
+    public static readonly string PackageVersion =
+        (typeof(ProjectConverter).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0")
+        .Split('+')[0];
 
     /// <summary>The usings the .NET SDK adds with ImplicitUsings (Microsoft.NET.Sdk), plus the two UseWindowsForms adds.</summary>
     private static readonly string[] s_implicitUsings =
