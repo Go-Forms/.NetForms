@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The API NetForms still lacks: the public and protected surface of the real System.Windows.Forms and
+    System.Drawing.Common (their reference assemblies, Microsoft.WindowsDesktop.App.Ref) against NetForms'.
+    Reads metadata only, so it runs on Linux as well as Windows. See Program.cs for the arguments.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>NetForms.ApiDiff</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Reflection.MetadataLoadContext" />
+    <!-- The reference pack is only downloaded (it is not a dependency): its path is baked in below. -->
+    <PackageDownload Include="Microsoft.WindowsDesktop.App.Ref" Version="[10.0.0]" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NetForms/NetForms.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>WindowsDesktopRef</_Parameter1>
+      <_Parameter2>$(NuGetPackageRoot)microsoft.windowsdesktop.app.ref/10.0.0/ref/net10.0</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+</Project>

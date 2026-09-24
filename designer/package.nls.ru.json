@@ -1,0 +1,20 @@
+{
+	"displayName": "Дизайнер NetForms",
+	"description": "Визуальный дизайнер форм для NetForms — WinForms для Windows и Linux. Редактирует *.Designer.cs на холсте, который рисует сам NetForms, полностью офлайн.",
+	"command.openDesigner": "Открыть визуальный дизайнер",
+	"command.openAsText": "Открыть как текст",
+	"command.viewCode": "Перейти к коду",
+	"command.viewDesigner": "Перейти к конструктору",
+	"command.tidy": "Упорядочить файл дизайнера",
+	"command.newProject": "Создать проект…",
+	"command.newForm": "Новая форма…",
+	"command.setHostPath": "Указать путь к хосту дизайнера…",
+	"command.convertProject": "Перевести проект WinForms…",
+	"command.checkSetup": "Проверить установку",
+	"command.run": "Запустить проект",
+	"editor.displayName": "Дизайнер NetForms",
+	"config.designerHostPath": "Путь к NetFormsDesigner.Host.dll (или исполняемому файлу). Пусто: хост из расширения, затем копия NetForms, найденная выше открытого файла.",
+	"config.dotnetPath": "Исполняемый файл dotnet для хоста дизайнера и новых проектов.",
+	"config.snapToLines": "Привязывать элементы к краям, центрам и отступам соседей при перетаскивании (Alt — двигать свободно).",
+	"config.frameworkPath": "Копия NetForms (папка с NetForms.slnx), на которую ссылаются новые и переведённые проекты вместо пакета NetForms."
+}

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>NetForms.Design.Serialization</RootNamespace>
+    <Description>Reads and writes *.Designer.cs (InitializeComponent) with Roslyn, without compiling the user's project.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NetForms/NetForms.csproj" />
+  </ItemGroup>
+</Project>

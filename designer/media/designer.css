@@ -1,0 +1,160 @@
+/* NetForms Designer webview. Colours come from the VS Code theme; the form itself is a picture
+   painted by NetForms, so nothing here styles controls - only the editing chrome around them. */
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body {
+	font-family: var(--vscode-font-family);
+	font-size: var(--vscode-font-size);
+	color: var(--vscode-foreground);
+	background: var(--vscode-editor-background);
+	user-select: none;
+}
+button, input, select { font: inherit; color: inherit; }
+
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* --- toolbar ----------------------------------------------------------------------------------- */
+#toolbar {
+	display: flex; align-items: center; gap: 2px; padding: 3px 6px;
+	border-bottom: 1px solid var(--vscode-panel-border, #8884);
+	background: var(--vscode-editorGroupHeader-tabsBackground);
+	flex-wrap: wrap;
+}
+#toolbar button {
+	background: transparent; border: 1px solid transparent; border-radius: 3px;
+	padding: 2px 6px; cursor: pointer; min-width: 24px;
+}
+#toolbar button:hover:not(:disabled) { background: var(--vscode-toolbar-hoverBackground, #8883); }
+#toolbar button:disabled { opacity: .4; cursor: default; }
+#toolbar button.on { border-color: var(--vscode-focusBorder); }
+#toolbar .sep { width: 1px; height: 18px; background: var(--vscode-panel-border, #8886); margin: 0 4px; }
+#toolbar .zoom { min-width: 44px; text-align: center; opacity: .8; }
+
+#main { flex: 1; display: flex; min-height: 0; }
+
+/* --- toolbox ----------------------------------------------------------------------------------- */
+#toolbox {
+	width: 190px; overflow-y: auto; border-right: 1px solid var(--vscode-panel-border, #8884);
+	background: var(--vscode-sideBar-background);
+}
+#toolbox input.search {
+	width: calc(100% - 12px); margin: 6px; padding: 3px 6px;
+	background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, #8884);
+}
+.tb-group > .tb-head { padding: 4px 8px; font-weight: 600; cursor: pointer; opacity: .9; }
+.tb-group > .tb-head::before { content: '▾ '; }
+.tb-group.collapsed > .tb-head::before { content: '▸ '; }
+.tb-group.collapsed > .tb-items { display: none; }
+.tb-item { padding: 3px 8px 3px 22px; cursor: grab; white-space: nowrap; }
+.tb-item:hover { background: var(--vscode-list-hoverBackground); }
+.tb-item .tray-mark { opacity: .6; font-size: 90%; }
+
+/* --- workspace --------------------------------------------------------------------------------- */
+#workspace { flex: 1; overflow: auto; position: relative; display: flex; flex-direction: column; }
+#stage { flex: 1; padding: 24px; position: relative; min-height: 0; }
+.form-frame {
+	position: relative; display: inline-block;
+	border: 1px solid #7a7a7a; box-shadow: 0 2px 10px #0005;
+	transform-origin: 0 0;
+}
+.form-title {
+	height: 30px; display: flex; align-items: center; padding: 0 8px;
+	background: #fff; color: #000; font-family: 'Segoe UI', sans-serif; font-size: 12px;
+	border-bottom: 1px solid #ddd;
+}
+.form-title .caption { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.form-title .caption-buttons { letter-spacing: 14px; opacity: .6; }
+.form-title.selected { outline: 2px solid var(--vscode-focusBorder); outline-offset: -2px; }
+.canvas { position: relative; background-repeat: no-repeat; image-rendering: pixelated; }
+.canvas img.picture { position: absolute; left: 0; top: 0; pointer-events: none; }
+
+.hit { position: absolute; }
+.hit.item-kind { outline: none; }
+.hit.docked { outline: 1px dashed #8888; outline-offset: -1px; }
+.hit.selected { outline: 1px dashed var(--vscode-focusBorder, #0078d4); }
+.hit.primary { outline: 1px solid var(--vscode-focusBorder, #0078d4); }
+.hit.drop-target { outline: 2px solid #3c9; outline-offset: -2px; background: #3c92; }
+.hit.hidden-design { background: repeating-linear-gradient(45deg, #0000, #0000 6px, #8882 6px, #8882 8px); }
+
+.ghost { position: absolute; border: 1px solid var(--vscode-focusBorder, #0078d4); background: #0078d418; pointer-events: none; z-index: 20; }
+.guide { position: absolute; pointer-events: none; z-index: 30; }
+.guide.x { width: 0; border-left: 1px solid #f0f; }
+.guide.y { height: 0; border-top: 1px solid #f0f; }
+.guide.margin { border-color: #09f; border-style: dashed; }
+.guide.center { border-color: #f80; }
+
+.handle {
+	position: absolute; width: 7px; height: 7px; margin: -4px 0 0 -4px; z-index: 25;
+	background: #fff; border: 1px solid #333;
+}
+.handle.primary { background: #333; border-color: #fff; }
+.form-grip { position: absolute; width: 7px; height: 7px; background: #fff; border: 1px solid #333; z-index: 25; }
+.form-grip.e { cursor: e-resize; } .form-grip.s { cursor: s-resize; } .form-grip.se { cursor: se-resize; }
+
+.tab-badge {
+	position: absolute; z-index: 26; font-size: 10px; padding: 0 3px; border-radius: 2px;
+	background: #1a73e8; color: #fff; cursor: pointer;
+}
+
+/* --- tray -------------------------------------------------------------------------------------- */
+#tray {
+	min-height: 44px; border-top: 1px solid var(--vscode-panel-border, #8884); padding: 6px 12px;
+	display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+	background: var(--vscode-sideBar-background);
+}
+#tray:empty::before { content: 'Components without a place on the form (Timer, ToolTip, menus) appear here.'; opacity: .5; }
+.tray-item { padding: 3px 8px; border: 1px solid transparent; border-radius: 3px; cursor: default; }
+.tray-item:hover { background: var(--vscode-list-hoverBackground); }
+.tray-item.selected { border-color: var(--vscode-focusBorder); }
+
+/* --- inspector --------------------------------------------------------------------------------- */
+#inspector {
+	width: 300px; display: flex; flex-direction: column; min-height: 0;
+	border-left: 1px solid var(--vscode-panel-border, #8884); background: var(--vscode-sideBar-background);
+}
+.insp-head { padding: 6px 8px; border-bottom: 1px solid var(--vscode-panel-border, #8884); }
+.insp-head .target { font-weight: 600; }
+.insp-head .target-type { opacity: .7; font-size: 90%; }
+.insp-tabs { display: flex; gap: 2px; padding: 4px 6px 0; }
+.insp-tabs button { background: transparent; border: none; border-bottom: 2px solid transparent; padding: 3px 8px; cursor: pointer; }
+.insp-tabs button.on { border-bottom-color: var(--vscode-focusBorder); }
+.insp-tools { display: flex; gap: 4px; padding: 4px 6px; }
+.insp-tools input { flex: 1; padding: 2px 5px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border, #8884); }
+.insp-body { flex: 1; overflow-y: auto; }
+.insp-help { height: 64px; border-top: 1px solid var(--vscode-panel-border, #8884); padding: 4px 8px; overflow: hidden; }
+.insp-help b { display: block; }
+.cat > .cat-head { padding: 3px 6px; font-weight: 600; background: var(--vscode-sideBarSectionHeader-background, #8881); cursor: pointer; }
+.cat > .cat-head::before { content: '▾ '; }
+.cat.collapsed > .cat-head::before { content: '▸ '; }
+.cat.collapsed > .rows { display: none; }
+.row { display: grid; grid-template-columns: 45% 55%; align-items: center; min-height: 22px; border-bottom: 1px solid #8881; }
+.row .name { padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .name.modified { font-weight: 700; }
+.row .value { display: flex; align-items: center; gap: 2px; padding-right: 4px; min-width: 0; }
+.row .value input[type=text], .row .value select {
+	flex: 1; min-width: 0; padding: 1px 4px; height: 20px;
+	background: var(--vscode-input-background); border: 1px solid transparent;
+}
+.row .value input[type=text]:focus, .row .value select:focus { border-color: var(--vscode-focusBorder); outline: none; }
+.row .value input[readonly] { opacity: .6; }
+.row .swatch { width: 14px; height: 14px; border: 1px solid #8888; flex: none; }
+.row .mini { padding: 0 4px; height: 20px; border: none; background: transparent; cursor: pointer; opacity: .7; }
+.row .mini:hover { opacity: 1; }
+.row.selected { background: var(--vscode-list-inactiveSelectionBackground); }
+.flags { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 2px 0; }
+.flags label { white-space: nowrap; }
+.align-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--vscode-panel-border, #8884); }
+.align-bar button { border: 1px solid var(--vscode-button-border, #8884); background: var(--vscode-button-secondaryBackground, transparent); padding: 1px 6px; cursor: pointer; }
+
+/* --- status, toasts, errors -------------------------------------------------------------------- */
+#status { padding: 2px 8px; font-size: 90%; opacity: .75; border-top: 1px solid var(--vscode-panel-border, #8884); white-space: nowrap; overflow: hidden; }
+.toast {
+	position: fixed; right: 16px; bottom: 32px; max-width: 480px; padding: 8px 12px; z-index: 100;
+	background: var(--vscode-notifications-background); border: 1px solid var(--vscode-notifications-border, #8886);
+	box-shadow: 0 2px 8px #0006;
+}
+.toast.error { border-left: 4px solid var(--vscode-errorForeground, #f44); }
+.parse-error { padding: 24px; max-width: 720px; }
+.parse-error h2 { margin-top: 0; }
+.parse-error pre { white-space: pre-wrap; background: var(--vscode-textCodeBlock-background); padding: 8px; }

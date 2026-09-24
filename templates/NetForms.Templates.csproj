@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The dotnet new templates of NetForms: `dotnet new install` this package (or this folder), then
+    `dotnet new netforms`, `dotnet new netforms-form`, `dotnet new netforms-usercontrol`.
+    The VS Code extension scaffolds from the very same files (designer/src/scaffold.ts).
+  -->
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>NetForms.Templates</PackageId>
+    <Title>NetForms templates</Title>
+    <Description>Project and item templates for NetForms, WinForms for Windows and Linux.</Description>
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="netforms-app/**/*;netforms-form/**/*;netforms-usercontrol/**/*" Exclude="**/bin/**;**/obj/**" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Converts a Windows Forms project to NetForms (phase 5.7): analyses what will and will not
+    carry over, then rewrites the project file. Used by the VS Code command and on its own,
+    for example: dotnet run (project tools/NetForms.Convert) App.csproj, with apply to rewrite.
+    See Program.cs for the arguments.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>NetForms.Convert</AssemblyName>
+    <RootNamespace>NetForms.Converter</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The real WinForms type list (dumped by tests/NetForms.Compat, types mode), to tell "missing in NetForms" apart. -->
+    <EmbeddedResource Include="winforms-types.txt" LogicalName="NetForms.Converter.winforms-types.txt" />
+  </ItemGroup>
+</Project>

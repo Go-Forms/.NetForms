@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A type-forwarding facade named System.Drawing.Common: every type of the real System.Drawing.Common
+    that NetForms.Drawing implements is forwarded there. It is what makes the old names bind -
+    the .NET shared framework's System.Drawing.dll forwards Bitmap, Icon, Font... to System.Drawing.Common,
+    so .resx images (type="System.Drawing.Bitmap, System.Drawing") and libraries compiled against
+    System.Drawing.Common both land on NetForms' implementations (docs/PLAN.md, Ф6).
+  -->
+  <PropertyGroup>
+    <AssemblyName>System.Drawing.Common</AssemblyName>
+    <RootNamespace>System.Drawing</RootNamespace>
+    <!-- Above what the shared framework's facade asks for (0.0.0.0) and what packages were built against. -->
+    <AssemblyVersion>10.0.0.0</AssemblyVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NetForms.Drawing/NetForms.Drawing.csproj" />
+  </ItemGroup>
+</Project>

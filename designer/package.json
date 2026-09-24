@@ -1,0 +1,185 @@
+{
+	"name": "netforms-designer",
+	"displayName": "%displayName%",
+	"description": "%description%",
+	"version": "0.1.0",
+	"publisher": "netforms",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": [
+		"Programming Languages",
+		"Visualization",
+		"Other"
+	],
+	"keywords": [
+		"winforms",
+		"windows forms",
+		"designer",
+		"form designer",
+		"c#",
+		"linux",
+		"netforms"
+	],
+	"activationEvents": [
+		"workspaceContains:**/*.Designer.cs",
+		"workspaceContains:**/*.csproj"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"customEditors": [
+			{
+				"viewType": "netforms.designer",
+				"displayName": "%editor.displayName%",
+				"selector": [
+					{
+						"filenamePattern": "*.Designer.cs"
+					}
+				],
+				"priority": "default"
+			}
+		],
+		"commands": [
+			{
+				"command": "netforms.openDesigner",
+				"title": "%command.openDesigner%",
+				"category": "NetForms",
+				"icon": "$(layout)"
+			},
+			{
+				"command": "netforms.openAsText",
+				"title": "%command.openAsText%",
+				"category": "NetForms",
+				"icon": "$(go-to-file)"
+			},
+			{
+				"command": "netforms.viewCode",
+				"title": "%command.viewCode%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.viewDesigner",
+				"title": "%command.viewDesigner%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.tidy",
+				"title": "%command.tidy%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.newProject",
+				"title": "%command.newProject%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.newForm",
+				"title": "%command.newForm%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.setHostPath",
+				"title": "%command.setHostPath%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.convertProject",
+				"title": "%command.convertProject%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.checkSetup",
+				"title": "%command.checkSetup%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.run",
+				"title": "%command.run%",
+				"category": "NetForms"
+			}
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "netforms.openAsText",
+					"when": "activeCustomEditorId == netforms.designer",
+					"group": "navigation"
+				},
+				{
+					"command": "netforms.openDesigner",
+					"when": "resourceFilename =~ /\\.Designer\\.cs$/ && activeEditor == workbench.editors.files.textFileEditor",
+					"group": "navigation"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "netforms.newForm",
+					"when": "explorerResourceIsFolder",
+					"group": "navigation@9"
+				},
+				{
+					"command": "netforms.convertProject",
+					"when": "resourceExtname == .csproj",
+					"group": "navigation@9"
+				}
+			]
+		},
+		"keybindings": [
+			{
+				"command": "netforms.viewCode",
+				"key": "f7",
+				"when": "activeCustomEditorId == netforms.designer"
+			},
+			{
+				"command": "netforms.viewDesigner",
+				"key": "shift+f7",
+				"when": "resourceLangId == csharp"
+			}
+		],
+		"configuration": {
+			"title": "NetForms",
+			"properties": {
+				"netforms.designerHostPath": {
+					"type": "string",
+					"default": "",
+					"description": "%config.designerHostPath%"
+				},
+				"netforms.dotnetPath": {
+					"type": "string",
+					"default": "dotnet",
+					"description": "%config.dotnetPath%"
+				},
+				"netforms.snapToLines": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.snapToLines%"
+				},
+				"netforms.frameworkPath": {
+					"type": "string",
+					"default": "",
+					"description": "%config.frameworkPath%"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run build && npm run build:host && npm run copy:templates",
+		"build": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18",
+		"build:host": "dotnet publish ../tools/NetFormsDesigner.Host -c Release -o host --nologo && dotnet publish ../tools/NetForms.Convert -c Release -o host --nologo && node scripts/prune-host.js",
+		"typecheck": "tsc --noEmit -p .",
+		"watch": "npm run build -- --watch",
+		"package": "vsce package --allow-missing-repository",
+		"test": "node --test test/geometry.test.js test/l10n.test.js test/protocol.test.js test/ui/ui.test.js",
+		"copy:templates": "node scripts/copy-templates.js"
+	},
+	"devDependencies": {
+		"@types/node": "^20.0.0",
+		"@types/vscode": "^1.85.0",
+		"@vscode/vsce": "^2.24.0",
+		"esbuild": "^0.20.0",
+		"puppeteer-core": "^23.11.1",
+		"typescript": "^5.4.0"
+	},
+	"l10n": "./l10n"
+}

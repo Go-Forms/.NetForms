@@ -1,0 +1,20 @@
+{
+	"displayName": "NetForms Designer",
+	"description": "Visual form designer for NetForms - WinForms for Windows and Linux. Edits *.Designer.cs with a canvas painted by NetForms itself, fully offline.",
+	"command.openDesigner": "Open Visual Designer",
+	"command.openAsText": "Open as Text",
+	"command.viewCode": "View Code",
+	"command.viewDesigner": "View Designer",
+	"command.tidy": "Tidy Designer File",
+	"command.newProject": "Create New Project…",
+	"command.newForm": "New Form…",
+	"command.setHostPath": "Set Designer Host Path…",
+	"command.convertProject": "Convert WinForms Project…",
+	"command.checkSetup": "Check Setup",
+	"command.run": "Run Project",
+	"editor.displayName": "NetForms Designer",
+	"config.designerHostPath": "Path to NetFormsDesigner.Host.dll (or the executable). Empty: the host bundled with the extension, then a NetForms checkout found above the opened file.",
+	"config.dotnetPath": "The dotnet executable used to run the designer host and new projects.",
+	"config.snapToLines": "Snap controls to the edges, centres and margins of their neighbours while dragging (hold Alt to move freely).",
+	"config.frameworkPath": "A NetForms checkout (the folder with NetForms.slnx) that new and converted projects reference instead of the NetForms package."
+}

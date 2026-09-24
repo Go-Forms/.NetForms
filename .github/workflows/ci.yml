@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet restore
+      - run: dotnet build --no-restore -c Release
+
+      # Windows only: the oracles. The shared scenarios, the design-time metadata and what the designer
+      # serializes are taken from the real System.Windows.Forms, and the test suite diffs NetForms
+      # against them (CompatDiffTests, AttributeDiffTests, SerializationDiffTests).
+      - name: Run the oracles on real WinForms
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          dotnet run --project tests/NetForms.Compat -c Release -- "$env:RUNNER_TEMP/winforms-scenarios.json"
+          dotnet run --project tests/NetForms.Compat -c Release -- --attrs "$env:RUNNER_TEMP/winforms-attrs.json"
+          dotnet run --project tests/NetForms.Compat -c Release -- --serialization "$env:RUNNER_TEMP/winforms-serialization.json"
+          echo "NETFORMS_WINFORMS_SCENARIOS=$env:RUNNER_TEMP/winforms-scenarios.json" >> $env:GITHUB_ENV
+          echo "NETFORMS_WINFORMS_ATTRS=$env:RUNNER_TEMP/winforms-attrs.json" >> $env:GITHUB_ENV
+          echo "NETFORMS_WINFORMS_SERIALIZATION=$env:RUNNER_TEMP/winforms-serialization.json" >> $env:GITHUB_ENV
+
+      # Rendering in the tests is offscreen (SkiaSharp into SKBitmap) and hermetic (decision 105): the same
+      # golden images on both OSes, no display needed.
+      - run: dotnet test --no-build -c Release --logger "trx"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-out-${{ matrix.os }}
+          path: |
+            tests/NetForms.Tests/bin/Release/net10.0/render-out/
+            ${{ runner.temp }}/winforms-*.json
+
+  # Ф6.К: real WinForms projects (tests/corpus/corpus.json, pinned commits) converted and built -
+  # the customer's .NET Framework projects and open ones. The summary is render-out/corpus.md.
+  corpus:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      NETFORMS_CORPUS: "1"
+      NETFORMS_CORPUS_DIR: ${{ github.workspace }}/../corpus-cache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/../corpus-cache
+          key: corpus-${{ hashFiles('tests/corpus/corpus.json') }}
+      - run: dotnet build tests/NetForms.Tests -c Release
+      - run: dotnet test tests/NetForms.Tests --no-build -c Release --filter "FullyQualifiedName~CorpusTests" --logger "console;verbosity=normal"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: corpus-${{ matrix.os }}
+          path: tests/NetForms.Tests/bin/Release/net10.0/render-out/corpus.md
+
+  # The VS Code extension: canvas math, translations, the protocol against the real host, and the
+  # webview driven with a mouse in headless Chrome (Linux) / Edge (Windows).
+  designer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: designer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: dotnet build ../tools/NetFormsDesigner.Host -c Release
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: designer-ui-${{ matrix.os }}
+          path: designer/test/ui/out/

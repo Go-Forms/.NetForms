@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Gallery/Gallery.csproj" />
+    <Project Path="samples/HelloForms/HelloForms.csproj" />
+    <Project Path="samples/MdiDemo/MdiDemo.csproj" />
+    <Project Path="samples/Strips/Strips.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/NetForms.Design/NetForms.Design.csproj" />
+    <Project Path="src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
+    <Project Path="src/NetForms.Drawing/NetForms.Drawing.csproj" />
+    <Project Path="src/NetForms.Drawing.Common/NetForms.Drawing.Common.csproj" />
+    <Project Path="src/NetForms.Platform.Avalonia/NetForms.Platform.Avalonia.csproj" />
+    <Project Path="src/NetForms.Platform/NetForms.Platform.csproj" />
+    <Project Path="src/NetForms/NetForms.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/NetForms.ApiDiff/NetForms.ApiDiff.csproj" />
+    <Project Path="tools/NetForms.Convert/NetForms.Convert.csproj" />
+    <Project Path="tools/NetFormsDesigner.Host/NetFormsDesigner.Host.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NetForms.Tests/NetForms.Tests.csproj" />
+  </Folder>
+</Solution>

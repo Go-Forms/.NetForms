@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The designer's back end: a long-lived process the VS Code extension talks to over
+    stdin/stdout, one JSON object per line (NetForms.Design.DesignerProtocol). It holds the live
+    form, renders it with NetForms itself and reads/writes *.Designer.cs. Fully offline.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>NetFormsDesigner.Host</AssemblyName>
+    <RootNamespace>NetForms.Design.Host</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NetForms.Design/NetForms.Design.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,11 @@
+<Project>
+  <!--
+    Imported into every project that references the NetForms package - what <UseWindowsForms> sets up
+    for a WinForms project. A project that references NetForms.csproj directly sets these itself
+    (the templates and the converter write them).
+  -->
+  <PropertyGroup>
+    <!-- .resx files with images and icons embed them pre-serialized, read by System.Resources.Extensions. -->
+    <GenerateResourceUsePreserializedResources Condition="'$(GenerateResourceUsePreserializedResources)' == ''">true</GenerateResourceUsePreserializedResources>
+  </PropertyGroup>
+</Project>

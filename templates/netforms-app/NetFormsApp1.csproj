@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NetFormsApp1</RootNamespace>
+<!--#if (HasFrameworkPath) -->
+    <!-- .resx images and icons (the NetForms package sets this itself; a project reference does not). -->
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+<!--#else -->
+<!--#endif -->
+  </PropertyGroup>
+
+  <ItemGroup>
+<!--#if (HasFrameworkPath) -->
+    <ProjectReference Include="NETFORMS_FRAMEWORK_PATH/src/NetForms/NetForms.csproj" />
+<!--#else -->
+    <PackageReference Include="NetForms" Version="0.0.1" />
+<!--#endif -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- What <UseWindowsForms>true</UseWindowsForms> adds: the WinForms namespaces as implicit usings. -->
+    <Using Include="System.Drawing" />
+    <Using Include="System.Windows.Forms" />
+  </ItemGroup>
+
+</Project>

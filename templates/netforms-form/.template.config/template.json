@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "NetForms contributors",
+  "classifications": [
+    "Common",
+    "WinForms",
+    "NetForms"
+  ],
+  "identity": "NetForms.Form.CSharp",
+  "name": "NetForms Form",
+  "description": "A form: Form1.cs for your code and Form1.Designer.cs for the designer.",
+  "shortName": "netforms-form",
+  "sourceName": "Form1",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "symbols": {
+    "DefaultNamespace": {
+      "type": "bind",
+      "binding": "msbuild:RootNamespace",
+      "replaces": "NetFormsNamespace"
+    }
+  },
+  "defaultName": "Form1",
+  "preferDefaultName": true,
+  "constraints": {
+    "csharp-only": {
+      "type": "project-capability",
+      "args": "CSharp"
+    }
+  }
+}

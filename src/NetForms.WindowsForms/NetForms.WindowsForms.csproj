@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A type-forwarding facade named System.Windows.Forms: every type of the real System.Windows.Forms that
+    NetForms implements is forwarded to NetForms (decision 123), as NetForms.Drawing.Common does for
+    System.Drawing.Common. Binary-formatted .resx objects name their type "..., System.Windows.Forms"
+    (ImageList.ImageStream), and libraries compiled against WinForms reference that assembly.
+
+    It is not in the solution: NetForms.csproj builds it right after compiling itself (the facade needs
+    NetForms.dll, and NetForms has to hand the facade on to every project that references it), passing the
+    freshly compiled assembly in NetFormsAssembly.
+  -->
+  <PropertyGroup>
+    <AssemblyName>System.Windows.Forms</AssemblyName>
+    <RootNamespace>System.Windows.Forms</RootNamespace>
+    <!-- Above what .resx files (4.0.0.0) and libraries built against .NET's WinForms ask for. -->
+    <AssemblyVersion>10.0.0.0</AssemblyVersion>
+    <NetFormsAssembly Condition="'$(NetFormsAssembly)' == ''">$(MSBuildThisFileDirectory)../NetForms/bin/$(Configuration)/$(TargetFramework)/NetForms.dll</NetFormsAssembly>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="NetForms" HintPath="$(NetFormsAssembly)" Private="false" />
+    <Reference Include="$([MSBuild]::Unescape($(FacadeReferences)))" Private="false" Condition="'$(FacadeReferences)' != ''" />
+  </ItemGroup>
+</Project>

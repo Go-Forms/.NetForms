@@ -1,0 +1,222 @@
+[
+  {
+    "name": "ANT-Lengton",
+    "url": "https://github.com/TrewCar/ANT-Lengton",
+    "commit": "8bb08110ccec63f1fce74f4a0a00096a1a5def64",
+    "group": "customer",
+    "license": "customer's own",
+    "knownFailures": {}
+  },
+  {
+    "name": "Find-Exit-Labirint",
+    "url": "https://github.com/TrewCar/Find-Exit-Labirint",
+    "commit": "989451d4f97ac548b142229c61896ee832b80957",
+    "group": "customer",
+    "license": "customer's own",
+    "knownFailures": {}
+  },
+  {
+    "name": "Fractals",
+    "url": "https://github.com/TrewCar/Fractals",
+    "commit": "a0764f49a4102ca3e645cbf6a050fc42667363e7",
+    "group": "customer",
+    "license": "customer's own",
+    "knownFailures": {}
+  },
+  {
+    "name": "One-dimensional_cellular_automaton",
+    "url": "https://github.com/TrewCar/One-dimensional_cellular_automaton",
+    "commit": "4ff55d839e195037922cc25c34b60e4a6fdd17b2",
+    "group": "customer",
+    "license": "customer's own",
+    "knownFailures": {}
+  },
+  {
+    "name": "Sapper",
+    "url": "https://github.com/TrewCar/Sapper",
+    "commit": "a16ca3d68f6d18f4087dca19f37fa7c73d45a15e",
+    "group": "customer",
+    "license": "customer's own",
+    "knownFailures": {}
+  },
+  {
+    "name": "The-Koch-curve",
+    "url": "https://github.com/TrewCar/The-Koch-curve",
+    "commit": "349efb3a7cecc2bea1028dff92cd4e1148a2e9f8",
+    "group": "customer",
+    "license": "customer's own",
+    "knownFailures": {}
+  },
+  {
+    "name": "MDBEditor",
+    "url": "https://github.com/AbdullahOztuurkk/MDBEditor",
+    "commit": "c454faa2beeab2199fd6e87e49438747978c9136",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "src/MDBEditor.csproj": "printing (System.Drawing.Printing) not in NetForms yet"
+    }
+  },
+  {
+    "name": "Life",
+    "url": "https://github.com/ArdeshirV/Life",
+    "commit": "5d0b873e61915a61c7a740842536c1e538181d70",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {}
+  },
+  {
+    "name": "Winforms_Chess",
+    "url": "https://github.com/KellerKing/Winforms_Chess",
+    "commit": "525cedf78e95a38409b46e5b777dee4329459937",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {}
+  },
+  {
+    "name": "WorldOfGames",
+    "url": "https://github.com/MTrajK/WorldOfGames",
+    "commit": "4781b93ff03dbaa5f633b0bc65b05f84677476ce",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "src/WorldOfGames/WorldOfGames.csproj": "BinaryFormatter, removed in .NET 9"
+    }
+  },
+  {
+    "name": "windows-forms-minesweeper",
+    "url": "https://github.com/ManuelKlaer/windows-forms-minesweeper",
+    "commit": "45bab041f3730c75c3ab3713ab4a2f87ce069104",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "Minesweeper/Minesweeper.csproj": "Microsoft.VisualBasic.Devices: VB runtime of WinForms, not in NetForms"
+    }
+  },
+  {
+    "name": "SnakeGame",
+    "url": "https://github.com/Martyg313/SnakeGame",
+    "commit": "3cb2b7f963ad92a6f6915680ffae75162e1ed14b",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {}
+  },
+  {
+    "name": "Chess_AI",
+    "url": "https://github.com/Quanghihicoder/Chess_AI",
+    "commit": "6bdcf8b2e19fd88d47011ef697833bd46241f2a2",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {}
+  },
+  {
+    "name": "SuperAdventure",
+    "url": "https://github.com/ScottLilly/SuperAdventure",
+    "commit": "a511ce70b3fbfeea390568e6f254913706fcffec",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {}
+  },
+  {
+    "name": "Scientific-Calculator",
+    "url": "https://github.com/ali-ghanem/Scientific-Calculator",
+    "commit": "734bd7d7072df52efbfc6394a8dc40121cbd3879",
+    "group": "open",
+    "license": "Apache-2.0",
+    "knownFailures": {}
+  },
+  {
+    "name": "CircularProgressBar",
+    "url": "https://github.com/falahati/CircularProgressBar",
+    "commit": "abf76e4c0e28ce5abd6af73955d43ff8f03d4853",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "CircularProgressBarSample/CircularProgressBarSample.csproj": "a package build task fails on .NET 10"
+    }
+  },
+  {
+    "name": "Surviving-WinForms",
+    "url": "https://github.com/grantwinney/Surviving-WinForms",
+    "commit": "3275914f0d0125e28c5474cbabc6b07c3fafd32d",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      ".NET 05/WebView2Sample/WebView2Sample/WebView2Sample.csproj": "WebView2: Windows-only control",
+      ".NET 08/GetStockIcon/GetStockIconTest/GetStockIconTest.csproj": "GetStockIcon/Icon API gap",
+      "Debugging/Logging/MultipleNLogTargets/MultipleNLogTargets/MultipleNLogTargets.csproj": "a package with a FrameworkReference to WindowsDesktop (NLog.Windows.Forms)",
+      "Debugging/Logging/NLogUtility/NLogUtility/NLogUtility.csproj": "NLog package reference not carried over",
+      "Web/CEFSharp/BasicCefSharp/BasicCefSharp/BasicCefSharp.csproj": "CefSharp: native Chromium for Windows only",
+      "Web/CEFSharp/BasicCefSharpIIS/BasicCefSharpIIS/BasicCefSharpIIS.csproj": "CefSharp: native Chromium for Windows only"
+    }
+  },
+  {
+    "name": "2D-graphics-app-drawing",
+    "url": "https://github.com/gvidev/2D-graphics-app-drawing",
+    "commit": "efdb667f49677f584ff574ac70a129386c36d2c9",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "CGProject/Draw.csproj": "BinaryFormatter, removed in .NET 9"
+    }
+  },
+  {
+    "name": "csharp-image-processing",
+    "url": "https://github.com/julzerinos/csharp-image-processing",
+    "commit": "3c87bfce1f7fc6765768f5720965fac3fb355e7d",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "winforms-image-processor/winforms-image-processor.csproj": "BinaryFormatter, removed in .NET 9"
+    }
+  },
+  {
+    "name": "NodeEditorWinforms",
+    "url": "https://github.com/komorra/NodeEditorWinforms",
+    "commit": "3c847e6a01647c59a8b544bd31ca5c7af79b2a8a",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "NodeEditor/NodeEditor.csproj": "BinaryFormatter, removed in .NET 9",
+      "SampleCommon/SampleCommon.csproj": "BinaryFormatter, removed in .NET 9",
+      "MathSample/MathSample.csproj": "BinaryFormatter, removed in .NET 9"
+    }
+  },
+  {
+    "name": "MineSweeperGame",
+    "url": "https://github.com/krmsari/MineSweeperGame",
+    "commit": "461e799dc380d8c22ff1f6688ae991791e407ff6",
+    "group": "open",
+    "license": "Apache-2.0",
+    "knownFailures": {}
+  },
+  {
+    "name": "Simple-Windows-Calculator",
+    "url": "https://github.com/tachithanhdanh/Simple-Windows-Calculator",
+    "commit": "e0853f13d188e493d1f06008cb833078f69197cb",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {}
+  },
+  {
+    "name": "xrails-login-ui",
+    "url": "https://github.com/xv/xrails-login-ui",
+    "commit": "2c51bd279fcaba9de582d830639abef846fec476",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "src/Core/XRails-LoginUI.csproj": "OverrideCursor: WPF (Mouse.OverrideCursor)",
+      "src/Demo/XRails-LoginUI.Demo.csproj": "OverrideCursor: WPF (Mouse.OverrideCursor)"
+    }
+  },
+  {
+    "name": "tetris-oop",
+    "url": "https://github.com/yudinikita/tetris-oop",
+    "commit": "e3a50fc69a3a3a6b0085286708dcd70ee20a3170",
+    "group": "open",
+    "license": "MIT",
+    "knownFailures": {
+      "Tetris-OOP/Tetris.csproj": "Binding API gap"
+    }
+  }
+]

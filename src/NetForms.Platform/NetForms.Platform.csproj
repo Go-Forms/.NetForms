@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>NetForms.Platform</RootNamespace>
+    <Description>Platform abstraction for NetForms: window, input, clipboard, native dialogs. No UI toolkit types leak through.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Runs the shared scenarios against the REAL System.Windows.Forms and writes the result
+    as JSON. Windows only; not part of the solution. CI builds it on windows-latest and
+    feeds its output to the NetForms test suite (NETFORMS_WINFORMS_SCENARIOS).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NetForms.Compat</RootNamespace>
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <!-- WFO1000: samples/MdiDemo exposes a public property on a form; that is the sample's business, not the dump's. -->
+    <NoWarn>$(NoWarn);WFO1000</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/CompatScenarios.cs" />
+    <Compile Include="../Shared/AttributeDump.cs" />
+    <Compile Include="../Shared/SerializationDump.cs" />
+    <!-- The sample forms, compiled against the real WinForms (drop-in: same sources). Program.cs stays out. -->
+    <Compile Include="../../samples/HelloForms/MainForm.cs" />
+    <Compile Include="../../samples/HelloForms/MainForm.Designer.cs" />
+    <Compile Include="../../samples/Gallery/GalleryForm.cs" />
+    <Compile Include="../../samples/Gallery/GalleryForm.Designer.cs" />
+    <Compile Include="../../samples/Gallery/CollectionsForm.cs" />
+    <Compile Include="../../samples/Gallery/CollectionsForm.Designer.cs" />
+    <Compile Include="../../samples/Gallery/ResourcesForm.cs" />
+    <Compile Include="../../samples/Gallery/ColumnsForm.cs" />
+    <Compile Include="../../samples/Gallery/ColumnsForm.Designer.cs" />
+    <Compile Include="../../samples/Gallery/ResourcesForm.Designer.cs" />
+    <EmbeddedResource Include="../../samples/Gallery/ResourcesForm.resx" ManifestResourceName="Gallery.ResourcesForm" />
+    <Compile Include="../../samples/Strips/MainForm.cs" />
+    <Compile Include="../../samples/Strips/MainForm.Designer.cs" />
+    <Compile Include="../../samples/MdiDemo/MainForm.cs" />
+    <Compile Include="../../samples/MdiDemo/MainForm.Designer.cs" />
+    <Compile Include="../../samples/MdiDemo/DocumentForm.cs" />
+    <Compile Include="../../samples/MdiDemo/DocumentForm.Designer.cs" />
+    <Compile Include="../../samples/GenLabs/MainForm.cs" />
+    <Compile Include="../../samples/GenLabs/MainForm.Designer.cs" />
+    <Compile Include="../../samples/GenLabs/KochСurve.cs" />
+    <Compile Include="../../samples/GenLabs/Line.cs" />
+    <Compile Include="../../samples/GenLabs/Labirint/*.cs" />
+  </ItemGroup>
+</Project>

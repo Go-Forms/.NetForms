@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>System.Windows.Forms</RootNamespace>
+    <AssemblyName>NetForms</AssemblyName>
+    <Description>System.Windows.Forms, cross-platform: own Control tree, own painting via SkiaSharp, Avalonia as the platform layer.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NetForms.Drawing/NetForms.Drawing.csproj" />
+    <ProjectReference Include="../NetForms.Platform/NetForms.Platform.csproj" />
+    <ProjectReference Include="../NetForms.Platform.Avalonia/NetForms.Platform.Avalonia.csproj" />
+    <!-- System.Drawing.Common, forwarding to NetForms.Drawing: resx images and System.Drawing.Common libraries bind to it. -->
+    <ProjectReference Include="../NetForms.Drawing.Common/NetForms.Drawing.Common.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Reads the non-string resources of a .resx (images, icons) that MSBuild embeds pre-serialized. -->
+    <PackageReference Include="System.Resources.Extensions" />
+    <!-- Part of the Windows Desktop shared framework a WinForms app runs on: Properties\Settings
+         (ApplicationSettingsBase) and ConfigurationManager work in every WinForms project. -->
+    <PackageReference Include="System.Configuration.ConfigurationManager" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- What UseWindowsForms sets for a WinForms project, for projects that take NetForms as a package. -->
+    <None Include="buildTransitive/NetForms.props" Pack="true" PackagePath="buildTransitive/NetForms.props" />
+  </ItemGroup>
+  <!--
+    The System.Windows.Forms facade (decision 123) forwards to this assembly, so it is built from here, right
+    after compiling, against the fresh NetForms.dll and this project's own references; every project that
+    references NetForms then gets it in its output, as a copied file (a type named "..., System.Windows.Forms"
+    in a .resx or a library resolves at run time).
+  -->
+  <PropertyGroup>
+    <WinFormsFacadeProject>$(MSBuildThisFileDirectory)../NetForms.WindowsForms/NetForms.WindowsForms.csproj</WinFormsFacadeProject>
+    <WinFormsFacadeOutput>$(MSBuildThisFileDirectory)../NetForms.WindowsForms/bin/$(Configuration)/$(TargetFramework)/System.Windows.Forms.dll</WinFormsFacadeOutput>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="$(WinFormsFacadeOutput)" Link="System.Windows.Forms.dll" CopyToOutputDirectory="PreserveNewest" Visible="false" Pack="false" />
+  </ItemGroup>
+  <Target Name="BuildWinFormsFacade" AfterTargets="CoreCompile" BeforeTargets="CopyFilesToOutputDirectory" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <_FacadeReference Include="@(ReferencePath)" Condition="'%(ReferencePath.ReferenceSourceTarget)' == 'ProjectReference'" />
+    </ItemGroup>
+    <PropertyGroup>
+      <_FacadeNetForms>@(IntermediateAssembly->'%(FullPath)')</_FacadeNetForms>
+      <!-- Semicolons escaped: Properties="..." separates properties with them. -->
+      <_FacadeReferencesList>@(_FacadeReference->'%(FullPath)')</_FacadeReferencesList>
+      <_FacadeReferences>$([MSBuild]::Escape($(_FacadeReferencesList)))</_FacadeReferences>
+    </PropertyGroup>
+    <!-- Not in any restore graph (nothing references it): restore it first, in an evaluation of its own. -->
+    <MSBuild Projects="$(WinFormsFacadeProject)" Targets="Restore" Properties="Configuration=$(Configuration);_FacadeRestore=true"
+             Condition="!Exists('$(MSBuildThisFileDirectory)../NetForms.WindowsForms/obj/project.assets.json')" />
+    <MSBuild Projects="$(WinFormsFacadeProject)" Targets="Build"
+             Properties="Configuration=$(Configuration);NetFormsAssembly=$(_FacadeNetForms);FacadeReferences=$(_FacadeReferences)" />
+  </Target>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetForms.Tests" />
+    <!-- The designer is a friend of the framework, as the VS designer assemblies are of WinForms:
+         it installs a headless platform and reads design-time state (the own Visible flag). -->
+    <InternalsVisibleTo Include="NetForms.Design" />
+    <InternalsVisibleTo Include="NetForms.Design.Serialization" />
+  </ItemGroup>
+</Project>

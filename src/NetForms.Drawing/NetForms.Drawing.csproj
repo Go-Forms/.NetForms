@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>System.Drawing</RootNamespace>
+    <AssemblyName>NetForms.Drawing</AssemblyName>
+    <Description>System.Drawing (Graphics, Font, Pen, Brush, Bitmap) implemented on SkiaSharp.</Description>
+    <!-- LockBits hands out and converts raw pixel memory. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <!-- Unconditional: an application built on Windows runs on Linux too (framework-dependent). -->
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetForms" />
+    <InternalsVisibleTo Include="NetForms.Tests" />
+  </ItemGroup>
+</Project>

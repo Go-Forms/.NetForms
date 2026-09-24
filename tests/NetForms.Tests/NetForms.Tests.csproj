@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NetForms/NetForms.csproj" />
+    <ProjectReference Include="../../samples/HelloForms/HelloForms.csproj" />
+    <ProjectReference Include="../../samples/Gallery/Gallery.csproj" />
+    <ProjectReference Include="../../samples/Strips/Strips.csproj" />
+    <ProjectReference Include="../../samples/MdiDemo/MdiDemo.csproj" />
+    <ProjectReference Include="../../samples/GenLabs/HelloForms.csproj" />
+    <ProjectReference Include="../../src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
+    <ProjectReference Include="../../src/NetForms.Design/NetForms.Design.csproj" />
+    <ProjectReference Include="../../tools/NetForms.Convert/NetForms.Convert.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/CompatScenarios.cs" />
+    <Compile Include="../Shared/AttributeDump.cs" />
+    <Compile Include="../Shared/SerializationDump.cs" />
+    <None Include="Fonts/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Golden/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="System.Drawing" />
+    <Using Include="System.Windows.Forms" />
+  </ItemGroup>
+</Project>

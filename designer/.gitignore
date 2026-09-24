@@ -1,0 +1,7 @@
+node_modules/
+dist/
+out/
+host/
+templates/
+*.vsix
+test/ui/out/

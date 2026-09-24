@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The only difference from the project Visual Studio generates for a WinForms app:
+    <UseWindowsForms>true</UseWindowsForms> is replaced by a reference to NetForms.
+    The three .cs files are byte-for-byte what the WinForms designer would produce.
+  -->
+  <PropertyGroup>
+    <OutputType>exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>HelloForms</RootNamespace>
+    <!-- The project file keeps its original name; the assembly must not collide with samples/HelloForms. -->
+    <AssemblyName>GenLabs</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NetForms/NetForms.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- UseWindowsForms adds these implicit usings; we add them the same way. -->
+    <Using Include="System.Drawing" />
+    <Using Include="System.Windows.Forms" />
+  </ItemGroup>
+</Project>

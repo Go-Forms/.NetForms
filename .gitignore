@@ -1,0 +1,12 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+node_modules/
+*.vsix
+render-out/
+# session logs exported from Claude Code
+/*local-command-caveat*.txt

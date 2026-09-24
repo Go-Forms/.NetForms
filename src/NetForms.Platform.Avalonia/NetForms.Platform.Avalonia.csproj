@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>NetForms.Platform.Avalonia</RootNamespace>
+    <Description>Avalonia 12 implementation of the NetForms platform layer: one Avalonia Window per Form, one custom-drawn control, Skia lease for painting.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Avalonia is how NetForms reaches the platform, not something an application builds with: its
+         assemblies and native libraries flow to the application, its MSBuild logic (XAML compilation,
+         ApplicationIcon as an AvaloniaResource) does not. -->
+    <PackageReference Include="Avalonia" PrivateAssets="build;buildTransitive;analyzers;contentfiles" />
+    <PackageReference Include="Avalonia.Desktop" PrivateAssets="build;buildTransitive;analyzers;contentfiles" />
+    <PackageReference Include="Avalonia.Skia" PrivateAssets="build;buildTransitive;analyzers;contentfiles" />
+    <PackageReference Include="SkiaSharp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../NetForms.Platform/NetForms.Platform.csproj" />
+  </ItemGroup>
+</Project>
