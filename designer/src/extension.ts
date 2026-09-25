@@ -8,6 +8,7 @@ import { companionOf, DesignerEditorProvider } from './designerEditorProvider';
 import { findHost } from './hostClient';
 import { formClass, publishArgs, publishTargets, setStartupForm, startsAForm } from './project';
 import { installedTemplates, netformsVersion, newForm, newProject } from './scaffold';
+import { checkForUpdates, scheduleUpdateCheck } from './updates';
 
 export function activate(context: vscode.ExtensionContext) {
 	const log = vscode.window.createOutputChannel('NetForms');
@@ -66,6 +67,8 @@ export function activate(context: vscode.ExtensionContext) {
 	command('netforms.run', (uri?: vscode.Uri) => runProject(activeFile(uri)));
 	command('netforms.setStartupForm', (uri?: vscode.Uri) => setStartup(activeFile(uri)));
 	command('netforms.publish', (uri?: vscode.Uri) => publishProject(activeFile(uri)));
+	command('netforms.checkForUpdates', () => checkForUpdates(context, log));
+	scheduleUpdateCheck(context, log);
 	command('netforms.checkSetup', async () => {
 		const dotnet = vscode.workspace.getConfiguration('netforms').get<string>('dotnetPath') || 'dotnet';
 		const version = await new Promise<string>((resolve) => cp.execFile(dotnet, ['--version'], (err, out) => resolve(err ? vscode.l10n.t('not found ({0})', err.message) : out.trim())));

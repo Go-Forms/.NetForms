@@ -6,7 +6,7 @@
   `AcceptButton`/`CancelButton`), `netforms-aboutbox` (texts from the assembly attributes), `netforms-login` (user name
   and password) and `netforms-splash` (a borderless start-up screen).
 - **Designer:** copy, cut, paste and duplicate controls (also between forms), a right-click context menu, Set as
-  Startup Form, Publish Application…; `AcceptButton`/`CancelButton` are picked from the form's buttons.
+  Startup Form, Publish Application…, Check for Updates… (the projects' NetForms, the templates, the extension, the .NET SDK); `AcceptButton`/`CancelButton` are picked from the form's buttons.
 
 ## 0.1.0-preview.5 — tab pages and menus in the designer
 

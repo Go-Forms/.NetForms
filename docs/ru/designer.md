@@ -51,6 +51,7 @@
 | NetForms: Convert WinForms Project… | | Отчёт конвертера для `.csproj`, затем правка ([Перевод WinForms-проекта](migrating.md)). |
 | NetForms: Run Project | | `dotnet run` в терминале. |
 | NetForms: Set as Startup Form | | `Application.Run` в `Program.cs` запускает эту форму (контекстное меню `*.Designer.cs` и формы на холсте). |
+| NetForms: Check for Updates… | | Что устарело — одним списком с галочками: пакет NetForms в проектах рабочей области, шаблоны, это расширение (из выпуска на GitHub), .NET SDK (команда обновления вписывается в терминал, запускаете её вы: может понадобиться `sudo`). Раз в день проверяет и сама (`netforms.checkForUpdates`). |
 | NetForms: Publish Application… | | `dotnet publish` для Windows или Linux (x64, ARM64), автономно или с зависимостью от .NET, в `publish/<rid>` рядом с проектом. |
 | NetForms: Set Designer Host Path… | | Использовать другой хост дизайнера. |
 | NetForms: Check Setup | | Показывает найденные `dotnet`, хост дизайнера и шаблоны. |
@@ -63,6 +64,7 @@
 |---|---|---|
 | `netforms.dotnetPath` | `dotnet` | Исполняемый файл `dotnet`, если его нет в `PATH`. |
 | `netforms.designerHostPath` | пусто | Другой хост дизайнера (`NetFormsDesigner.Host.dll`); пусто — встроенный в расширение. |
+| `netforms.checkForUpdates` | вкл. | Раз в день проверять, нет ли новее NetForms, расширения и .NET SDK, и сообщать об этом. |
 | `netforms.snapToLines` | вкл. | Привязка к краям, центрам и отступам при перетаскивании (Alt — двигать свободно). |
 
 ## Холст

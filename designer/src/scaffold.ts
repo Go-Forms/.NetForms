@@ -6,6 +6,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { compareVersions } from './project';
 
 const identifier = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const templatesPackage = 'NetForms.Templates';
@@ -44,10 +45,12 @@ export async function installedTemplates(): Promise<string | undefined> {
 	return undefined;
 }
 
-/** Makes sure `dotnet new` has NetForms.Templates of this extension's version, installing it from NuGet. */
+/** Makes sure `dotnet new` has NetForms.Templates of this extension's version (or newer), installing it from NuGet. */
 async function ensureTemplates(context: vscode.ExtensionContext, log: vscode.OutputChannel): Promise<boolean> {
 	const wanted = netformsVersion(context);
-	if (await installedTemplates() === wanted) return true;
+	// A newer package (Check for Updates installs the newest) has every template this version has.
+	const installed = await installedTemplates();
+	if (installed && compareVersions(installed, wanted) >= 0) return true;
 	const result = await vscode.window.withProgress(
 		{ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('Installing the NetForms templates {0} from NuGet…', wanted) },
 		() => dotnet(['new', 'install', `${templatesPackage}::${wanted}`], process.cwd()));

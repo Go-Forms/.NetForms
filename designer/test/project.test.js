@@ -54,3 +54,28 @@ test('dotnet publish arguments', () => {
 	assert.deepEqual(project.publishArgs('/p/App.csproj', 'linux-x64', true, '/p/publish/linux-x64'),
 		['publish', '/p/App.csproj', '-c', 'Release', '-r', 'linux-x64', '--self-contained', 'true', '-o', '/p/publish/linux-x64', '-nologo']);
 });
+
+test('versions compare as NuGet compares them', () => {
+	const sorted = ['0.1.0', '0.1.0-preview.10', '0.0.9', '0.1.0-preview.9', '0.1.0-preview.2', 'v0.2.0', '0.1.1-alpha'].sort(project.compareVersions);
+	assert.deepEqual(sorted, ['0.0.9', '0.1.0-preview.2', '0.1.0-preview.9', '0.1.0-preview.10', '0.1.0', '0.1.1-alpha', 'v0.2.0']);
+	assert.equal(project.newest(['0.1.0-preview.4', undefined, '0.1.0-preview.5']), '0.1.0-preview.5');
+	assert.equal(project.compareVersions('0.1.0-preview.5', 'v0.1.0-preview.5'), 0);
+});
+
+test('the NetForms version of a project, read and changed', () => {
+	const csproj = '<Project>\n  <ItemGroup>\n    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />\n    <PackageReference Include="NetForms" Version="0.1.0-preview.4" />\n  </ItemGroup>\n</Project>\n';
+	assert.equal(project.netformsVersionIn(csproj), '0.1.0-preview.4');
+	const updated = project.withNetFormsVersion(csproj, '0.1.0-preview.6');
+	assert.equal(updated, csproj.replace('0.1.0-preview.4', '0.1.0-preview.6'));
+	assert.equal(project.netformsVersionIn('<PackageVersion Version="1.2.3" Include="NetForms" />'), '1.2.3');
+	assert.equal(project.netformsVersionIn('<PackageReference Include="NetForms.Drawing" Version="1.0.0" />'), undefined);
+});
+
+test('the .NET SDK: what is installed and how to update it', () => {
+	assert.equal(project.newestSdk('8.0.125 [/usr/lib/dotnet/sdk]\n10.0.104 [/usr/lib/dotnet/sdk]\n10.0.112 [/usr/lib/dotnet/sdk]\n'), '10.0.112');
+	assert.equal(project.newestSdk('8.0.125 [/usr/lib/dotnet/sdk]'), undefined);
+	assert.equal(project.sdkCommand('win32', '', true), 'winget upgrade Microsoft.DotNet.SDK.10');
+	assert.match(project.sdkCommand('linux', 'NAME="Ubuntu"\nID=ubuntu\nID_LIKE=debian\n', true), /apt install --only-upgrade dotnet-sdk-10\.0/);
+	assert.match(project.sdkCommand('linux', 'ID="fedora"\n', false), /dnf install dotnet-sdk-10\.0/);
+	assert.match(project.sdkCommand('linux', 'ID=arch\n', false), /dotnet-install\.sh/);
+});

@@ -53,6 +53,7 @@ description from the assembly attributes), a **login form** (user name and passw
 | NetForms: Convert WinForms Project… | | The converter's report for a `.csproj`, then the rewrite ([Moving a WinForms project](migrating.md)). |
 | NetForms: Run Project | | `dotnet run` in a terminal. |
 | NetForms: Set as Startup Form | | `Application.Run` in `Program.cs` starts this form (context menu of a `*.Designer.cs`, and of the form on the canvas). |
+| NetForms: Check for Updates… | | What is behind, in one list to tick: the NetForms package of the workspace's projects, the templates, this extension (from the GitHub release), the .NET SDK (its update command is typed into a terminal for you to run: it may need `sudo`). Also once a day on its own (`netforms.checkForUpdates`). |
 | NetForms: Publish Application… | | `dotnet publish` for Windows or Linux (x64, ARM64), self-contained or framework-dependent, into `publish/<rid>` next to the project. |
 | NetForms: Set Designer Host Path… | | Use another designer host. |
 | NetForms: Check Setup | | Shows the `dotnet`, the designer host and the templates found. |
@@ -65,6 +66,7 @@ Debugging (F5) is the C# extension's: its **.NET: Generate Assets for Build and 
 |---|---|---|
 | `netforms.dotnetPath` | `dotnet` | The `dotnet` executable, when it is not on `PATH`. |
 | `netforms.designerHostPath` | empty | Another designer host (`NetFormsDesigner.Host.dll`); empty: the one bundled with the extension. |
+| `netforms.checkForUpdates` | on | Look for a newer NetForms, extension and .NET SDK once a day and say when there is one. |
 | `netforms.snapToLines` | on | Snap to edges, centres and margins while dragging (hold Alt to move freely). |
 
 ## Canvas

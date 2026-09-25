@@ -16,6 +16,11 @@
   `*.Designer.cs`, the canvas' context menu).
 - **NetForms: Publish Application…**: `dotnet publish` for Windows or Linux, x64 or ARM64, self-contained or
   framework-dependent, into `publish/<rid>` next to the project, then shows the folder.
+- **NetForms: Check for Updates…** lists what is behind and updates what you tick: the NetForms package of the
+  workspace's projects (to the newest on NuGet), the `dotnet new` templates, this extension (the `.vsix` of the newest
+  GitHub release, then a reload) and the .NET SDK (the update command - winget, apt, dnf or Microsoft's install script
+  - is typed into a terminal for you to check and run). The same check runs once a day and only speaks when there is
+  something (`netforms.checkForUpdates`). New Project/New Form accept templates newer than the extension's.
 - The property grid offers the form's buttons for `AcceptButton` and `CancelButton` (an `IButtonControl`, not a
   component type); before, the name typed there was quietly dropped.
 

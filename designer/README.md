@@ -31,6 +31,8 @@ unchanged.
   **NetForms** package.
 - **Convert WinForms Project…** on any `.csproj`: shows what will not carry over to Linux, then switches
   the project from `UseWindowsForms` to the NetForms package. The original is kept as `.csproj.winforms.bak`.
+- **Check for Updates…**: the NetForms package of your projects, the templates, this extension and the .NET SDK
+  (its command typed into a terminal for you to run), in one list; also once a day on its own.
 - **Run Project** (`dotnet run`), **Set as Startup Form**, **Publish Application…** for Windows or Linux
   (x64, ARM64), self-contained or framework-dependent.
 - **Offline editing.** The canvas needs no network; the webview has no network access.
@@ -61,6 +63,7 @@ unchanged.
 | NetForms: Run Project | |
 | NetForms: Set as Startup Form | |
 | NetForms: Publish Application… | |
+| NetForms: Check for Updates… | |
 | NetForms: Set Designer Host Path… | |
 | NetForms: Check Setup | |
 
@@ -70,6 +73,7 @@ unchanged.
 |---|---|
 | `netforms.dotnetPath` | The `dotnet` executable. |
 | `netforms.designerHostPath` | Use another designer host (a NetForms checkout you are working on). |
+| `netforms.checkForUpdates` | Look for a newer NetForms, extension and .NET SDK once a day (default: on). |
 | `netforms.snapToLines` | Snap while dragging (hold Alt to move freely). |
 
 ## Not in this preview

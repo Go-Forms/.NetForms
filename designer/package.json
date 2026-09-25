@@ -126,6 +126,11 @@
 				"command": "netforms.publish",
 				"title": "%command.publish%",
 				"category": "NetForms"
+			},
+			{
+				"command": "netforms.checkForUpdates",
+				"title": "%command.checkForUpdates%",
+				"category": "NetForms"
 			}
 		],
 		"menus": {
@@ -188,6 +193,11 @@
 					"type": "string",
 					"default": "dotnet",
 					"description": "%config.dotnetPath%"
+				},
+				"netforms.checkForUpdates": {
+					"type": "boolean",
+					"default": true,
+					"description": "%config.checkForUpdates%"
 				},
 				"netforms.snapToLines": {
 					"type": "boolean",

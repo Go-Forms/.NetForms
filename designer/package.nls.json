@@ -14,8 +14,10 @@
 	"command.run": "Run Project",
 	"command.setStartupForm": "Set as Startup Form",
 	"command.publish": "Publish Application…",
+	"command.checkForUpdates": "Check for Updates…",
 	"editor.displayName": "NetForms Designer",
 	"config.designerHostPath": "Path to NetFormsDesigner.Host.dll (or the executable). Empty: the host bundled with the extension, then a NetForms checkout found above the opened file.",
 	"config.dotnetPath": "The dotnet executable used to run the designer host and new projects.",
+	"config.checkForUpdates": "Look for a newer NetForms (the projects' package, the templates, this extension, the .NET SDK) once a day and say when there is one.",
 	"config.snapToLines": "Snap controls to the edges, centres and margins of their neighbours while dragging (hold Alt to move freely)."
 }
