@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.5
 
 - **Copy, cut, paste and duplicate** controls: Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+D (and VS Code's Edit menu). A copy
   carries everything inside it - child controls, a SplitContainer's panels, menu and tool strip items, columns,
@@ -23,6 +23,7 @@
   something (`netforms.checkForUpdates`). New Project/New Form accept templates newer than the extension's.
 - The property grid offers the form's buttons for `AcceptButton` and `CancelButton` (an `IButtonControl`, not a
   component type); before, the name typed there was quietly dropped.
+- New projects reference NetForms 0.1.0-preview.6.
 
 ## 0.1.4
 

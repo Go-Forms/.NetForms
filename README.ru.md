@@ -22,7 +22,7 @@ Avalonia в роли платформенного слоя.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.5" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.6" />
 ```
 
 Для большинства проектов это и есть весь перенос — код не меняется. `netforms-convert` сделает это за вас,
@@ -38,7 +38,7 @@ Avalonia в роли платформенного слоя.
 
 ```sh
 # новое приложение
-dotnet new install NetForms.Templates::0.1.0-preview.5
+dotnet new install NetForms.Templates::0.1.0-preview.6
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # готовое WinForms-приложение

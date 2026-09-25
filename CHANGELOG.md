@@ -1,12 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-preview.6 — ready-made forms, copy and paste in the designer
 
 - **Templates:** four forms made for a purpose - `dotnet new netforms-dialog` (OK/Cancel with `DialogResult`,
   `AcceptButton`/`CancelButton`), `netforms-aboutbox` (texts from the assembly attributes), `netforms-login` (user name
   and password) and `netforms-splash` (a borderless start-up screen).
-- **Designer:** copy, cut, paste and duplicate controls (also between forms), a right-click context menu, Set as
-  Startup Form, Publish Application…, Check for Updates… (the projects' NetForms, the templates, the extension, the .NET SDK); `AcceptButton`/`CancelButton` are picked from the form's buttons.
+- **Designer (extension 0.1.5):** copy, cut, paste and duplicate controls (also between forms), a right-click context
+  menu, Set as Startup Form, Publish Application…, Check for Updates… (the projects' NetForms, the templates, the
+  extension, the .NET SDK); `AcceptButton`/`CancelButton` are picked from the form's buttons.
+- The NetForms library itself is unchanged since 0.1.0-preview.4.
 
 ## 0.1.0-preview.5 — tab pages and menus in the designer
 

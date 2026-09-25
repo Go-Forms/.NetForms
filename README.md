@@ -22,7 +22,7 @@ platform layer.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.5" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.6" />
 ```
 
 That is the whole migration for most projects — the code does not change. `netforms-convert` does it for
@@ -38,7 +38,7 @@ Everything comes from NuGet.
 
 ```sh
 # a new app
-dotnet new install NetForms.Templates::0.1.0-preview.5
+dotnet new install NetForms.Templates::0.1.0-preview.6
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # an existing WinForms app
