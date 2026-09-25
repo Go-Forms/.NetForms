@@ -21,11 +21,11 @@ Which of the missing API real projects use, and how widely: [Missing API by use]
 | [System.Drawing.Interop](System.Drawing.Interop.md) | 2 | 0 | 0 | 2 | 0 |
 | [System.Drawing.Printing](System.Drawing.Printing.md) | 31 | 0 | 0 | 31 | 0 |
 | [System.Drawing.Text](System.Drawing.Text.md) | 6 | 6 | 0 | 0 | 0 |
-| [System.Windows.Forms](System.Windows.Forms.md) | 804 | 378 | 143 | 283 | 1444 |
+| [System.Windows.Forms](System.Windows.Forms.md) | 804 | 378 | 143 | 283 | 1438 |
 | [System.Windows.Forms.Automation](System.Windows.Forms.Automation.md) | 4 | 0 | 0 | 4 | 0 |
 | [System.Windows.Forms.ComponentModel.Com2Interop](System.Windows.Forms.ComponentModel.Com2Interop.md) | 3 | 0 | 0 | 3 | 0 |
 | [System.Windows.Forms.Design](System.Windows.Forms.Design.md) | 9 | 0 | 0 | 9 | 0 |
 | [System.Windows.Forms.Layout](System.Windows.Forms.Layout.md) | 3 | 1 | 0 | 2 | 0 |
 | [System.Windows.Forms.PropertyGridInternal](System.Windows.Forms.PropertyGridInternal.md) | 3 | 0 | 0 | 3 | 0 |
 | [System.Windows.Forms.VisualStyles](System.Windows.Forms.VisualStyles.md) | 238 | 232 | 0 | 6 | 0 |
-| **Total** | **1254** | **664** | **163** | **427** | **1718** |
+| **Total** | **1254** | **664** | **163** | **427** | **1712** |

@@ -339,7 +339,9 @@ public class DataGridViewTests
             WithColumns(grid, "A", "B");
             grid.Rows.Add("1", "2");
             grid.Rows.Add("3", "4");
-            window.Click(Center(grid.GetCellDisplayRectangle(0, 0, false)));
+            // A shown grid makes its first cell current (decision 147); a click on it would start editing it.
+            Assert.Equal(new Point(0, 0), grid.CurrentCellAddress);
+            grid.Focus();
 
             Key(window, Keys.Right);
             Assert.Equal(new Point(1, 0), grid.CurrentCellAddress);

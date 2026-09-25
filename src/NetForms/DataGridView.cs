@@ -192,10 +192,85 @@ public class DataGridView : Control, ISupportInitialize
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Content)]
     public DataGridViewRow RowTemplate { get; set; }
 
-    /// <summary>Index of the blank "new row" at the bottom, or -1 when the grid does not offer one.</summary>
+    /// <summary>
+    /// Index of the row for new records at the bottom, or -1 when the grid has none (decision 147). As in WinForms
+    /// it is a real row: an unbound grid with columns and AllowUserToAddRows has it, Rows.Count counts it, rows
+    /// added in code go above it, and typing into it turns it into an ordinary row with a fresh new row below.
+    /// </summary>
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public int NewRowIndex => AllowUserToAddRows && !IsBound && _rows.Count > 0 ? _rows.Count - 1 : -1;
+    public int NewRowIndex => _hasNewRow ? _rows.Count - 1 : -1;
+
+    private bool _hasNewRow;
+    private bool _addingNewRow;
+
+    /// <summary>Adds or drops the new row after whatever decides it changed (columns, AllowUserToAddRows, DataSource).</summary>
+    internal void UpdateNewRow()
+    {
+        bool want = _allowUserToAddRows && _dataSource == null && _columns.Count > 0;
+        if (want == _hasNewRow) return;
+        if (want)
+        {
+            AppendNewRow();
+        }
+        else
+        {
+            if (_currentCell?.OwningRow?.Index == _rows.Count - 1) SetCurrentCell(null, validate: false);
+            _hasNewRow = false;
+            _rows.RemoveAtCore(_rows.Count - 1);
+        }
+    }
+
+    private void AppendNewRow()
+    {
+        _hasNewRow = false;
+        _addingNewRow = true;
+        try
+        {
+            _rows.AddCore(CreateRowFromTemplate());
+        }
+        finally
+        {
+            _addingNewRow = false;
+        }
+        _hasNewRow = true;
+    }
+
+    internal void PrepareRowsClear()
+    {
+        if (_currentCell != null) SetCurrentCell(null, validate: false);
+    }
+
+    internal void RowsCleared()
+    {
+        _hasNewRow = false;
+        UpdateNewRow();
+    }
+
+    /// <summary>
+    /// A shown grid with rows and no current cell makes its first cell current, as WinForms'
+    /// MakeFirstDisplayedCellCurrentCell on handle creation, binding and the first rows added - the row for new
+    /// records alone does not count.
+    /// </summary>
+    private void MakeFirstDisplayedCellCurrentCell()
+    {
+        if (_currentCell != null || !Created || _addingNewRow || IsCurrentCellInEditMode) return;
+        int column = FirstVisibleColumnIndex(), row = -1;
+        for (int r = 0; r < _rows.Count && row < 0; r++)
+        {
+            if (_rows[r].Visible && r != NewRowIndex) row = r;
+        }
+        if (column < 0 || row < 0) return;
+        if (!SetCurrentCell(column, row, validate: false)) return;
+        SelectOnlyCell(column, row);
+        _anchor = (column, row);
+    }
+
+    protected override void OnCreateControl()
+    {
+        base.OnCreateControl();
+        MakeFirstDisplayedCellCurrentCell();
+    }
 
     internal DataGridViewRow CreateRowFromTemplate()
     {
@@ -553,7 +628,19 @@ public class DataGridView : Control, ISupportInitialize
     [Category("Behavior")]
     [Description("Indicates whether the option to add rows is displayed to the user.")]
     [DefaultValue(true)]
-    public bool AllowUserToAddRows { get; set; } = true;
+    public bool AllowUserToAddRows
+    {
+        get => _allowUserToAddRows;
+        set
+        {
+            if (_allowUserToAddRows == value) return;
+            _allowUserToAddRows = value;
+            UpdateNewRow();
+            InvalidateGridLayout();
+        }
+    }
+
+    private bool _allowUserToAddRows = true;
 
     [Category("Behavior")]
     [Description("Indicates whether the user is allowed to delete rows from the DataGridView.")]
@@ -629,6 +716,7 @@ public class DataGridView : Control, ISupportInitialize
             DetachDataSource();
             _dataSource = value;
             AttachDataSource();
+            UpdateNewRow();
         }
     }
 
@@ -754,6 +842,20 @@ public class DataGridView : Control, ISupportInitialize
             // A child list (a DataRelation of a DataTable, a collection property) is not a column (WinForms).
             if (typeof(IList).IsAssignableFrom(property.PropertyType)
                 && !TypeDescriptor.GetConverter(typeof(Image)).CanConvertFrom(property.PropertyType)) continue;
+            // Pictures, and what converts to one (the byte[] of a database image column), get an image column (WinForms).
+            if (typeof(Image).IsAssignableFrom(property.PropertyType)
+                || TypeDescriptor.GetConverter(typeof(Image)).CanConvertFrom(property.PropertyType))
+            {
+                _columns.Add(new DataGridViewImageColumn
+                {
+                    Name = property.Name,
+                    HeaderText = property.DisplayName,
+                    DataPropertyName = property.Name,
+                    ValueType = property.PropertyType,
+                    ReadOnly = property.IsReadOnly,
+                });
+                continue;
+            }
             if (property.PropertyType == typeof(bool))
             {
                 _columns.Add(new DataGridViewCheckBoxColumn
@@ -791,6 +893,7 @@ public class DataGridView : Control, ISupportInitialize
         var current = CurrentCellAddress;
         var rows = new List<DataGridViewRow>(_boundList.Count);
         for (int i = 0; i < _boundList.Count; i++) rows.Add(CreateRowFromTemplate());
+        _hasNewRow = false;   // a bound grid has no row for new records (yet: decision 147)
         _rows.ResetTo(rows);
         _selection.RemoveWhere(c => c.Row >= rows.Count || c.Column >= _columns.Count);
         // The current cell stays at its address in the new rows (or goes, when the list got shorter).
@@ -937,6 +1040,19 @@ public class DataGridView : Control, ISupportInitialize
     [Description("Occurs when the user has finished deleting a row from the DataGridView control.")]
     public event DataGridViewRowEventHandler? UserDeletedRow;
 
+    [Category("Action")]
+    [Description("Occurs when the user has finished adding a row to the DataGridView control.")]
+    public event DataGridViewRowEventHandler? UserAddedRow;
+
+    [Category("Data")]
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    [Description("Occurs when the user enters the row for new records so that it can be populated with default values.")]
+    public event DataGridViewRowEventHandler? DefaultValuesNeeded;
+
+    [Category("Data")]
+    [Description("Occurs when the DataGridView.VirtualMode property of the DataGridView is true and the user navigates to the new row at the bottom of the DataGridView.")]
+    public event DataGridViewRowEventHandler? NewRowNeeded;
+
     [Category("Data")]
     [Description("Occurs when the DataGridView control completes a sorting operation.")]
     public event EventHandler? Sorted;
@@ -1024,7 +1140,24 @@ public class DataGridView : Control, ISupportInitialize
     protected virtual void OnRowValidated(DataGridViewCellEventArgs e) => RowValidated?.Invoke(this, e);
     protected virtual void OnCellParsing(DataGridViewCellParsingEventArgs e) => CellParsing?.Invoke(this, e);
     protected virtual void OnEditingControlShowing(DataGridViewEditingControlShowingEventArgs e) => EditingControlShowing?.Invoke(this, e);
-    protected virtual void OnCurrentCellDirtyStateChanged(EventArgs e) => CurrentCellDirtyStateChanged?.Invoke(this, e);
+    /// <summary>
+    /// The first edit of the row for new records turns it into an ordinary row and appends a new one - before the
+    /// handlers run, as WinForms (UserAddedRow gets the new row for new records).
+    /// </summary>
+    protected virtual void OnCurrentCellDirtyStateChanged(EventArgs e)
+    {
+        if (_currentCellDirty && _currentCell != null && _currentCell.RowIndex >= 0 && _currentCell.RowIndex == NewRowIndex)
+        {
+            AppendNewRow();
+            OnUserAddedRow(new DataGridViewRowEventArgs(_rows[NewRowIndex]));
+        }
+        if (RowHeadersVisible && ShowEditingIcon) Invalidate();
+        CurrentCellDirtyStateChanged?.Invoke(this, e);
+    }
+
+    protected virtual void OnUserAddedRow(DataGridViewRowEventArgs e) => UserAddedRow?.Invoke(this, e);
+    protected virtual void OnDefaultValuesNeeded(DataGridViewRowEventArgs e) => DefaultValuesNeeded?.Invoke(this, e);
+    protected virtual void OnNewRowNeeded(DataGridViewRowEventArgs e) => NewRowNeeded?.Invoke(this, e);
     protected virtual void OnRowDirtyStateNeeded(QuestionEventArgs e) => RowDirtyStateNeeded?.Invoke(this, e);
     protected virtual void OnCancelRowEdit(QuestionEventArgs e) => CancelRowEdit?.Invoke(this, e);
 
@@ -1043,6 +1176,13 @@ public class DataGridView : Control, ISupportInitialize
             while (row.Cells.Count > _columns.Count) row.Cells.RemoveAt(row.Cells.Count - 1);
             row.Cells.Rebind();
         }
+        if (_columns.Count == 0 && _dataSource == null && _rows.Count > 0)
+        {
+            // No columns, no rows: WinForms clears the rows with the last column.
+            _hasNewRow = false;
+            _rows.Clear();
+        }
+        UpdateNewRow();
         InvalidateGridLayout();
         if (_columnHeadersHeightSizeMode == DataGridViewColumnHeadersHeightSizeMode.AutoSize) AutoResizeColumnHeadersHeight();
     }
@@ -1051,6 +1191,7 @@ public class DataGridView : Control, ISupportInitialize
     {
         OnRowsAdded(e);
         InvalidateGridLayout();
+        MakeFirstDisplayedCellCurrentCell();
     }
 
     internal void NotifyRowsRemoved(DataGridViewRowsRemovedEventArgs e)
@@ -1669,7 +1810,15 @@ public class DataGridView : Control, ISupportInitialize
             }
             if (rowChange) _currentRowDirty = false;
         }
-        if (cell != null && (old == null || old.RowIndex != cell.RowIndex)) OnRowEnter(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
+        if (cell != null && (old == null || old.RowIndex != cell.RowIndex))
+        {
+            OnRowEnter(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
+            if (cell.RowIndex >= 0 && cell.RowIndex == NewRowIndex)
+            {
+                if (VirtualMode) OnNewRowNeeded(new DataGridViewRowEventArgs(_rows[cell.RowIndex]));
+                OnDefaultValuesNeeded(new DataGridViewRowEventArgs(_rows[cell.RowIndex]));
+            }
+        }
 
         _currentCell = cell;
         if (cell != null) FirstDisplayedCell(cell.ColumnIndex, cell.RowIndex);
@@ -2675,6 +2824,7 @@ public class DataGridView : Control, ISupportInitialize
         var rows = new List<DataGridViewRow>(SelectedRows);
         foreach (var row in rows)
         {
+            if (row.IsNewRow || row.Index < 0) continue;
             var e = new DataGridViewRowCancelEventArgs(row);
             OnUserDeletingRow(e);
             if (e.Cancel) continue;
@@ -2889,16 +3039,25 @@ public class DataGridView : Control, ISupportInitialize
                 g.DrawLine(pen, bounds.Left, bounds.Bottom - 1, bounds.Right - 1, bounds.Bottom - 1);
             }
 
-            // The arrow that marks the current row, as WinForms draws in the row header.
-            if (_currentCell != null && _currentCell.RowIndex == r)
+            // WinForms' row header glyphs: the pencil while the current row holds an edit, the arrow on the current
+            // row, the star on the row for new records, the error mark for a row with ErrorText.
+            var middle = new Point(bounds.Left + 10, bounds.Top + bounds.Height / 2);
+            bool current = _currentCell != null && _currentCell.RowIndex == r;
+            bool editing = current && ShowEditingIcon && (_currentCellDirty || _currentRowDirty);
+            if (editing)
             {
-                var middle = new Point(bounds.Left + 10, bounds.Top + bounds.Height / 2);
+                PaintPencilGlyph(g, middle);
+            }
+            else if (current)
+            {
                 using var arrow = new SolidBrush(ForeColor);
                 g.FillPolygon(arrow, new[]
                 {
                     new Point(middle.X - 3, middle.Y - 4), new Point(middle.X + 3, middle.Y), new Point(middle.X - 3, middle.Y + 4),
                 });
             }
+            if (r == NewRowIndex && !editing) PaintStarGlyph(g, current ? new Point(middle.X + 9, middle.Y) : middle);
+            if (!string.IsNullOrEmpty(_rows[r].ErrorText)) PaintErrorGlyph(g, new Point(bounds.Right - 10, middle.Y));
 
             if (_rows[r].HeaderCellValue != null)
             {
@@ -2908,6 +3067,33 @@ public class DataGridView : Control, ISupportInitialize
                     TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis);
             }
         }
+    }
+
+    private void PaintPencilGlyph(Graphics g, Point middle)
+    {
+        using var pen = new Pen(ForeColor);
+        g.DrawLine(pen, middle.X - 4, middle.Y + 4, middle.X + 3, middle.Y - 3);
+        g.DrawLine(pen, middle.X - 3, middle.Y + 5, middle.X + 4, middle.Y - 2);
+        g.DrawLine(pen, middle.X + 3, middle.Y - 3, middle.X + 4, middle.Y - 2);
+        g.DrawLine(pen, middle.X - 5, middle.Y + 5, middle.X - 4, middle.Y + 4);
+    }
+
+    private void PaintStarGlyph(Graphics g, Point middle)
+    {
+        using var pen = new Pen(ForeColor);
+        g.DrawLine(pen, middle.X, middle.Y - 4, middle.X, middle.Y + 4);
+        g.DrawLine(pen, middle.X - 3, middle.Y - 2, middle.X + 3, middle.Y + 2);
+        g.DrawLine(pen, middle.X - 3, middle.Y + 2, middle.X + 3, middle.Y - 2);
+    }
+
+    /// <summary>The red error mark WinForms shows for a row with ErrorText.</summary>
+    private static void PaintErrorGlyph(Graphics g, Point middle)
+    {
+        using var brush = new SolidBrush(Color.FromArgb(0xD1, 0x34, 0x38));
+        g.FillEllipse(brush, middle.X - 6, middle.Y - 6, 12, 12);
+        using var pen = new Pen(Color.White, 2);
+        g.DrawLine(pen, middle.X, middle.Y - 3, middle.X, middle.Y + 1);
+        g.DrawLine(pen, middle.X, middle.Y + 3, middle.X, middle.Y + 4);
     }
 
     private void PaintTopLeftHeader(Graphics g, Rectangle viewport)

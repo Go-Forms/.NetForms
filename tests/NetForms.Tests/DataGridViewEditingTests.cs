@@ -241,7 +241,9 @@ public class DataGridViewEditingTests
         var (form, window, grid) = ShowGrid(g => People(g));
         using (form)
         {
-            Click(window, grid, 0, 0);
+            // A shown grid has made (0, 0) current (decision 147); a click on it would start editing it, as in WinForms.
+            Assert.Equal(new Point(0, 0), grid.CurrentCellAddress);
+            grid.Focus();
             Assert.False(grid.IsCurrentCellInEditMode);
 
             // EditOnKeystrokeOrF2 (the default): the key starts the edit, its character replaces the text.
@@ -295,9 +297,9 @@ public class DataGridViewEditingTests
         var (form, window, grid) = ShowGrid(g => People(g), button);
         using (form)
         {
+            Click(window, grid, 0, 1);   // leaving the first cell, current since the grid was shown, validates it
             int validated = 0;
             grid.CellValidated += (_, _) => validated++;
-            Click(window, grid, 0, 1);
             grid.BeginEdit(true);
             grid.EditingControl!.Text = "Edsger";
 

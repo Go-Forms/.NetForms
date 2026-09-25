@@ -1057,15 +1057,17 @@ public class DataGridViewRowCollection : IList, IList<DataGridViewRow>
         return index;
     }
 
+    /// <summary>Adds a row above the row for new records (or at the end when there is none).</summary>
     internal int AddCore(DataGridViewRow row)
     {
+        int index = _owner.NewRowIndex >= 0 ? _owner.NewRowIndex : _rows.Count;
         row.SetDataGridView(_owner);
-        _rows.Add(row);
+        _rows.Insert(index, row);
         Reindex();
         row.Cells.Rebind();
         foreach (DataGridViewCell cell in row.Cells) cell.SetDataGridView(_owner);
-        _owner.RowsChanged(new DataGridViewRowsAddedEventArgs(_rows.Count - 1, 1));
-        return _rows.Count - 1;
+        _owner.RowsChanged(new DataGridViewRowsAddedEventArgs(index, 1));
+        return index;
     }
 
     void ICollection<DataGridViewRow>.Add(DataGridViewRow item) => Add(item);
@@ -1076,12 +1078,15 @@ public class DataGridViewRowCollection : IList, IList<DataGridViewRow>
         foreach (var row in dataGridViewRows) Add(row);
     }
 
+    /// <summary>Removes every row; an unbound grid that offers the row for new records gets a fresh one (as WinForms).</summary>
     public virtual void Clear()
     {
+        _owner.PrepareRowsClear();
         int count = _rows.Count;
         foreach (var row in _rows) row.SetDataGridView(null);
         _rows.Clear();
-        _owner.NotifyRowsRemoved(new DataGridViewRowsRemovedEventArgs(0, count));
+        if (count > 0) _owner.NotifyRowsRemoved(new DataGridViewRowsRemovedEventArgs(0, count));
+        _owner.RowsCleared();
     }
 
     /// <summary>Replaces every row; used when the grid rebuilds itself from a data source.</summary>
@@ -1108,6 +1113,8 @@ public class DataGridViewRowCollection : IList, IList<DataGridViewRow>
     public virtual void Insert(int rowIndex, DataGridViewRow dataGridViewRow)
     {
         ArgumentNullException.ThrowIfNull(dataGridViewRow);
+        if (rowIndex < 0 || rowIndex > _rows.Count) throw new ArgumentOutOfRangeException(nameof(rowIndex));
+        if (_owner.NewRowIndex >= 0 && rowIndex > _owner.NewRowIndex) throw new InvalidOperationException("No row can be inserted after the uncommitted new row.");
         dataGridViewRow.SetDataGridView(_owner);
         _rows.Insert(Math.Clamp(rowIndex, 0, _rows.Count), dataGridViewRow);
         Reindex();
@@ -1132,6 +1139,13 @@ public class DataGridViewRowCollection : IList, IList<DataGridViewRow>
 
     public virtual void RemoveAt(int index)
     {
+        if (index < 0 || index >= _rows.Count) throw new ArgumentOutOfRangeException(nameof(index));
+        if (index == _owner.NewRowIndex) throw new InvalidOperationException("Uncommitted new row cannot be deleted.");
+        RemoveAtCore(index);
+    }
+
+    internal void RemoveAtCore(int index)
+    {
         _rows[index].SetDataGridView(null);
         _rows.RemoveAt(index);
         Reindex();
@@ -1148,9 +1162,11 @@ public class DataGridViewRowCollection : IList, IList<DataGridViewRow>
         return count;
     }
 
+    /// <summary>Sorts the rows; the row for new records stays last.</summary>
     internal void SortCore(Comparison<DataGridViewRow> comparison)
     {
-        _rows.Sort(comparison);
+        int count = _owner.NewRowIndex >= 0 ? _rows.Count - 1 : _rows.Count;
+        _rows.Sort(0, count, Comparer<DataGridViewRow>.Create(comparison));
         Reindex();
     }
 

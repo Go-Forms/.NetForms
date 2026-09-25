@@ -35,7 +35,79 @@ public static class CompatScenarios
         GridStyleFonts(r);
         AdoNetBinding(r);
         GridEditing(r);
+        GridNewRow(r);
         return r;
+    }
+
+    /// <summary>
+    /// The row for new records and the first current cell (decision 147): Rows.Count counts the new row, Rows.Add goes
+    /// above it, Clear keeps one, a shown grid makes its first cell current, typing into the new row adds a row.
+    /// </summary>
+    private static void GridNewRow(SortedDictionary<string, string> r)
+    {
+        try
+        {
+            using var form = new Form { ClientSize = new Size(300, 200), StartPosition = FormStartPosition.Manual, Location = new Point(-2000, -2000) };
+            var grid = new DataGridView { Bounds = new Rectangle(0, 0, 300, 200) };
+            form.Controls.Add(grid);
+            r["exact/dgv-newrow/empty"] = $"{grid.Rows.Count} {grid.NewRowIndex}";
+            grid.Columns.Add("Name", "Name");
+            r["exact/dgv-newrow/one-column"] = $"{grid.Rows.Count} {grid.NewRowIndex} {grid.Rows[0].IsNewRow}";
+            grid.Columns.Add("City", "City");
+            r["exact/dgv-newrow/add-returns"] = $"{grid.Rows.Add("Ada", "London")} {grid.Rows.Add("Alan", "Wilmslow")}";
+            r["exact/dgv-newrow/rows"] = $"{grid.Rows.Count} {grid.NewRowIndex} {grid.Rows[0].Cells[0].Value} {grid.Rows[2].IsNewRow}";
+            r["exact/dgv-newrow/current-unshown"] = grid.CurrentCellAddress.ToString();
+            form.Show();
+            Application.DoEvents();
+            r["exact/dgv-newrow/current-shown"] = $"{grid.CurrentCellAddress} {grid.Rows[0].Cells[0].Selected}";
+
+            string Throws(Action action)
+            {
+                try
+                {
+                    action();
+                    return "none";
+                }
+                catch (Exception ex)
+                {
+                    return ex.GetType().Name;
+                }
+            }
+            r["exact/dgv-newrow/remove-new-row"] = Throws(() => grid.Rows.RemoveAt(2));
+            r["exact/dgv-newrow/insert-after-new-row"] = Throws(() => grid.Rows.Insert(3, "x", "y"));
+
+            var log = new List<string>();
+            grid.RowEnter += (_, e) => log.Add($"RowEnter({e.RowIndex})");
+            grid.DefaultValuesNeeded += (_, e) => log.Add($"DefaultValuesNeeded({e.Row.Index})");
+            grid.UserAddedRow += (_, e) => log.Add($"UserAddedRow({e.Row.Index})");
+            grid.CurrentCellDirtyStateChanged += (_, _) => log.Add("CurrentCellDirtyStateChanged:" + grid.IsCurrentCellDirty);
+            grid.CurrentCell = grid.Rows[2].Cells[0];
+            r["exact/dgv-newrow/enter"] = string.Join(" ", log);
+            log.Clear();
+            grid.BeginEdit(true);
+            grid.EditingControl!.Text = "Grace";
+            r["exact/dgv-newrow/type"] = $"{string.Join(" ", log)} | {grid.Rows.Count} {grid.NewRowIndex} {grid.Rows[2].IsNewRow}";
+            grid.EndEdit();
+            r["exact/dgv-newrow/committed"] = $"{grid.Rows[2].Cells[0].Value} {grid.Rows.Count}";
+
+            grid.Sort(grid.Columns[0], System.ComponentModel.ListSortDirection.Descending);
+            r["exact/dgv-newrow/sorted"] = $"{grid.Rows[0].Cells[0].Value} {grid.Rows[grid.Rows.Count - 1].IsNewRow}";
+            grid.Rows.Clear();
+            r["exact/dgv-newrow/clear"] = $"{grid.Rows.Count} {grid.NewRowIndex}";
+            grid.AllowUserToAddRows = false;
+            r["exact/dgv-newrow/not-allowed"] = $"{grid.Rows.Count} {grid.NewRowIndex}";
+            grid.AllowUserToAddRows = true;
+            grid.Columns.Clear();
+            r["exact/dgv-newrow/no-columns"] = $"{grid.Rows.Count} {grid.NewRowIndex}";
+            grid.Columns.Add("A", "A");
+            grid.Rows.Add(3);
+            r["exact/dgv-newrow/add-count"] = $"{grid.Rows.Count}";
+            form.Close();
+        }
+        catch (Exception ex)
+        {
+            r["exact/dgv-newrow/error"] = ex.GetType().Name + ": " + ex.Message;
+        }
     }
 
     /// <summary>
