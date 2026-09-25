@@ -2065,6 +2065,19 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     (`RewindClip` снимает сохранение) — в `PrintPreviewControl` обойдено `IntersectClip`; открытый вопрос.
     Проверено: `TreeViewCompletionTests` (10), `ContainerAccessibilityTests` (5).
 
+157. **Дизайнер: библиотеки контролов подключаются командами (предложение, не реализовано).** Обсуждено с
+    заказчиком 2026-09-25. Сейчас набор сборок дизайнера фиксирован (`TypeResolver.DefaultAssemblies()`), чужие типы —
+    `DesignerPlaceholder`. Предложение: команда палитры `NetForms: Add Control Library…` с шестью источниками (NuGet по
+    имени, `.dll`, `.nupkg`/фид, папка проекта со своими контролами, другой `.csproj`, NuGet уже из csproj) — не
+    неявное подключение при перетаскивании. Все источники сходятся в один конвейер: правка csproj (если нужна) →
+    `dotnet build` → выход проекта в collectible `AssemblyLoadContext` → скан → группа тулбокса; резолв пакетов и
+    зависимостей — MSBuild, не свой. Проверка до добавления — `MetadataLoadContext` без выполнения кода (собрана под
+    NetForms ✅ / под настоящий WinForms ⚠️ решение 136 / только Windows ⚠️ / нет TFM ❌). Ссылки — в csproj, состав
+    тулбокса — `.vscode/netforms.json`, «недавние библиотеки» — `globalStorage` расширения. Риски: исполнение чужого
+    кода (Workspace Trust, плашка ошибки вместо падения), блокировка `.dll` на Windows (теневая копия), выгрузка ALC.
+    Порядок: свой проект + NuGet из csproj → другой csproj → `.dll` → NuGet по имени/`.nupkg`. Подробно —
+    `docs/designer-control-libraries.md`.
+
 **Состояние тестов на конец сессии (решения 153–156, 2026-09-25, Linux):** .NET — **484/484** (было 436; +48:
 `PrintingTests` 21, `DragDropTests` 12, `TreeViewCompletionTests` 10, `ContainerAccessibilityTests` 5). Оракулы WinForms
 (атрибуты `PrintDialog`/`PageSetupDialog`/`PrintPreviewControl`/`PrintPreviewDialog` и новых членов `Control`/`TreeView`)
@@ -2363,6 +2376,8 @@ Windows и Linux CI; процент собравшихся без ручной �
    чтобы компилировались сторонние пакеты контролов (ZedGraph, OxyPlot, ScottPlot, FastColoredTextBox,
    ObjectListView); для DockPanelSuite ещё и снятие `FrameworkReference` WindowsDesktop.
 7. Держать рядом `../GoForms/GoFormsDesigner/README.md` — список приёмки дизайнера.
+8. **Библиотеки контролов в дизайнере** (решение 157, `docs/designer-control-libraries.md`) — по согласованию с
+   заказчиком; начинать с контролов своего проекта и NuGet, уже прописанного в csproj.
 
 Особенности облачной среды (Linux): .NET SDK — `apt-get update && apt-get install -y dotnet-sdk-10.0` (`dot.net`
 закрыт прокси); `azuresearch-*.nuget.org` и `marketplace.visualstudio.com` закрыты — `dotnet new install <id>` из

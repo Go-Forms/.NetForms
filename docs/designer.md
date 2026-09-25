@@ -95,7 +95,9 @@ down; `-` adds a menu separator.
   open read-only with an explanation).
 - Extender properties (`ToolTip on toolTip1`, `Error on errorProvider1`) in the property grid — they are
   kept in the file, just not shown.
-- A theme editor.
+- Controls from third-party libraries and the project's own controls: on the canvas they are still
+  placeholders showing the type name. The planned design (in Russian):
+  [designer-control-libraries.md](designer-control-libraries.md).
 
 ## Language
 
