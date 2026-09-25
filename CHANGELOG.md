@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-preview.4 — the grid's row for new records
 
 - **DataGridView — the row for new records** is a real row, as in WinForms: `Rows.Count` counts it, `Rows.Add` goes
   above it, `Rows.Clear()` keeps one, typing into it adds a row (`UserAddedRow`), entering it raises
   `DefaultValuesNeeded` (and `NewRowNeeded` in `VirtualMode`); the row header shows the star, and the pencil while the
   current row holds an edit. A shown grid makes its first cell current. `Image`/`byte[]` properties of a data source
-  get image columns.
+  get image columns. **Behaviour change:** `Rows.Count` of an unbound grid with `AllowUserToAddRows` (the default) is
+  one more than before, as in WinForms; skip the new row with `row.IsNewRow`.
 - **System.Drawing:** `TextureBrush` is in `System.Drawing` and `FlushIntention` in `System.Drawing.Drawing2D`, as in
   WinForms (they were the other way round, so `new TextureBrush(image)` did not compile with `using System.Drawing;`).
 - **TableLayoutPanel:** `TableLayoutControlCollection` is a type of `System.Windows.Forms`, as in WinForms (it was nested

@@ -18,7 +18,7 @@ Step by step for Windows and each Linux family: [Install and set up](install.md)
 From the command line:
 
 ```sh
-dotnet new install NetForms.Templates::0.1.0-preview.3
+dotnet new install NetForms.Templates::0.1.0-preview.4
 dotnet new netforms -n HelloForms
 cd HelloForms
 dotnet run
@@ -41,7 +41,7 @@ Visual Studio's in one place — the reference:
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.3" />
+    <PackageReference Include="NetForms" Version="0.1.0-preview.4" />
   </ItemGroup>
 
   <ItemGroup>

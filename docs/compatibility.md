@@ -18,7 +18,7 @@ This guide covers only what that documentation cannot tell you:
 The member-by-member list — what exists and what is missing for each of the 1254 public types of
 `System.Windows.Forms` and `System.Drawing.Common` — is generated: **[API coverage](api/README.md)**.
 
-State as of version **0.1.0-preview.3** (September 2026).
+State as of version **0.1.0-preview.4** (September 2026).
 
 ---
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- A DataGridView on the canvas shows its row for new records (the star in the row header), as the Visual Studio
+  designer does: NetForms 0.1.0-preview.4 makes it a real row.
+- New projects reference NetForms 0.1.0-preview.4.
+
 ## 0.1.2
 
 - The property grid keeps its place while you edit: after a change the selection, the scroll position, an open

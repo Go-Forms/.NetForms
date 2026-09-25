@@ -20,7 +20,7 @@ Replace `UseWindowsForms` in your project file with a package reference:
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.3" />
+    <PackageReference Include="NetForms" Version="0.1.0-preview.4" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>
@@ -38,7 +38,7 @@ netforms-convert MyApp.csproj --apply    # rewrite the project (the original is 
 New project from a template:
 
 ```sh
-dotnet new install NetForms.Templates::0.1.0-preview.3
+dotnet new install NetForms.Templates::0.1.0-preview.4
 dotnet new netforms -n MyApp
 ```
 
