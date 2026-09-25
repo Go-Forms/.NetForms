@@ -1812,12 +1812,13 @@ public class DataGridView : Control, ISupportInitialize
         }
         if (cell != null && (old == null || old.RowIndex != cell.RowIndex))
         {
-            OnRowEnter(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
+            // The new row is filled before RowEnter (WinForms' OnRowEnter; checked by the oracle, dgv-newrow/enter).
             if (cell.RowIndex >= 0 && cell.RowIndex == NewRowIndex)
             {
                 if (VirtualMode) OnNewRowNeeded(new DataGridViewRowEventArgs(_rows[cell.RowIndex]));
                 OnDefaultValuesNeeded(new DataGridViewRowEventArgs(_rows[cell.RowIndex]));
             }
+            OnRowEnter(new DataGridViewCellEventArgs(cell.ColumnIndex, cell.RowIndex));
         }
 
         _currentCell = cell;

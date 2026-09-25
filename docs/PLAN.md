@@ -1899,7 +1899,8 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     `AllowUserToAddRows` строка есть с первого столбца (`Rows.Count == 1`); `Rows.Add`/`Insert` вставляют выше неё,
     вставка после неё и её удаление — `InvalidOperationException`; `Rows.Clear()` оставляет новую; снятие последнего
     столбца убирает строки; сортировка держит её последней; `Delete` её не удаляет; `AllowUserToAddRows` добавляет и
-    убирает её. Вход в неё — `DefaultValuesNeeded` (в `VirtualMode` сначала `NewRowNeeded`); первое изменение
+    убирает её. Вход в неё — `DefaultValuesNeeded` (в `VirtualMode` сначала `NewRowNeeded`) **до** `RowEnter` (оракул
+    Windows CI поправил первоначальный порядок); первое изменение
     (`CurrentCellDirtyStateChanged` с «грязной» ячейкой) делает её обычной и добавляет новую ниже — `UserAddedRow` с
     новой строкой, до обработчиков, как `OnCurrentCellDirtyStateChanged` WinForms. Заголовок строки: звёздочка у новой,
     карандаш, пока текущая строка «грязная» (`ShowEditingIcon`), отметка `ErrorText`. Показанная сетка делает текущей
