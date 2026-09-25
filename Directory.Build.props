@@ -10,7 +10,7 @@
     <Product>NetForms</Product>
     <!-- One version for every package, the templates and the converter (docs/RELEASING.md).
          templates/netforms-app/NetFormsApp1.csproj names it too; TemplateTests keeps the two equal. -->
-    <Version>0.1.0-preview.4</Version>
+    <Version>0.1.0-preview.5</Version>
     <!-- CS1591: missing XML comment; CS8622/CS8618 designer-style handlers with non-nullable sender -->
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>

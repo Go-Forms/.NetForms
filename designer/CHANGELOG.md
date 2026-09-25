@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4
 
 - TabControl: a click on a tab header on the canvas brings its page to the front, so the controls of every page can
   be laid out in the designer (as in Visual Studio, the choice is written as `SelectedIndex`). A click in the
@@ -10,6 +10,7 @@
   (`Приход`, not `TabPage: {Приход}`): rename, add, remove and reorder them; a renamed tab page keeps its
   controls, a removed one takes them along, `-` adds a separator to a menu. Before, OK failed with
   "Unable to cast object of type 'System.String' to type 'System.Windows.Forms.TabPage'".
+- New projects reference NetForms 0.1.0-preview.5.
 
 ## 0.1.3
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-preview.5 — tab pages and menus in the designer
+
+- **Designer (extension 0.1.4):** TabPages, a MenuStrip's or ToolStrip's Items, DropDownItems and Columns open a
+  collection editor that lists the elements by caption (`Приход`, not `TabPage: {Приход}`) — rename, add, remove and
+  reorder them; a renamed tab page keeps its controls, `-` adds a menu separator. Before, OK failed with "Unable to
+  cast object of type 'System.String' to type 'System.Windows.Forms.TabPage'". A click on a tab header on the canvas
+  shows that page, so the controls of every page can be laid out in the designer.
+- The NetForms library is unchanged since 0.1.0-preview.4.
+
 ## 0.1.0-preview.4 — the grid's row for new records
 
 - **DataGridView — the row for new records** is a real row, as in WinForms: `Rows.Count` counts it, `Rows.Add` goes

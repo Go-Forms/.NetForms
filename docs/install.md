@@ -88,7 +88,7 @@ that were cut to the pixel on Windows may need a little more room.
 
 ```sh
 # project and item templates: dotnet new netforms, netforms-form, netforms-usercontrol
-dotnet new install NetForms.Templates::0.1.0-preview.4
+dotnet new install NetForms.Templates::0.1.0-preview.5
 
 # the converter for existing WinForms projects
 dotnet tool install -g NetForms.Convert --prerelease
@@ -129,7 +129,7 @@ internal feed (Nexus, Artifactory, ProGet, BaGet) and point NuGet at it:
 
 ```sh
 dotnet nuget add source /srv/nuget -n internal          # a folder with the .nupkg files
-dotnet new install /srv/nuget/NetForms.Templates.0.1.0-preview.4.nupkg
+dotnet new install /srv/nuget/NetForms.Templates.0.1.0-preview.5.nupkg
 dotnet tool install -g NetForms.Convert --prerelease --add-source /srv/nuget
 ```
 
