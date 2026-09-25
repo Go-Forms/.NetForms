@@ -224,7 +224,7 @@ public sealed class DesignSurface : IDisposable
             case "setForm": SetBounds(Root, op); break;
             case "setProp": SetProperty(Resolve(op.Id), Required(op.Prop, "prop"), op.Value); break;
             case "resetProp": ResetProperty(Resolve(op.Id), Required(op.Prop, "prop")); break;
-            case "setItems": SetItems(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>()); break;
+            case "setItems": SetItems(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "setEvent": SetEvent(Resolve(op.Id), Required(op.Event, "event"), op.Handler); break;
             case "add": Add(op); break;
             case "remove": Remove(Resolve(op.Id)); break;
@@ -349,11 +349,17 @@ public sealed class DesignSurface : IDisposable
         else throw new DesignerEditException($"{name} has no default to go back to.");
     }
 
-    private static void SetItems(object target, string name, string[] values)
+    private void SetItems(object target, string name, string[] values, string?[]? ids)
     {
         var pd = TypeDescriptor.GetProperties(target)[name]
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
-        switch (pd.GetValue(target))
+        var value = pd.GetValue(target);
+        if (value is IList components && ComponentElementType(components) != null)
+        {
+            SetComponentItems(target, components, values, ids);
+            return;
+        }
+        switch (value)
         {
             case TreeNodeCollection nodes:
                 SetNodes(nodes, values);
@@ -392,8 +398,137 @@ public sealed class DesignSurface : IDisposable
             case ListView.ListViewItemCollection items:
                 return (items.Cast<ListViewItem>()
                     .Select(i => string.Join(" | ", i.SubItems.Cast<ListViewItem.ListViewSubItem>().Select(s => s.Text))).ToList(), "columns");
+            case var _ when ComponentElementType(list) != null:
+                return (list.Cast<object>().Select(ItemText).ToList(), "components");
             default:
                 return (list.Cast<object?>().Select(o => o?.ToString() ?? "").ToList(), "lines");
+        }
+    }
+
+    // --- collections of components: TabPages, tool strip items, columns -----------------------------
+
+    /// <summary>
+    /// The kind of component a collection holds when the designer edits its elements as components of
+    /// the form (a tab page, a menu item, a column), as VS's collection editors do; null for any other list.
+    /// </summary>
+    private static Type? ComponentElementType(IList list) => list switch
+    {
+        TabControl.TabPageCollection => typeof(TabPage),
+        ToolStripItemCollection => typeof(ToolStripItem),
+        ListView.ColumnHeaderCollection => typeof(ColumnHeader),
+        DataGridViewColumnCollection => typeof(DataGridViewColumn),
+        _ => null,
+    };
+
+    /// <summary>What the collection editor shows for an element: its caption, "-" for a separator.</summary>
+    private static string ItemText(object item) => item switch
+    {
+        ToolStripSeparator => "-",
+        ToolStripItem i => i.Text ?? "",
+        ColumnHeader h => h.Text ?? "",
+        DataGridViewColumn c => c.HeaderText ?? "",
+        Control c => c.Text ?? "",
+        _ => item.ToString() ?? "",
+    };
+
+    private static void SetItemText(object item, string text)
+    {
+        switch (item)
+        {
+            case ToolStripSeparator: break;
+            case ToolStripItem i: i.Text = text; break;
+            case ColumnHeader h: h.Text = text; break;
+            case DataGridViewColumn c: c.HeaderText = text; break;
+            case Control c: c.Text = text; break;
+        }
+    }
+
+    /// <summary>The type a new element of the collection is created as: what VS's collection editor adds first.</summary>
+    private static Type NewElementType(object owner, IList list, string text) => list switch
+    {
+        TabControl.TabPageCollection => typeof(TabPage),
+        ToolStripItemCollection when text.Trim() == "-" => typeof(ToolStripSeparator),
+        ToolStripItemCollection => owner switch
+        {
+            StatusStrip => typeof(ToolStripStatusLabel),
+            MenuStrip or ToolStripDropDown or ToolStripDropDownItem => typeof(ToolStripMenuItem),
+            _ => typeof(ToolStripButton),
+        },
+        ListView.ColumnHeaderCollection => typeof(ColumnHeader),
+        DataGridViewColumnCollection => typeof(DataGridViewTextBoxColumn),
+        _ => throw new DesignerEditException("The designer cannot add elements to this collection."),
+    };
+
+    /// <summary>
+    /// The elements of a component collection, in the order given: <paramref name="ids"/> names the
+    /// element each line stands for (its name, <c>#index</c> for one without a name, null or "" for a
+    /// new one), <paramref name="values"/> their captions.
+    /// An element left out is removed from the form with everything in it (a tab page's controls); a new
+    /// one gets the name VS gives it (<c>tabPage3</c>) and the caption typed, or its name when that is empty.
+    /// Without ids (a plain list of captions), each line keeps the element that already reads the same.
+    /// </summary>
+    private void SetComponentItems(object owner, IList list, string[] values, string?[]? ids)
+    {
+        if (ids != null && ids.Length != values.Length) throw new DesignerEditException("The edit needs one id for each value.");
+        var old = list.Cast<object>().ToList();
+        var byText = old.GroupBy(ItemText).ToDictionary(g => g.Key, g => new Queue<object>(g));
+        var used = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        var wanted = new List<(object? Item, string Text)>();
+        for (int i = 0; i < values.Length; i++)
+        {
+            var text = values[i] ?? "";
+            object? item = null;
+            if (ids != null)
+            {
+                var id = ids[i];
+                if (!string.IsNullOrEmpty(id))
+                {
+                    // "#2": the element that was third, for one the file declares inline (it has no name yet).
+                    item = id[0] == '#' && int.TryParse(id.AsSpan(1), out int at) && at >= 0 && at < old.Count ? old[at] : Resolve(id);
+                    if (!old.Contains(item)) throw new DesignerEditException($"'{id}' is not in this collection.");
+                }
+            }
+            else
+            {
+                if (text.Trim().Length == 0) continue;
+                if (byText.TryGetValue(text, out var same)) while (same.TryDequeue(out var candidate)) if (used.Add(candidate)) { item = candidate; break; }
+            }
+            if (item != null && ids != null && !used.Add(item)) throw new DesignerEditException($"'{ids[i]}' is listed twice.");
+            wanted.Add((item, text));
+        }
+
+        // What is gone goes first, with its children and the references to it.
+        foreach (var item in old.Where(o => !used.Contains(o)).ToList()) Remove(item);
+
+        for (int i = 0; i < wanted.Count; i++)
+        {
+            var (item, text) = wanted[i];
+            if (item == null)
+            {
+                var type = NewElementType(owner, list, text);
+                IComponent instance;
+                try { instance = (IComponent)Activator.CreateInstance(type)!; }
+                catch (Exception ex) { throw new DesignerEditException($"Creating a {type.Name} failed: {Unwrap(ex).Message}", ex); }
+                var component = Model.AddComponent(instance);
+                list.Insert(Math.Min(i, list.Count), instance);
+                InitializeNew(instance, component, owner);
+                if (text.Trim().Length > 0 && instance is not ToolStripSeparator) SetItemText(instance, text);
+                wanted[i] = (instance, text);
+                continue;
+            }
+            if (list.IndexOf(item) != i)
+            {
+                list.Remove(item);
+                list.Insert(i, item);
+            }
+            if (ItemText(item) != text && item is not ToolStripSeparator) SetItemText(item, text);
+        }
+
+        if (owner is TabControl tabs)
+        {
+            // VS numbers the pages in their order.
+            for (int i = 0; i < tabs.TabPages.Count; i++) tabs.TabPages[i].TabIndex = i;
+            if (tabs.SelectedIndex < 0 && tabs.TabCount > 0) tabs.SelectedIndex = 0;
         }
     }
 
@@ -761,6 +896,17 @@ public sealed class DesignSurface : IDisposable
                 Margin = new[] { child.Margin.Left, child.Margin.Top, child.Margin.Right, child.Margin.Bottom },
                 Padding = new[] { child.Padding.Left, child.Padding.Top, child.Padding.Right, child.Padding.Bottom },
             };
+            if (child is TabControl tabs)
+            {
+                // The tab headers, so a click on one can bring its page to the front, as in VS.
+                item.SelectedIndex = tabs.SelectedIndex;
+                item.Tabs = new List<int[]>();
+                for (int t = 0; t < tabs.TabCount; t++)
+                {
+                    var r = tabs.GetTabRect(t);
+                    item.Tabs.Add(new[] { origin.X + r.X, origin.Y + r.Y, r.Width, r.Height });
+                }
+            }
             into.Add(item);
 
             if (child is ToolStrip strip)
@@ -848,6 +994,8 @@ public sealed class DesignSurface : IDisposable
             {
                 row.Editor = "collection";
                 (row.Items, row.ItemsFormat) = CollectionText(list);
+                if (row.ItemsFormat == "components")
+                    row.ItemIds = list.Cast<object>().Select((o, i) => Model.FindByInstance(o)?.Name ?? "#" + i).ToList();
                 row.Value = $"({list.Count} items)";
             }
             else if (pd.SerializationVisibility == DesignerSerializationVisibility.Content)

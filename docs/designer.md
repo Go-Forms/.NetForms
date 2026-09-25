@@ -68,6 +68,11 @@ are outlined with a dashed line and resize only from their free edge, as in Visu
 place on the form (Timer, ToolTip, ImageList, menus, dialogs) go to the tray under the form. Undo and redo with
 Ctrl+Z / Ctrl+Y inside the canvas.
 
+A click on a tab header of a TabControl shows that page, so each page is laid out in turn (written as
+`SelectedIndex`, as Visual Studio does). **…** next to TabPages, a strip's Items, DropDownItems or Columns opens the
+collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
+down; `-` adds a menu separator.
+
 ## Not yet
 
 - Writing `.resx`: a new image picked in the property grid, editing a `Localizable = true` form (such forms

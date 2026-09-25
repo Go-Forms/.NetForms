@@ -369,6 +369,98 @@ public sealed class DesignerHostTests : IDisposable
     }
 
     [Fact]
+    public void TabPagesAreEditedByTheirCaptionsAndKeepTheirControls()
+    {
+        var path = CopySample("Gallery/GalleryForm.Designer.cs");
+        using var surface = DesignSurface.Open(path);
+        var row = surface.GetProperties("tabControl1").Single(r => r.Name == "TabPages");
+        Assert.Equal("components", row.ItemsFormat);
+        // The captions, not "TabPage: {Controls}".
+        Assert.Equal(new[] { "Controls", "Layout", "Panels" }, row.Items);
+        Assert.Equal(new[] { "tabPage1", "tabPage2", "tabPage3" }, row.ItemIds);
+
+        surface.Apply(new[]
+        {
+            // Rename the first, move the third before the second, drop the second, add one.
+            new DesignerOp { Op = "setItems", Id = "tabControl1", Prop = "TabPages",
+                Values = new[] { "Номенклатура", "Panels", "Приход" }, Ids = new[] { "tabPage1", "tabPage3", "" } },
+        });
+
+        var tabs = (TabControl)surface.Model.Find("tabControl1")!.Instance;
+        Assert.Equal(new[] { "Номенклатура", "Panels", "Приход" }, tabs.TabPages.Cast<TabPage>().Select(p => p.Text));
+        Assert.Same(surface.Model.Find("tabPage1")!.Instance, tabs.TabPages[0]);
+        Assert.Contains(tabs.TabPages[0].Controls.Cast<Control>(), c => c.Name == "button1");
+        // The dropped page takes its controls along; its name is free again, and the new page gets it, as in VS.
+        Assert.Null(surface.Model.Find("splitContainer1"));
+        var added = tabs.TabPages[2];
+        Assert.Equal("tabPage2", added.Name);
+        Assert.True(added.UseVisualStyleBackColor);
+        Assert.Equal(new[] { 0, 1, 2 }, tabs.TabPages.Cast<TabPage>().Select(p => p.TabIndex));
+        Assert.Contains("tabControl1.Controls.Add(tabPage2);", surface.Source);
+        Assert.Contains("tabPage1.Text = \"Номенклатура\";", surface.Source);
+        Assert.Contains("tabPage2.Text = \"Приход\";", surface.Source);
+        Assert.DoesNotContain("splitContainer1", surface.Source);
+
+        var reread = new DesignerCodeReader().Read(surface.Source, new[] { surface.CompanionSource! }, path);
+        var again = (TabControl)reread.Find("tabControl1")!.Instance;
+        Assert.Equal(new[] { "Номенклатура", "Panels", "Приход" }, again.TabPages.Cast<TabPage>().Select(p => p.Text));
+
+        // A plain list of captions keeps the pages that read the same.
+        surface.Apply(new[] { new DesignerOp { Op = "setItems", Id = "tabControl1", Prop = "TabPages", Values = new[] { "Приход", "Номенклатура" } } });
+        tabs = (TabControl)surface.Model.Find("tabControl1")!.Instance;
+        Assert.Equal(new[] { "tabPage2", "tabPage1" }, tabs.TabPages.Cast<TabPage>().Select(p => p.Name));
+        Assert.Null(surface.Model.Find("tabPage3"));
+    }
+
+    [Fact]
+    public void MenuItemsAreEditedByTheirCaptions()
+    {
+        using var surface = DesignSurface.Open(CopySample("Strips/MainForm.Designer.cs"));
+        var row = surface.GetProperties("menuStrip1").Single(r => r.Name == "Items");
+        Assert.Equal(new[] { "&File", "&Edit", "&View" }, row.Items);
+        var file = surface.GetProperties("fileMenu").Single(r => r.Name == "DropDownItems");
+        Assert.Contains("-", file.Items!);
+
+        surface.Apply(new[]
+        {
+            new DesignerOp { Op = "setItems", Id = "menuStrip1", Prop = "Items",
+                Values = new[] { "&File", "&Edit", "&View", "&Help" }, Ids = new[] { "fileMenu", "editMenu", "viewMenu", "" } },
+            new DesignerOp { Op = "setItems", Id = "fileMenu", Prop = "DropDownItems",
+                Values = file.Items!.Append("-").Append("Save").ToArray(), Ids = file.ItemIds!.Append("").Append("").ToArray() },
+        });
+
+        var menu = (MenuStrip)surface.Model.Find("menuStrip1")!.Instance;
+        var help = Assert.IsType<ToolStripMenuItem>(menu.Items[3]);
+        Assert.Equal("&Help", help.Text);
+        Assert.NotNull(surface.Model.FindByInstance(help)?.Name);
+        var fileMenu = (ToolStripMenuItem)surface.Model.Find("fileMenu")!.Instance;
+        Assert.IsType<ToolStripSeparator>(fileMenu.DropDownItems[^2]);
+        Assert.Equal("Save", fileMenu.DropDownItems[^1].Text);
+        Assert.Contains("\"&Help\"", surface.Source);
+        // Strings never go into the collection itself (the error it used to be: String cannot be cast to ToolStripItem).
+        Assert.All(menu.Items.Cast<object>(), i => Assert.IsAssignableFrom<ToolStripItem>(i));
+    }
+
+    [Fact]
+    public void TheCanvasKnowsTheTabHeadersAndATabCanBeBroughtToTheFront()
+    {
+        using var surface = DesignSurface.Open(CopySample("Gallery/GalleryForm.Designer.cs"));
+        var view = surface.Render();
+        var tabs = view.Items.Single(i => i.Id == "tabControl1");
+        Assert.Equal(3, tabs.Tabs!.Count);
+        Assert.Equal(0, tabs.SelectedIndex);
+        Assert.All(tabs.Tabs, r => Assert.True(r[2] > 0 && r[3] > 0 && r[1] >= tabs.Y));
+        Assert.False(view.Items.Single(i => i.Id == "tabPage2").Visible);
+
+        surface.Apply(new[] { new DesignerOp { Op = "setProp", Id = "tabControl1", Prop = "SelectedIndex", Value = "1" } });
+        view = surface.Render();
+        Assert.Equal(1, view.Items.Single(i => i.Id == "tabControl1").SelectedIndex);
+        Assert.True(view.Items.Single(i => i.Id == "tabPage2").Visible);
+        Assert.False(view.Items.Single(i => i.Id == "tabPage1").Visible);
+        Assert.Contains("tabControl1.SelectedIndex = 1;", surface.Source);
+    }
+
+    [Fact]
     public void DesignedComponentsAreInDesignModeAndBehaveAsCreated()
     {
         // A VS design surface sites its components and gives them handles: flipping a TrackBar's

@@ -145,6 +145,18 @@ button, input, select { font: inherit; color: inherit; }
 .row .mini.create { font-weight: 700; color: var(--vscode-textLink-foreground, #0078d4); }
 .row .mini.create:hover, .row .mini.unbind:hover { background: var(--vscode-toolbar-hoverBackground, #8883); }
 .row.selected { background: var(--vscode-list-inactiveSelectionBackground); }
+.coll-editor { padding: 4px 6px; border-bottom: 1px solid #8884; }
+.coll-row { display: flex; align-items: center; gap: 2px; margin-bottom: 2px; }
+.coll-row input[type=text] {
+	flex: 1; min-width: 0; padding: 1px 4px; height: 20px;
+	background: var(--vscode-input-background); color: inherit; border: 1px solid transparent;
+}
+.coll-row input[type=text]:focus { border-color: var(--vscode-focusBorder); outline: none; }
+.coll-row input[readonly] { opacity: .6; }
+.coll-row .mini { padding: 0 4px; height: 20px; border: none; background: transparent; color: inherit; cursor: pointer; opacity: .7; }
+.coll-row .mini:hover:not(:disabled) { opacity: 1; background: var(--vscode-toolbar-hoverBackground, #8883); }
+.coll-row .mini:disabled { opacity: .25; cursor: default; }
+.coll-bar { display: flex; gap: 4px; margin-top: 4px; }
 .flags { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 2px 0; }
 .flags label { white-space: nowrap; }
 .align-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--vscode-panel-border, #8884); }

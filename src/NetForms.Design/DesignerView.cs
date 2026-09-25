@@ -81,6 +81,12 @@ public sealed class DesignerViewItem
     /// <summary>For snap lines: the control's Margin and Padding (left, top, right, bottom).</summary>
     public int[] Margin { get; set; } = new int[4];
     public int[] Padding { get; set; } = new int[4];
+
+    /// <summary>A TabControl's tab headers on the canvas (x, y, w, h), in page order; null for other controls.</summary>
+    public List<int[]>? Tabs { get; set; }
+
+    /// <summary>A TabControl's selected page (-1 for none; 0 for other controls).</summary>
+    public int SelectedIndex { get; set; }
 }
 
 public sealed class DesignerTrayItem
@@ -130,9 +136,13 @@ public sealed class DesignerPropertyRow
 
     /// <summary>
     /// How <see cref="Items"/> spell the elements: <c>lines</c> (one per line), <c>tree</c> (a node per
-    /// line, two spaces of indent per level), <c>columns</c> (a ListViewItem's sub-items separated by <c>|</c>).
+    /// line, two spaces of indent per level), <c>columns</c> (a ListViewItem's sub-items separated by <c>|</c>),
+    /// <c>components</c> (the captions of tab pages, strip items or columns; <c>-</c> for a separator).
     /// </summary>
     public string? ItemsFormat { get; set; }
+
+    /// <summary>For a collection of components (<c>components</c>): the id of each element (<c>#index</c> for one without a name), beside its caption in <see cref="Items"/>.</summary>
+    public List<string>? ItemIds { get; set; }
 }
 
 /// <summary>One row of the Events tab.</summary>

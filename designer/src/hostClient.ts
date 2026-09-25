@@ -24,6 +24,9 @@ export interface ViewItem {
 	anchor: string;
 	margin: number[];
 	padding: number[];
+	/** A TabControl's tab headers (x, y, w, h) and its selected page. */
+	tabs?: number[][];
+	selectedIndex?: number;
 }
 
 export interface HandlerLocation { file: string; method: string; line: number; created: boolean; }
@@ -46,7 +49,7 @@ export interface Op {
 	op: 'setBounds' | 'setForm' | 'setProp' | 'resetProp' | 'setItems' | 'setEvent' | 'add' | 'remove' | 'setParent' | 'rename' | 'bringToFront' | 'sendToBack';
 	id?: string; type?: string; parent?: string;
 	x?: number; y?: number; w?: number; h?: number;
-	prop?: string; value?: string; values?: string[];
+	prop?: string; value?: string; values?: string[]; ids?: string[];
 	event?: string; handler?: string;
 }
 

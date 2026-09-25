@@ -286,3 +286,68 @@ test('tree nodes are edited as indented lines', { skip, timeout: 90000 }, async 
 	assert.match(file, /TreeNode treeNode4 = new TreeNode\("Second", new TreeNode\[\] \{ treeNode3 \}\);/);
 	assert.deepEqual(errors, []);
 });
+
+test('tab pages switch with a click and are edited by their captions', { skip, timeout: 90000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-tabs-'));
+	for (const f of ['GalleryForm.cs', 'GalleryForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'Gallery', f), path.join(dir, f));
+	const designer = path.join(dir, 'GalleryForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 720 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.evaluateOnNewDocument(() => window.addEventListener('message', (e) => { if (e.data && e.data.view) window.__view = e.data.view; }));
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		return file();
+	};
+
+	// A click on the second tab's header brings its page (and its controls) to the canvas.
+	assert.equal(await page.$('.hit[data-id="tabPage2"]'), null, 'the second page is hidden at first');
+	const canvas = await page.evaluate(() => {
+		const r = document.querySelector('.canvas').getBoundingClientRect();
+		return { x: r.left, y: r.top };
+	});
+	// The header rectangles the host sent, in canvas coordinates.
+	const headers = await page.evaluate(() => window.__view.items.find((i) => i.id === 'tabControl1').tabs);
+	assert.ok(headers && headers.length === 3, 'the TabControl knows its tab headers');
+	let before = file();
+	await page.mouse.click(canvas.x + headers[1][0] + headers[1][2] / 2, canvas.y + headers[1][1] + headers[1][3] / 2);
+	let text = await waitFile(before);
+	assert.match(text, /tabControl1\.SelectedIndex = 1;/);
+	await page.waitForSelector('.hit[data-id="tabPage2"]');
+	await page.waitForSelector('.hit[data-id="splitContainer1"]');
+	assert.equal(await page.$('.hit[data-id="tabPage1"]'), null, 'the first page is hidden now');
+	await page.screenshot({ path: path.join(out, 'tabs-1-switched.png') });
+
+	// TabPages lists the captions, and renaming, adding and removing a page goes to the file.
+	await page.waitForFunction(() => [...document.querySelectorAll('.row .name')].some((n) => n.textContent === 'TabPages'));
+	await page.evaluate(() => [...document.querySelectorAll('.row')].find((r) => r.querySelector('.name')?.textContent === 'TabPages').querySelector('button.mini').click());
+	await page.waitForSelector('.coll-editor input');
+	assert.deepEqual(await page.$$eval('.coll-editor input', (n) => n.map((i) => i.value)), ['Controls', 'Layout', 'Panels']);
+	const inputs = await page.$$('.coll-editor input');
+	await inputs[0].click({ clickCount: 3 });
+	await page.keyboard.type('Номенклатура');
+	await page.evaluate(() => [...document.querySelectorAll('.coll-editor button')].find((b) => b.textContent === 'Add').click());
+	await page.keyboard.type('Приход');
+	await page.evaluate(() => document.querySelectorAll('.coll-editor .coll-row')[2].querySelector('button[title^="Remove"]').click());
+	await page.screenshot({ path: path.join(out, 'tabs-2-editor.png') });
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.coll-editor button')].find((b) => b.textContent === 'OK').click());
+	text = await waitFile(before);
+	assert.match(text, /tabPage1\.Text = "Номенклатура";/);
+	// The removed page's name is free again: the new page takes it, as in VS.
+	assert.match(text, /tabControl1\.Controls\.Add\(tabPage3\);/);
+	assert.match(text, /tabPage3\.Text = "Приход";/);
+	assert.doesNotMatch(text, /"Panels"/);
+	assert.match(text, /tabPage1\.Controls\.Add\(button1\);/, 'the renamed page keeps its controls');
+	await page.screenshot({ path: path.join(out, 'tabs-3-edited.png') });
+	assert.deepEqual(errors, []);
+});

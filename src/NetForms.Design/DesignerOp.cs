@@ -11,7 +11,7 @@ namespace NetForms.Design;
 /// <item><term>setForm</term><description><c>w</c>/<c>h</c>: the root's client size.</description></item>
 /// <item><term>setProp</term><description><c>id</c>, <c>prop</c>, <c>value</c> as the property grid shows it (the converter's invariant text; a component by name; "" for none).</description></item>
 /// <item><term>resetProp</term><description><c>id</c>, <c>prop</c>: back to the default.</description></item>
-/// <item><term>setItems</term><description><c>id</c>, <c>prop</c>, <c>values</c>: replace a string collection (ListBox.Items).</description></item>
+/// <item><term>setItems</term><description><c>id</c>, <c>prop</c>, <c>values</c>: replace a string collection (ListBox.Items). For a collection of components (TabPages, a strip's Items, Columns) also <c>ids</c>: the element each value is the caption of, "" for a new one; elements left out are removed.</description></item>
 /// <item><term>setEvent</term><description><c>id</c>, <c>event</c>, <c>handler</c> ("" unbinds). A missing handler method is added to the code-behind file.</description></item>
 /// <item><term>add</term><description><c>type</c> (full name), <c>parent</c>, <c>x</c>/<c>y</c>, optional <c>w</c>/<c>h</c> and <c>id</c>.</description></item>
 /// <item><term>remove</term><description><c>id</c>, with everything inside it.</description></item>
@@ -33,6 +33,7 @@ public sealed class DesignerOp
     public string? Prop { get; set; }
     public string? Value { get; set; }
     public string[]? Values { get; set; }
+    public string?[]? Ids { get; set; }
     public string? Event { get; set; }
     public string? Handler { get; set; }
 }

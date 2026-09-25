@@ -254,6 +254,8 @@
 		state.selectNew = new Set(allIds());
 		if (item.tray) { apply([{ op: 'add', type: item.type }]); return; }
 		let target = itemById(primaryId());
+		// A TabControl takes new controls on the page it shows, as in VS.
+		if (target && target.tabs) target = state.view.items.find((i) => i.parent === target.id && i.visible && i.container) || target;
 		if (target && !target.container) target = itemById(target.parent);
 		const siblings = state.view.items.filter((i) => i.parent === (target ? target.id : '') && i.kind === 'control');
 		const offset = 12 + (siblings.length % 8) * 8;
@@ -424,6 +426,7 @@
 		const hit = G.hitTest(state.view.items, p.x, p.y);
 		const additive = e.ctrlKey || e.shiftKey;
 		if (!hit) { select('', false); return; }
+		if (!additive && switchTab(hit, p)) { e.preventDefault(); return; }
 		if (additive) { select(hit.id, true); return; }
 		if (!state.selection.includes(hit.id)) select(hit.id, false);
 		if (state.locked) return;
@@ -436,6 +439,20 @@
 		e.preventDefault();
 		window.addEventListener('mousemove', onDragMove);
 		window.addEventListener('mouseup', onDragUp, { once: true });
+	}
+
+	/**
+	 * A click on a tab header of a TabControl brings that page to the front, as in VS: the TabControl is
+	 * selected and its SelectedIndex written, so the controls of each page can be laid out in turn.
+	 */
+	function switchTab(hit, p) {
+		if (!hit.tabs) return false;
+		const i = hit.tabs.findIndex(([x, y, w, h]) => p.x >= x && p.y >= y && p.x < x + w && p.y < y + h);
+		if (i < 0 || i === hit.selectedIndex) return false;
+		state.selection = [hit.id];
+		refreshSelection();
+		apply([{ op: 'setProp', id: hit.id, prop: 'SelectedIndex', value: String(i) }], [hit.id]);
+		return true;
 	}
 
 	function containerRect(parentId) {
@@ -889,6 +906,7 @@
 	}
 
 	function editCollection(id, r, row) {
+		if (r.itemsFormat === 'components') { editComponents(id, r, row); return; }
 		const area = el('textarea');
 		area.value = (r.items || []).join('\n');
 		area.rows = Math.min(12, Math.max(4, (r.items || []).length + 1));
@@ -923,6 +941,69 @@
 		box.append(area, ok);
 		row.after(box);
 		area.focus();
+	}
+
+	/**
+	 * A collection of components (TabPages, a menu's Items, Columns), as VS's collection editor: one line
+	 * per element with its caption, added, removed and reordered in place. Each line carries the element
+	 * it stands for, so a renamed tab page keeps the controls on it.
+	 */
+	function editComponents(id, r, row) {
+		const next = row.nextSibling;
+		if (next && next.classList && next.classList.contains('coll-editor')) { next.remove(); return; }
+		const lines = (r.items || []).map((text, i) => ({ id: (r.itemIds || [])[i] || '', text, separator: text === '-' && !!(r.itemIds || [])[i] }));
+		const strip = r.type === 'ToolStripItemCollection';
+		const box = el('div', 'coll-editor');
+		const list = el('div', 'coll-list');
+		const ok = () => {
+			apply([{ op: 'setItems', id, prop: r.name, values: lines.map((l) => l.text), ids: lines.map((l) => l.id) }], state.selection);
+		};
+		const draw = (focus) => {
+			list.textContent = '';
+			lines.forEach((line, i) => {
+				const n = el('div', 'coll-row');
+				const input = el('input');
+				input.type = 'text';
+				input.value = line.text;
+				input.placeholder = line.id ? '' : T('(new)');
+				input.readOnly = line.separator;
+				input.title = line.separator ? T('Separator') : line.id ? line.id : T('(new)');
+				input.addEventListener('input', () => { line.text = input.value; });
+				input.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter') { e.preventDefault(); ok(); }
+					if (e.key === 'Escape') { e.preventDefault(); box.remove(); }
+				});
+				const move = (d) => {
+					const j = i + d;
+					if (j < 0 || j >= lines.length) return;
+					[lines[i], lines[j]] = [lines[j], lines[i]];
+					draw(j);
+				};
+				const up = el('button', 'mini', '↑');
+				up.title = T('Move up');
+				up.disabled = i === 0;
+				up.addEventListener('click', () => move(-1));
+				const down = el('button', 'mini', '↓');
+				down.title = T('Move down');
+				down.disabled = i === lines.length - 1;
+				down.addEventListener('click', () => move(1));
+				const del = el('button', 'mini', '✕');
+				del.title = T('Remove (with everything in it)');
+				del.addEventListener('click', () => { lines.splice(i, 1); draw(Math.min(i, lines.length - 1)); });
+				n.append(input, up, down, del);
+				list.append(n);
+				if (i === focus) input.focus();
+			});
+		};
+		const add = button(T('Add'), strip ? T('Add an element; type - for a separator') : T('Add an element'), () => {
+			lines.push({ id: '', text: '' });
+			draw(lines.length - 1);
+		});
+		const bar = el('div', 'coll-bar');
+		bar.append(add, button('OK', T('Apply the changes'), ok), button(T('Cancel'), T('Close without changes'), () => box.remove()));
+		box.append(list, bar);
+		row.after(box);
+		draw(0);
 	}
 
 	function cssColor(text) {
