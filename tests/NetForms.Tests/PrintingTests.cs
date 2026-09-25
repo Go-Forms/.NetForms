@@ -345,6 +345,9 @@ public class PrintingTests
         {
             var log = new List<string>();
             var doc = Document(3, log);
+            // A printer without a driver behind it: NetForms writes the pages as PDF itself, on every OS. (On Windows a
+            // real printer's print to file goes through its driver, as in WinForms: PrintToFileOfARealPrinter...)
+            doc.PrinterSettings.PrinterName = "Nowhere";
             doc.PrinterSettings.PrintToFile = true;
             doc.PrinterSettings.PrintFileName = path;
             doc.Print();
@@ -356,6 +359,35 @@ public class PrintingTests
             Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(text, @"/Type\s*/Page\b").Count);
             // A4 in points: 827 * 0.72 = 595.44.
             Assert.Contains("595.44", text);
+        }
+        finally
+        {
+            PrintBackend.Current = previous;
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void PrintToFileOfARealPrinterGoesThroughItsDriverOnWindowsOnly()
+    {
+        var fake = Install(out var previous);
+        var path = Path.Combine(Path.GetTempPath(), "netforms-print-test-" + Guid.NewGuid().ToString("N") + ".pdf");
+        try
+        {
+            var doc = Document(1);
+            doc.PrinterSettings.PrintToFile = true;
+            doc.PrinterSettings.PrintFileName = path;
+            doc.Print();
+            if (OperatingSystem.IsWindows())
+            {
+                // The spooler writes the driver's output to PrintFileName (the job carries it as DOCINFO.lpszOutput).
+                Assert.Single(fake.Jobs);
+            }
+            else
+            {
+                Assert.Empty(fake.Jobs);
+                Assert.StartsWith("%PDF", System.Text.Encoding.Latin1.GetString(File.ReadAllBytes(path)));
+            }
         }
         finally
         {
@@ -762,6 +794,14 @@ public class PrintingTests
             Assert.Same(document, ((PrintDialog)model.Find("printDialog1")!.Instance).Document);
             Assert.Same(document, ((PageSetupDialog)model.Find("pageSetupDialog1")!.Instance).Document);
             Assert.Equal(source, new NetForms.Design.Serialization.DesignerCodeWriter().Write(model, source));
+
+            // A PrintPreviewDialog dropped on the form: the lines VS writes for one, except the Icon (a .resx entry).
+            model.AddComponent(new PrintPreviewDialog());
+            var written = new NetForms.Design.Serialization.DesignerCodeWriter().Write(model, source);
+            Assert.Contains("printPreviewDialog1.AutoScrollMargin = new Size(0, 0);", written);
+            Assert.Contains("printPreviewDialog1.Enabled = true;", written);
+            Assert.Contains("printPreviewDialog1.Name = \"printPreviewDialog1\";", written);
+            Assert.DoesNotContain("printPreviewDialog1.Icon", written);
 
             var printing = NetForms.Design.DesignerToolbox.Categories().Single(c => c.Name == "Printing");
             Assert.Equal(new[] { "PageSetupDialog", "PrintDialog", "PrintDocument", "PrintPreviewControl", "PrintPreviewDialog" },

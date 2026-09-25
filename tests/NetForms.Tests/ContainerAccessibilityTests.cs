@@ -129,8 +129,7 @@ public class ContainerAccessibilityTests
         Assert.True((box.AccessibilityObject.State & AccessibleStates.Unavailable) != 0);
         Assert.Equal(group.RectangleToScreen(new Rectangle(ok.Location, ok.Size)), ok.AccessibilityObject.Bounds);
 
-        string? help = null;
-        ok.QueryAccessibilityHelp += (_, e) => e.HelpString = help = "Accepts the dialog";
+        ok.QueryAccessibilityHelp += (_, e) => e.HelpString = "Accepts the dialog";
         Assert.Equal("Accepts the dialog", ok.AccessibilityObject.Help);
         Assert.Equal("ControlAccessibleObject: Owner = " + ok, ok.AccessibilityObject.ToString());
     }

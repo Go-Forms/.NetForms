@@ -140,11 +140,13 @@ public class PrintPreviewDialog : Form
 
     internal NumericUpDown PageCounter => _pageCounter;
 
+#pragma warning disable CS0672, WFDEV004 // WinForms overrides the obsolete OnClosing here too
     protected override void OnClosing(CancelEventArgs e)
     {
         base.OnClosing(e);
         _previewControl.InvalidatePreview();
     }
+#pragma warning restore CS0672, WFDEV004
 
     protected override bool ProcessDialogKey(Keys keyData)
     {
@@ -176,6 +178,16 @@ public class PrintPreviewDialog : Form
     }
 
     internal override bool ShouldSerializeText() => !Text.Equals("Print preview");
+
+    // These are redeclared without a default in WinForms, so a fresh dialog asks the designer for them: VS writes
+    // AutoScrollMargin, AutoScrollMinSize, Enabled and Icon for every PrintPreviewDialog (checked by AttributeDiffTests).
+    private bool ShouldSerializeAutoScrollMargin() => true;
+
+    private bool ShouldSerializeAutoScrollMinSize() => true;
+
+    private bool ShouldSerializeEnabled() => true;
+
+    private bool ShouldSerializeIcon() => true;
 
     private void CheckZoomMenu(ToolStripMenuItem? toCheck)
     {

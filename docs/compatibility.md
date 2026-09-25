@@ -242,7 +242,7 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **483/483**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **484/484**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
   regenerates [the tables](api/README.md). Today: **747** of 1254 types complete, **144** partial,

@@ -2065,8 +2065,8 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     (`RewindClip` снимает сохранение) — в `PrintPreviewControl` обойдено `IntersectClip`; открытый вопрос.
     Проверено: `TreeViewCompletionTests` (10), `ContainerAccessibilityTests` (5).
 
-**Состояние тестов на конец сессии (решения 153–156, 2026-09-25, Linux):** .NET — **483/483** (было 436; +47:
-`PrintingTests` 20, `DragDropTests` 12, `TreeViewCompletionTests` 10, `ContainerAccessibilityTests` 5). Оракулы WinForms
+**Состояние тестов на конец сессии (решения 153–156, 2026-09-25, Linux):** .NET — **484/484** (было 436; +48:
+`PrintingTests` 21, `DragDropTests` 12, `TreeViewCompletionTests` 10, `ContainerAccessibilityTests` 5). Оракулы WinForms
 (атрибуты `PrintDialog`/`PageSetupDialog`/`PrintPreviewControl`/`PrintPreviewDialog` и новых членов `Control`/`TreeView`)
 проверит CI на Windows. ApiDiff: **747** полных (было 664), 144 частичных, 363 нет; **1581 член** (было 1712);
 `System.Drawing.Printing` — 31 из 31. `docs/api/usage.md` не перегенерирован (нет клонов корпуса в этой среде).
