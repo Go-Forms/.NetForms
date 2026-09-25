@@ -348,6 +348,8 @@ public class PrintingTests
             // A printer without a driver behind it: NetForms writes the pages as PDF itself, on every OS. (On Windows a
             // real printer's print to file goes through its driver, as in WinForms: PrintToFileOfARealPrinter...)
             doc.PrinterSettings.PrinterName = "Nowhere";
+            // Without a printer the paper follows the region (Letter in the US, A4 elsewhere): pin it.
+            doc.DefaultPageSettings.PaperSize = new PaperSize("A4", 827, 1169);
             doc.PrinterSettings.PrintToFile = true;
             doc.PrinterSettings.PrintFileName = path;
             doc.Print();
