@@ -15,6 +15,8 @@ unchanged.
 - **Canvas.** Move, resize, snap lines to edges, centres and `Margin`/`Padding`, group selection
   (Ctrl/Shift), move into another container, Format → Align/Make Same Size/Spacing, zoom, lock,
   bring to front/send to back, tab order mode. Docked controls behave as in Visual Studio.
+- **Copy, cut, paste, duplicate** (Ctrl+C/X/V/D) with everything inside, into another form too, and a
+  right-click **context menu** as in Visual Studio.
 - **Toolbox** with search: click to add into the selected container, or drag to a point. Components
   (Timer, ToolTip, ImageList, menus, dialogs) go to the component tray.
 - **Properties and Events** by category, with an editor per type: booleans, enums, flags, colours,
@@ -24,12 +26,13 @@ unchanged.
   existing handler, **✕** unbinds it (the method stays in the code).
 - **Code ↔ designer**: F7 View Code, Shift+F7 View Designer. Renaming a control renames it in your code too.
 - **Undo/redo** of canvas edits. Editing the file as text (or `git checkout`) reloads the canvas.
-- **New Project, New Form, New User Control** with `dotnet new` and the **NetForms.Templates** package from
+- **New Project, New Form** (empty, dialog, About box, login form, splash screen), **New User Control** with `dotnet new` and the **NetForms.Templates** package from
   NuGet (installed on first use, the version this extension is made for). New projects reference the
   **NetForms** package.
 - **Convert WinForms Project…** on any `.csproj`: shows what will not carry over to Linux, then switches
   the project from `UseWindowsForms` to the NetForms package. The original is kept as `.csproj.winforms.bak`.
-- **Run Project** (`dotnet run`).
+- **Run Project** (`dotnet run`), **Set as Startup Form**, **Publish Application…** for Windows or Linux
+  (x64, ARM64), self-contained or framework-dependent.
 - **Offline editing.** The canvas needs no network; the webview has no network access.
 - English and Russian interface, following the VS Code display language.
 
@@ -56,6 +59,8 @@ unchanged.
 | NetForms: New Form… | |
 | NetForms: Convert WinForms Project… | |
 | NetForms: Run Project | |
+| NetForms: Set as Startup Form | |
+| NetForms: Publish Application… | |
 | NetForms: Set Designer Host Path… | |
 | NetForms: Check Setup | |
 

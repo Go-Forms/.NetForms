@@ -69,6 +69,7 @@ function start(designerFile, options = {}) {
 	if (!dll) throw new Error('build tools/NetFormsDesigner.Host first');
 	const host = new Host(dll);
 	const log = [];
+	const clipboard = options.clipboard || { text: '' };
 	const handle = async (m) => {
 		log.push(m);
 		const wrap = (res, ok) => (res.error ? [{ type: res.error.kind === 'code' ? 'parseError' : 'error', message: res.error.message, line: res.error.line }] : [ok(res.result)]);
@@ -83,6 +84,23 @@ function start(designerFile, options = {}) {
 			case 'redo': return wrap(await host.call('redo'), (view) => ({ type: 'view', view }));
 			case 'properties': return wrap(await host.call('properties', { id: m.id }), (rows) => ({ type: 'properties', id: m.id, rows }));
 			case 'events': return wrap(await host.call('events', { id: m.id }), (rows) => ({ type: 'events', id: m.id, rows }));
+			// The system clipboard, as the extension uses it (vscode.env.clipboard).
+			case 'copy': {
+				const r = await host.call('copy', { ids: m.ids });
+				if (r.error) return wrap(r);
+				clipboard.text = r.result.text;
+				return [{ type: 'copied', count: m.ids.length }];
+			}
+			case 'cut': {
+				const r = await host.call('copy', { ids: m.ids });
+				if (r.error) return wrap(r);
+				clipboard.text = r.result.text;
+				return wrap(await host.call('apply', { ops: m.ids.map((id) => ({ op: 'remove', id })) }), (view) => ({ type: 'view', view, select: m.select }));
+			}
+			case 'paste':
+				if (!clipboard.text.includes('netforms/components-1')) return [{ type: 'error', message: 'The clipboard holds no NetForms controls.' }];
+				return wrap(await host.call('apply', { ops: [{ op: 'paste', value: clipboard.text, parent: m.parent }] }), (view) => ({ type: 'view', view }));
+			case 'duplicate': return wrap(await host.call('apply', { ops: [{ op: 'duplicate', ids: m.ids }] }), (view) => ({ type: 'view', view }));
 			default: return [];
 		}
 	};
@@ -112,7 +130,7 @@ function start(designerFile, options = {}) {
 	});
 	return new Promise((resolve) => server.listen(0, '127.0.0.1', () => {
 		const url = `http://127.0.0.1:${server.address().port}/`;
-		resolve({ url, host, log, close: () => { host.kill(); server.close(); } });
+		resolve({ url, host, log, clipboard, close: () => { host.kill(); server.close(); } });
 	}));
 }
 

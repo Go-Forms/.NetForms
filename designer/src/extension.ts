@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { convertProject } from './convert';
 import { companionOf, DesignerEditorProvider } from './designerEditorProvider';
 import { findHost } from './hostClient';
+import { formClass, publishArgs, publishTargets, setStartupForm, startsAForm } from './project';
 import { installedTemplates, netformsVersion, newForm, newProject } from './scaffold';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -63,6 +64,8 @@ export function activate(context: vscode.ExtensionContext) {
 		if (picked) await vscode.workspace.getConfiguration('netforms').update('designerHostPath', picked[0].fsPath, vscode.ConfigurationTarget.Global);
 	});
 	command('netforms.run', (uri?: vscode.Uri) => runProject(activeFile(uri)));
+	command('netforms.setStartupForm', (uri?: vscode.Uri) => setStartup(activeFile(uri)));
+	command('netforms.publish', (uri?: vscode.Uri) => publishProject(activeFile(uri)));
 	command('netforms.checkSetup', async () => {
 		const dotnet = vscode.workspace.getConfiguration('netforms').get<string>('dotnetPath') || 'dotnet';
 		const version = await new Promise<string>((resolve) => cp.execFile(dotnet, ['--version'], (err, out) => resolve(err ? vscode.l10n.t('not found ({0})', err.message) : out.trim())));
@@ -79,7 +82,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 /** The project a file belongs to: the nearest *.csproj above it, else the only one in the workspace. */
-async function projectOf(file: string | undefined): Promise<string | undefined> {
+async function projectOf(file: string | undefined, title = vscode.l10n.t('Project to run')): Promise<string | undefined> {
 	if (file) {
 		for (let dir = path.dirname(file); ; dir = path.dirname(dir)) {
 			const project = fs.existsSync(dir) ? fs.readdirSync(dir).find((f) => f.endsWith('.csproj')) : undefined;
@@ -90,7 +93,7 @@ async function projectOf(file: string | undefined): Promise<string | undefined> 
 	const found = await vscode.workspace.findFiles('**/*.csproj', '**/{bin,obj,node_modules}/**', 50);
 	if (found.length <= 1) return found[0]?.fsPath;
 	return (await vscode.window.showQuickPick(found.map((f) => ({ label: path.basename(f.fsPath), description: vscode.workspace.asRelativePath(f), uri: f })),
-		{ title: vscode.l10n.t('Project to run') }))?.uri.fsPath;
+		{ title }))?.uri.fsPath;
 }
 
 /** NetForms: Run - `dotnet run` in a terminal, so a build error is the compiler's own, with a clickable place. */
@@ -103,6 +106,82 @@ async function runProject(file: string | undefined) {
 	const terminal = vscode.window.createTerminal({ name, cwd: path.dirname(project) });
 	terminal.show(true);
 	terminal.sendText(`${/\s/.test(dotnet) ? `"${dotnet}"` : dotnet} run --project "${project}"`);
+}
+
+/** The .cs files of a project's folder, bin/obj/node_modules aside. */
+function projectSources(dir: string): string[] {
+	const out: string[] = [];
+	for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+		if (entry.isDirectory()) {
+			if (!/^(bin|obj|node_modules|\..*)$/i.test(entry.name)) out.push(...projectSources(path.join(dir, entry.name)));
+		} else if (entry.name.endsWith('.cs') && !entry.name.endsWith('.Designer.cs')) out.push(path.join(dir, entry.name));
+	}
+	return out;
+}
+
+/** NetForms: Set as Startup Form - Application.Run in Program.cs starts this form. */
+async function setStartup(file: string | undefined) {
+	if (!file || !file.endsWith('.cs')) throw new Error(vscode.l10n.t('Open a form (its .cs or .Designer.cs file) first.'));
+	const code = companionOf(file.replace(/(\.Designer)?\.cs$/i, '.Designer.cs'));
+	const form = formClass(fs.readFileSync(fs.existsSync(code) ? code : file, 'utf8'));
+	if (!form) throw new Error(vscode.l10n.t('{0} declares no class.', path.basename(file)));
+	const project = await projectOf(file);
+	if (!project) throw new Error(vscode.l10n.t('No .csproj in the workspace.'));
+	// The file as the editor holds it, unsaved changes included.
+	const read = async (f: string) => (await vscode.workspace.openTextDocument(f)).getText();
+	let program: string | undefined;
+	for (const f of projectSources(path.dirname(project))) {
+		if (startsAForm(await read(f))) { program = f; break; }
+	}
+	if (!program) throw new Error(vscode.l10n.t('No file of {0} starts a form with Application.Run(new …()).', path.basename(project)));
+	const doc = await vscode.workspace.openTextDocument(program);
+	const changed = setStartupForm(doc.getText(), form)!;
+	if (changed.text === doc.getText()) {
+		void vscode.window.showInformationMessage(vscode.l10n.t('{0} is already the startup form.', form.name));
+		return;
+	}
+	const edit = new vscode.WorkspaceEdit();
+	edit.replace(doc.uri, new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length)), changed.text);
+	await vscode.workspace.applyEdit(edit);
+	await doc.save();
+	const open = vscode.l10n.t('Open {0}', path.basename(program));
+	if (await vscode.window.showInformationMessage(vscode.l10n.t('{0} starts now instead of {1}.', form.name, changed.previous), open) === open)
+		await vscode.window.showTextDocument(doc);
+}
+
+/** NetForms: Publish Application - dotnet publish for a Windows or Linux machine, into publish/<rid> next to the project. */
+async function publishProject(file: string | undefined) {
+	const project = await projectOf(file, vscode.l10n.t('Project to publish'));
+	if (!project) throw new Error(vscode.l10n.t('No .csproj in the workspace.'));
+	const here = `${process.platform === 'win32' ? 'win' : 'linux'}-${process.arch === 'arm64' ? 'arm64' : 'x64'}`;
+	const names: Record<string, string> = {
+		'win-x64': 'Windows x64', 'win-arm64': 'Windows ARM64', 'linux-x64': 'Linux x64', 'linux-arm64': 'Linux ARM64',
+	};
+	const targets = [...publishTargets].sort((a, b) => Number(b === here) - Number(a === here))
+		.map((rid) => ({ label: names[rid], description: rid === here ? vscode.l10n.t('{0} — this machine', rid) : rid, rid }));
+	const target = await vscode.window.showQuickPick(targets, { title: vscode.l10n.t('Publish for') });
+	if (!target) return;
+	const mode = await vscode.window.showQuickPick([
+		{ label: vscode.l10n.t('Self-contained'), description: vscode.l10n.t('Carries .NET along: nothing to install on the target machine'), selfContained: true },
+		{ label: vscode.l10n.t('Framework-dependent'), description: vscode.l10n.t('Smaller; needs the .NET 10 runtime on the target machine'), selfContained: false },
+	], { title: vscode.l10n.t('How to publish') });
+	if (!mode) return;
+	const output = path.join(path.dirname(project), 'publish', target.rid);
+	const dotnet = vscode.workspace.getConfiguration('netforms').get<string>('dotnetPath') || 'dotnet';
+	const task = new vscode.Task({ type: 'process' }, vscode.TaskScope.Workspace, `publish ${path.basename(project, '.csproj')} (${target.rid})`, 'NetForms',
+		new vscode.ProcessExecution(dotnet, publishArgs(project, target.rid, mode.selfContained, output), { cwd: path.dirname(project) }));
+	const execution = await vscode.tasks.executeTask(task);
+	const ended = vscode.tasks.onDidEndTaskProcess(async (e) => {
+		if (e.execution !== execution) return;
+		ended.dispose();
+		if (e.exitCode !== 0) {
+			void vscode.window.showErrorMessage(vscode.l10n.t('dotnet publish failed (exit code {0}); the terminal shows why.', String(e.exitCode)));
+			return;
+		}
+		const reveal = vscode.l10n.t('Show the Folder');
+		if (await vscode.window.showInformationMessage(vscode.l10n.t('Published to {0}.', output), reveal) === reveal)
+			await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(output));
+	});
 }
 
 export function deactivate() { /* sessions dispose their hosts with their editors */ }

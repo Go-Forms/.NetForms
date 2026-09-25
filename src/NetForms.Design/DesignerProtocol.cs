@@ -93,6 +93,11 @@ public sealed class DesignerProtocol : IDisposable
             case "redo":
                 Current().Redo();
                 return Current().Render();
+            case "copy":
+            {
+                var ids = p["ids"]?.Deserialize<List<string>>(s_json) ?? new List<string>();
+                return new { text = Current().Copy(ids) };
+            }
             case "properties":
                 return Current().GetProperties((string?)p["id"]);
             case "events":

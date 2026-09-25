@@ -12,6 +12,8 @@
 	"command.convertProject": "Перевести проект WinForms…",
 	"command.checkSetup": "Проверить установку",
 	"command.run": "Запустить проект",
+	"command.setStartupForm": "Сделать стартовой формой",
+	"command.publish": "Опубликовать приложение…",
 	"editor.displayName": "Дизайнер NetForms",
 	"config.designerHostPath": "Путь к NetFormsDesigner.Host.dll (или исполняемому файлу). Пусто: хост из расширения, затем копия NetForms, найденная выше открытого файла.",
 	"config.dotnetPath": "Исполняемый файл dotnet для хоста дизайнера и новых проектов.",

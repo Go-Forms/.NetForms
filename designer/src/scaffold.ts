@@ -106,9 +106,14 @@ export async function newForm(context: vscode.ExtensionContext, log: vscode.Outp
 		if (!picked) return;
 		folder = picked[0].fsPath;
 	}
+	const formName = vscode.l10n.t('Form name');
 	const kind = await vscode.window.showQuickPick([
-		{ label: vscode.l10n.t('Form'), value: 'netforms-form', stem: 'Form', nameTitle: vscode.l10n.t('Form name') },
-		{ label: vscode.l10n.t('User Control'), value: 'netforms-usercontrol', stem: 'UserControl', nameTitle: vscode.l10n.t('User control name') },
+		{ label: vscode.l10n.t('Form'), description: vscode.l10n.t('An empty form'), value: 'netforms-form', stem: 'Form', nameTitle: formName },
+		{ label: vscode.l10n.t('Dialog'), description: vscode.l10n.t('OK and Cancel, a fixed border, no minimize or maximize box'), value: 'netforms-dialog', stem: 'Dialog', nameTitle: formName },
+		{ label: vscode.l10n.t('About Box'), description: vscode.l10n.t('Product, version, copyright and description from the assembly'), value: 'netforms-aboutbox', stem: 'AboutBox', nameTitle: formName },
+		{ label: vscode.l10n.t('Login Form'), description: vscode.l10n.t('User name and password, OK and Cancel'), value: 'netforms-login', stem: 'LoginForm', nameTitle: formName },
+		{ label: vscode.l10n.t('Splash Screen'), description: vscode.l10n.t('A borderless start-up screen with the title, version and a progress bar'), value: 'netforms-splash', stem: 'SplashScreen', nameTitle: formName },
+		{ label: vscode.l10n.t('User Control'), description: vscode.l10n.t('A control made of other controls'), value: 'netforms-usercontrol', stem: 'UserControl', nameTitle: vscode.l10n.t('User control name') },
 	], { title: vscode.l10n.t('New') });
 	if (!kind) return;
 	let n = 1;

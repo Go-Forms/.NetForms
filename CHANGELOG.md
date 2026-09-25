@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Templates:** four forms made for a purpose - `dotnet new netforms-dialog` (OK/Cancel with `DialogResult`,
+  `AcceptButton`/`CancelButton`), `netforms-aboutbox` (texts from the assembly attributes), `netforms-login` (user name
+  and password) and `netforms-splash` (a borderless start-up screen).
+- **Designer:** copy, cut, paste and duplicate controls (also between forms), a right-click context menu, Set as
+  Startup Form, Publish Application…; `AcceptButton`/`CancelButton` are picked from the form's buttons.
+
 ## 0.1.0-preview.5 — tab pages and menus in the designer
 
 - **Designer (extension 0.1.4):** TabPages, a MenuStrip's or ToolStrip's Items, DropDownItems and Columns open a

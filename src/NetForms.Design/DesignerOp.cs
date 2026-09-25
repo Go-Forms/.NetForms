@@ -17,6 +17,8 @@ namespace NetForms.Design;
 /// <item><term>remove</term><description><c>id</c>, with everything inside it.</description></item>
 /// <item><term>setParent</term><description><c>id</c>, <c>parent</c>, <c>x</c>/<c>y</c>.</description></item>
 /// <item><term>rename</term><description><c>id</c>, <c>value</c> = the new name.</description></item>
+/// <item><term>paste</term><description><c>value</c> = clipboard text from the <c>copy</c> request, <c>parent</c> = what is selected (a container, or a control whose container takes the paste; a strip or menu item for strip items); optional <c>x</c>/<c>y</c>.</description></item>
+/// <item><term>duplicate</term><description><c>ids</c>: a copy of each beside the original, in its container.</description></item>
 /// <item><term>bringToFront / sendToBack</term><description><c>id</c>.</description></item>
 /// </list>
 /// </remarks>

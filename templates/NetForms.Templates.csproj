@@ -1,7 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     The dotnet new templates of NetForms: `dotnet new install` this package (or this folder), then
-    `dotnet new netforms`, `dotnet new netforms-form`, `dotnet new netforms-usercontrol`.
+    `dotnet new netforms`, `dotnet new netforms-form`, `dotnet new netforms-usercontrol`, and the forms made
+    for a purpose: `netforms-dialog`, `netforms-aboutbox`, `netforms-login`, `netforms-splash`.
     The VS Code extension scaffolds from the very same files (designer/src/scaffold.ts).
   -->
   <PropertyGroup>
@@ -22,6 +23,6 @@
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="netforms-app/**/*;netforms-form/**/*;netforms-usercontrol/**/*" Exclude="**/bin/**;**/obj/**" />
+    <Content Include="netforms-app/**/*;netforms-form/**/*;netforms-usercontrol/**/*;netforms-dialog/**/*;netforms-aboutbox/**/*;netforms-login/**/*;netforms-splash/**/*" Exclude="**/bin/**;**/obj/**" />
   </ItemGroup>
 </Project>

@@ -33,6 +33,12 @@ version it is made for from NuGet (`dotnet new install NetForms.Templates::<vers
 the **NetForms** package of the same version. A new form gets the namespace of its project plus its folders, as
 in Visual Studio, and opens on the canvas.
 
+Besides an empty form and a user control there are forms made for a purpose: a **dialog** (OK and Cancel with
+`DialogResult`, `AcceptButton`/`CancelButton`, a fixed border), an **About box** (product, version, copyright and
+description from the assembly attributes), a **login form** (user name and password) and a **splash screen**
+(borderless, with the title, version and a progress bar). On the command line: `dotnet new netforms-dialog`,
+`netforms-aboutbox`, `netforms-login`, `netforms-splash`.
+
 ## Commands
 
 | Command | Key | What it does |
@@ -43,9 +49,11 @@ in Visual Studio, and opens on the canvas.
 | NetForms: View Designer | Shift+F7 | From `MainForm.cs` to the canvas. |
 | NetForms: Tidy Designer File | | Rewrites `InitializeComponent()` in the canonical form the designer writes, dropping redundant statements. |
 | NetForms: Create New Project… | | A new NetForms application (see above). |
-| NetForms: New Form… | | A form or user control in a folder. |
+| NetForms: New Form… | | A form (empty, dialog, About box, login, splash screen) or a user control in a folder. |
 | NetForms: Convert WinForms Project… | | The converter's report for a `.csproj`, then the rewrite ([Moving a WinForms project](migrating.md)). |
 | NetForms: Run Project | | `dotnet run` in a terminal. |
+| NetForms: Set as Startup Form | | `Application.Run` in `Program.cs` starts this form (context menu of a `*.Designer.cs`, and of the form on the canvas). |
+| NetForms: Publish Application… | | `dotnet publish` for Windows or Linux (x64, ARM64), self-contained or framework-dependent, into `publish/<rid>` next to the project. |
 | NetForms: Set Designer Host Path… | | Use another designer host. |
 | NetForms: Check Setup | | Shows the `dotnet`, the designer host and the templates found. |
 
@@ -67,6 +75,12 @@ zoom, lock, bring to front / send to back, tab order mode (click the controls in
 are outlined with a dashed line and resize only from their free edge, as in Visual Studio. Components without a
 place on the form (Timer, ToolTip, ImageList, menus, dialogs) go to the tray under the form. Undo and redo with
 Ctrl+Z / Ctrl+Y inside the canvas.
+
+Ctrl+C / Ctrl+X / Ctrl+V copy, cut and paste controls with everything in them (child controls, menu items, columns,
+TableLayoutPanel cells), into another form too; Ctrl+D duplicates beside the original. A pasted control keeps its name
+when it is free (else `button2`), and its event handlers when pasted into the same form. A right-click opens the context
+menu, as in Visual Studio: View Code, Cut, Copy, Paste, Duplicate, Delete, Bring to Front / Send to Back, Lock, Select
+the parent, Properties; on the form, Set as Startup Form.
 
 A click on a tab header of a TabControl shows that page, so each page is laid out in turn (written as
 `SelectedIndex`, as Visual Studio does). **…** next to TabPages, a strip's Items, DropDownItems or Columns opens the

@@ -461,6 +461,94 @@ public sealed class DesignerHostTests : IDisposable
     }
 
     [Fact]
+    public void CopiedControlsArePastedWithTheirChildrenPropertiesAndHandlers()
+    {
+        var path = CopySample("Gallery/GalleryForm.Designer.cs");
+        using var surface = DesignSurface.Open(path);
+        var text = surface.Copy(new[] { "groupBox1", "button1", "checkBox1" });
+        Assert.True(DesignSurface.IsClipboardText(text));
+
+        // Pasted on the second page: the group box with its four controls, and the button - both bound as before.
+        surface.Apply(new[]
+        {
+            new DesignerOp { Op = "setProp", Id = "tabControl1", Prop = "SelectedIndex", Value = "2" },
+            new DesignerOp { Op = "paste", Value = text, Parent = "tabControl1" },
+        });
+        var model = surface.Model;
+        var original = (GroupBox)model.Find("groupBox1")!.Instance;
+        var group = (GroupBox)model.Find("groupBox2")!.Instance;
+        Assert.Equal("tabPage3", group.Parent!.Name);
+        Assert.Equal(original.Text, group.Text);
+        // Where it came from, moved down and right past whatever lies exactly there on the new page.
+        Assert.Equal(group.Location.X - original.Location.X, group.Location.Y - original.Location.Y);
+        Assert.Equal(0, (group.Location.X - original.Location.X) % 8);
+        Assert.DoesNotContain(group.Parent.Controls.Cast<Control>(), c => c != group && c.Location == group.Location);
+        Assert.Equal(original.Controls.Cast<Control>().Select(c => c.Text), group.Controls.Cast<Control>().Select(c => c.Text));
+        Assert.Equal(original.Controls.Cast<Control>().Select(c => c.GetType()), group.Controls.Cast<Control>().Select(c => c.GetType()));
+        var button = (Button)model.Find("button2")!.Instance;
+        Assert.Equal(((Button)model.Find("button1")!.Instance).Text, button.Text);
+        Assert.Contains("button2.Click += button1_Click;", surface.Source);
+        // checkBox1 went along with its group box, not twice.
+        Assert.Equal(4, group.Controls.Count);
+        Assert.Equal(new[] { "groupBox2", "button2" }, surface.Render().Select);
+
+        var reread = new DesignerCodeReader().Read(surface.Source, new[] { surface.CompanionSource! }, path);
+        Assert.Equal(4, ((GroupBox)reread.Find("groupBox2")!.Instance).Controls.Count);
+    }
+
+    [Fact]
+    public void DuplicateLandsBesideTheOriginal()
+    {
+        using var surface = DesignSurface.Open(CopySample("HelloForms/MainForm.Designer.cs"));
+        var before = ((Control)surface.Model.Find("button1")!.Instance).Location;
+        surface.Apply(new[] { new DesignerOp { Op = "duplicate", Ids = new[] { "button1" } } });
+        var copy = (Button)surface.Model.Find("button2")!.Instance;
+        Assert.Equal(new Point(before.X + 8, before.Y + 8), copy.Location);
+        Assert.Same(surface.Model.Find("button1")!.Instance is Control b ? b.Parent : null, copy.Parent);
+        Assert.Contains("button2.Click += button1_Click;", surface.Source);
+        Assert.True(surface.Undo());
+        Assert.Null(surface.Model.Find("button2"));
+    }
+
+    [Fact]
+    public void PastedIntoAnotherFormTheControlsKeepTheirNamesButNotTheHandlers()
+    {
+        using var gallery = DesignSurface.Open(CopySample("Gallery/GalleryForm.Designer.cs"));
+        var text = gallery.Copy(new[] { "button1", "splitContainer1", "tableLayoutPanel1" });
+        using var hello = DesignSurface.Open(CopySample("HelloForms/MainForm.Designer.cs"));
+        hello.Apply(new[] { new DesignerOp { Op = "paste", Value = text } });
+
+        // button1 is taken in MainForm: the copy is button2, with no handler (button1_Click is not MainForm's to bind).
+        Assert.DoesNotContain("button2.Click", hello.Source);
+        // splitContainer1 is free: kept, with what its panels hold.
+        var split = (SplitContainer)hello.Model.Find("splitContainer1")!.Instance;
+        var originalSplit = (SplitContainer)gallery.Model.Find("splitContainer1")!.Instance;
+        Assert.Equal(originalSplit.Panel1.Controls.Count, split.Panel1.Controls.Count);
+        Assert.Equal(originalSplit.Panel2.Controls.Count, split.Panel2.Controls.Count);
+        // The table keeps its column styles and every control's cell.
+        var table = (TableLayoutPanel)hello.Model.Find("tableLayoutPanel1")!.Instance;
+        var originalTable = (TableLayoutPanel)gallery.Model.Find("tableLayoutPanel1")!.Instance;
+        Assert.Equal(originalTable.ColumnStyles.Cast<ColumnStyle>().Select(c => (c.SizeType, c.Width)), table.ColumnStyles.Cast<ColumnStyle>().Select(c => (c.SizeType, c.Width)));
+        Assert.Equal(originalTable.Controls.Cast<Control>().Select(c => originalTable.GetCellPosition(c)), table.Controls.Cast<Control>().Select(c => table.GetCellPosition(c)));
+        Assert.Contains("tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));", hello.Source);
+    }
+
+    [Fact]
+    public void MenuItemsArePastedIntoAMenu()
+    {
+        using var surface = DesignSurface.Open(CopySample("Strips/MainForm.Designer.cs"));
+        var text = surface.Copy(new[] { "fileMenu" });
+        surface.Apply(new[] { new DesignerOp { Op = "paste", Value = text, Parent = "menuStrip1" } });
+        var menu = (MenuStrip)surface.Model.Find("menuStrip1")!.Instance;
+        var copy = Assert.IsType<ToolStripMenuItem>(menu.Items[^1]);
+        var file = (ToolStripMenuItem)surface.Model.Find("fileMenu")!.Instance;
+        Assert.Equal(file.Text, copy.Text);
+        Assert.Equal(file.DropDownItems.Cast<ToolStripItem>().Select(i => i.Text), copy.DropDownItems.Cast<ToolStripItem>().Select(i => i.Text));
+        Assert.Throws<DesignerEditException>(() => surface.Apply(new[] { new DesignerOp { Op = "paste", Value = text, Parent = "" } }));
+        Assert.Throws<DesignerEditException>(() => surface.Apply(new[] { new DesignerOp { Op = "paste", Value = "hello" } }));
+    }
+
+    [Fact]
     public void DesignedComponentsAreInDesignModeAndBehaveAsCreated()
     {
         // A VS design surface sites its components and gives them handles: flipping a TrackBar's

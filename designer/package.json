@@ -116,6 +116,16 @@
 				"command": "netforms.run",
 				"title": "%command.run%",
 				"category": "NetForms"
+			},
+			{
+				"command": "netforms.setStartupForm",
+				"title": "%command.setStartupForm%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.publish",
+				"title": "%command.publish%",
+				"category": "NetForms"
 			}
 		],
 		"menus": {
@@ -140,6 +150,16 @@
 				{
 					"command": "netforms.convertProject",
 					"when": "resourceExtname == .csproj",
+					"group": "navigation@9"
+				},
+				{
+					"command": "netforms.publish",
+					"when": "resourceExtname == .csproj",
+					"group": "navigation@9"
+				},
+				{
+					"command": "netforms.setStartupForm",
+					"when": "resourceFilename =~ /\\.Designer\\.cs$/",
 					"group": "navigation@9"
 				}
 			]
@@ -184,7 +204,7 @@
 		"typecheck": "tsc --noEmit -p .",
 		"watch": "npm run build -- --watch",
 		"package": "vsce package",
-		"test": "node --test test/geometry.test.js test/l10n.test.js test/version.test.js test/protocol.test.js test/ui/ui.test.js",
+		"test": "node --test test/geometry.test.js test/l10n.test.js test/version.test.js test/project.test.js test/protocol.test.js test/ui/ui.test.js",
 		"package:targets": "node scripts/package-targets.js",
 		"copy:license": "node -e \"require('fs').copyFileSync('../LICENSE', 'LICENSE')\""
 	},

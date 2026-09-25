@@ -12,6 +12,8 @@
 	"command.convertProject": "Convert WinForms Project…",
 	"command.checkSetup": "Check Setup",
 	"command.run": "Run Project",
+	"command.setStartupForm": "Set as Startup Form",
+	"command.publish": "Publish Application…",
 	"editor.displayName": "NetForms Designer",
 	"config.designerHostPath": "Path to NetFormsDesigner.Host.dll (or the executable). Empty: the host bundled with the extension, then a NetForms checkout found above the opened file.",
 	"config.dotnetPath": "The dotnet executable used to run the designer host and new projects.",

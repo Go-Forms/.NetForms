@@ -43,10 +43,12 @@ export interface DesignerView {
 	canUndo: boolean;
 	canRedo: boolean;
 	handler?: HandlerLocation;
+	/** Set by a paste or duplicate: the new components. */
+	select?: string[];
 }
 
 export interface Op {
-	op: 'setBounds' | 'setForm' | 'setProp' | 'resetProp' | 'setItems' | 'setEvent' | 'add' | 'remove' | 'setParent' | 'rename' | 'bringToFront' | 'sendToBack';
+	op: 'setBounds' | 'setForm' | 'setProp' | 'resetProp' | 'setItems' | 'setEvent' | 'add' | 'remove' | 'setParent' | 'rename' | 'bringToFront' | 'sendToBack' | 'paste' | 'duplicate';
 	id?: string; type?: string; parent?: string;
 	x?: number; y?: number; w?: number; h?: number;
 	prop?: string; value?: string; values?: string[]; ids?: string[];
@@ -139,6 +141,8 @@ export class HostClient implements vscode.Disposable {
 	properties(id: string) { return this.request<any[]>('properties', { id }); }
 	events(id: string) { return this.request<any[]>('events', { id }); }
 	toolbox() { return this.request<any[]>('toolbox'); }
+	/** The components as clipboard text (with everything inside them). */
+	copy(ids: string[]) { return this.request<{ text: string }>('copy', { ids }).then((r) => r.text); }
 
 	dispose() {
 		if (this.exited) return;

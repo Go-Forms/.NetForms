@@ -38,7 +38,7 @@ public sealed class DesignerEditException : Exception
 /// still drawn and selectable, and the value to write is kept on the model.
 /// </para>
 /// </remarks>
-public sealed class DesignSurface : IDisposable
+public sealed partial class DesignSurface : IDisposable
 {
     private sealed record Snapshot(string Source, string? Companion);
 
@@ -109,6 +109,7 @@ public sealed class DesignSurface : IDisposable
         }
         catch
         {
+            _pasted = null;
             Source = before.Source;
             CompanionSource = before.Companion;
             Reload();
@@ -224,6 +225,8 @@ public sealed class DesignSurface : IDisposable
             case "setForm": SetBounds(Root, op); break;
             case "setProp": SetProperty(Resolve(op.Id), Required(op.Prop, "prop"), op.Value); break;
             case "resetProp": ResetProperty(Resolve(op.Id), Required(op.Prop, "prop")); break;
+            case "paste": Paste(op); break;
+            case "duplicate": Duplicate(op); break;
             case "setItems": SetItems(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "setEvent": SetEvent(Resolve(op.Id), Required(op.Event, "event"), op.Handler); break;
             case "add": Add(op); break;
@@ -323,10 +326,17 @@ public sealed class DesignSurface : IDisposable
         catch (Exception ex) { throw new DesignerEditException($"{name} cannot be set to '{value}': {Unwrap(ex).Message}", ex); }
     }
 
+    /// <summary>
+    /// A property that points at another component of the form, picked by name: a component type, or an
+    /// interface only components implement (Form.AcceptButton and CancelButton are IButtonControl).
+    /// </summary>
+    private static bool IsReference(Type type) =>
+        typeof(IComponent).IsAssignableFrom(type) || type == typeof(IButtonControl);
+
     private object? Convert(PropertyDescriptor pd, string? text)
     {
         var type = pd.PropertyType;
-        if (typeof(IComponent).IsAssignableFrom(type))
+        if (IsReference(type))
         {
             if (string.IsNullOrEmpty(text)) return null;
             var component = Resolve(text);
@@ -750,7 +760,7 @@ public sealed class DesignSurface : IDisposable
         {
             foreach (PropertyDescriptor pd in TypeDescriptor.GetProperties(c.Instance))
             {
-                if (pd.IsReadOnly || !typeof(IComponent).IsAssignableFrom(pd.PropertyType)) continue;
+                if (pd.IsReadOnly || !IsReference(pd.PropertyType)) continue;
                 object? value;
                 try { value = pd.GetValue(c.Instance); }
                 catch (Exception) { continue; }
@@ -818,8 +828,10 @@ public sealed class DesignSurface : IDisposable
             CanUndo = CanUndo,
             CanRedo = CanRedo,
             Handler = _lastHandler,
+            Select = _pasted,
         };
         _lastHandler = null;
+        _pasted = null;
 
         using (var bitmap = new Bitmap(Math.Max(1, size.Width), Math.Max(1, size.Height)))
         {
@@ -983,7 +995,7 @@ public sealed class DesignSurface : IDisposable
 
             try { row.Modified = pd.ShouldSerializeValue(target); } catch (Exception) { }
             var type = Nullable.GetUnderlyingType(pd.PropertyType) ?? pd.PropertyType;
-            if (typeof(IComponent).IsAssignableFrom(type))
+            if (IsReference(type))
             {
                 row.Editor = "component";
                 row.Value = value == null ? "" : Model.FindByInstance(value)?.Name ?? "";

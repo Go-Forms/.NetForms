@@ -33,6 +33,9 @@ public sealed class DesignerView
 
     /// <summary>Set by an edit that wrote a handler stub: where it went, for "go to the handler".</summary>
     public DesignerHandlerLocation? Handler { get; set; }
+
+    /// <summary>Set by a paste or duplicate: the new components, for the client to select.</summary>
+    public List<string>? Select { get; set; }
 }
 
 public sealed class DesignerViewItem

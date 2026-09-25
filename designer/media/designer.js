@@ -76,6 +76,9 @@
 			case 'events':
 				if (m.id === primaryId()) { state.events = { id: m.id, rows: m.rows }; renderInspector(); }
 				break;
+			case 'copied':
+				toast(T('Copied: {0}', m.count), 'info');
+				break;
 			case 'error':
 				done();
 				toast(m.message, 'error');
@@ -99,7 +102,11 @@
 		const before = state.selectNew;
 		const selectedBefore = state.selection.join('\n');
 		state.view = view;
-		if (before) {
+		if (view.select && view.select.length) {
+			// A paste or duplicate names what it made.
+			state.selection = view.select.slice();
+			state.selectNew = null;
+		} else if (before) {
 			const fresh = allIds().filter((id) => !before.has(id));
 			if (fresh.length) state.selection = [fresh.find((id) => itemById(id)?.kind !== 'nested') || fresh[0]];
 			state.selectNew = null;
@@ -193,6 +200,51 @@
 		apply(movableSelection().map((id) => ({ op, id })), state.selection);
 	}
 
+	// --- clipboard: cut, copy, paste, duplicate, delete ------------------------------------------------
+
+	/** What the clipboard commands act on: the selected components (the form and a control's parts are not). */
+	function clipIds() {
+		return state.selection.filter((id) => id !== '' && itemById(id)?.kind !== 'nested');
+	}
+
+	/** Sends a request that changes the form and answers with a view (or an error). */
+	function busyPost(message) {
+		if (state.busy) return;
+		state.busy = true;
+		document.body.style.cursor = 'progress';
+		post(message);
+	}
+
+	function copySelection() {
+		const ids = clipIds();
+		if (ids.length) post({ type: 'copy', ids });
+	}
+
+	function cutSelection() {
+		const ids = clipIds();
+		if (ids.length) busyPost({ type: 'cut', ids, select: [parentOfSelection()] });
+	}
+
+	/** Paste goes into what is selected: the host puts controls in its container, items in its strip or menu. */
+	function pasteClipboard() {
+		busyPost({ type: 'paste', parent: primaryId() });
+	}
+
+	function duplicateSelection() {
+		const ids = clipIds();
+		if (ids.length) busyPost({ type: 'duplicate', ids });
+	}
+
+	function deleteSelection() {
+		const ids = clipIds();
+		if (ids.length) apply(ids.map((id) => ({ op: 'remove', id })), [parentOfSelection()]);
+	}
+
+	function parentOfSelection() {
+		const it = itemById(primaryId());
+		return it ? it.parent : '';
+	}
+
 	function toggleLock() {
 		state.locked = !state.locked;
 		remember();
@@ -276,6 +328,7 @@
 		const title = el('div', 'form-title' + (state.selection.includes('') ? ' selected' : ''));
 		title.append(el('span', 'caption', v.text || v.className), el('span', 'caption-buttons', '–▢✕'));
 		title.addEventListener('mousedown', (e) => { if (e.button === 0) select('', e.ctrlKey || e.shiftKey); });
+		title.addEventListener('contextmenu', (e) => onContextMenu(e, ''));
 
 		const canvas = el('div', 'canvas');
 		canvas.style.width = v.width + 'px';
@@ -309,6 +362,10 @@
 		}
 
 		canvas.addEventListener('mousedown', onCanvasDown);
+		canvas.addEventListener('contextmenu', (e) => {
+			const hit = G.hitTest(state.view.items, canvasPoint(e).x, canvasPoint(e).y);
+			onContextMenu(e, hit ? hit.id : '');
+		});
 		canvas.addEventListener('dblclick', onCanvasDoubleClick);
 		canvas.addEventListener('dragover', (e) => { if ([...e.dataTransfer.types].includes('text/netforms-type')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
 		canvas.addEventListener('drop', (e) => onToolboxDrop(e, canvas));
@@ -611,9 +668,19 @@
 		if (ctrl && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) { post({ type: 'redo' }); e.preventDefault(); return; }
 		if (e.key === 'F7') { post({ type: 'viewCode' }); e.preventDefault(); return; }
 		if (state.busy) return;
+		if (ctrl && !e.shiftKey && !e.altKey && ['c', 'x', 'v', 'd'].includes(e.key.toLowerCase())) {
+			const key = e.key.toLowerCase();
+			// VS Code may answer the same keys with a copy/paste of its own into the webview: that event is ours already.
+			state.clipKey = Date.now();
+			if (key === 'c') copySelection();
+			else if (key === 'x') cutSelection();
+			else if (key === 'v') pasteClipboard();
+			else duplicateSelection();
+			e.preventDefault();
+			return;
+		}
 		if (e.key === 'Delete') {
-			const ids = state.selection.filter((id) => id !== '' && (itemById(id)?.kind !== 'nested'));
-			if (ids.length) apply(ids.map((id) => ({ op: 'remove', id })), ['']);
+			deleteSelection();
 			e.preventDefault();
 			return;
 		}
@@ -640,6 +707,81 @@
 		}
 	});
 
+	// Copy and paste that reach the page as events (VS Code's own Edit menu), not as keys we have handled.
+	for (const [type, fn] of [['copy', copySelection], ['cut', cutSelection], ['paste', pasteClipboard]]) {
+		document.addEventListener(type, (e) => {
+			if (isTyping(e.target) || !state.view || Date.now() - (state.clipKey || 0) < 500) return;
+			e.preventDefault();
+			fn();
+		});
+	}
+
+	// --- context menu -----------------------------------------------------------------------------------
+
+	function closeMenu() {
+		document.querySelectorAll('.ctx-menu').forEach((n) => n.remove());
+	}
+
+	/** The right-click menu of the canvas and the tray, as the Visual Studio designer's. */
+	function showContextMenu(e) {
+		closeMenu();
+		const ids = clipIds();
+		const movable = movableSelection().length > 0;
+		const parent = parentOfSelection();
+		const menu = el('div', 'ctx-menu');
+		const item = (label, keys, fn, enabled = true) => {
+			const row = el('div', 'ctx-item' + (enabled ? '' : ' disabled'));
+			row.append(el('span', 'ctx-label', label), el('span', 'ctx-keys', keys || ''));
+			if (enabled) row.addEventListener('mousedown', (ev) => { ev.preventDefault(); ev.stopPropagation(); closeMenu(); fn(); });
+			menu.append(row);
+		};
+		const sep = () => menu.append(el('div', 'ctx-sep'));
+		item(T('View Code'), 'F7', () => post({ type: 'viewCode' }));
+		if (state.selection.length === 1 && state.selection[0] === '' && /Form$/.test(state.view ? state.view.rootType : ''))
+			item(T('Set as Startup Form'), '', () => post({ type: 'setStartup' }));
+		sep();
+		item(T('Cut'), 'Ctrl+X', cutSelection, ids.length > 0);
+		item(T('Copy'), 'Ctrl+C', copySelection, ids.length > 0);
+		item(T('Paste'), 'Ctrl+V', pasteClipboard);
+		item(T('Duplicate'), 'Ctrl+D', duplicateSelection, ids.length > 0);
+		item(T('Delete'), 'Del', deleteSelection, ids.length > 0);
+		sep();
+		item(T('Bring to Front'), '', () => zorder('bringToFront'), movable && !state.locked);
+		item(T('Send to Back'), '', () => zorder('sendToBack'), movable && !state.locked);
+		sep();
+		item(state.locked ? T('Unlock Controls') : T('Lock Controls'), '', toggleLock);
+		if (state.selection.length === 1 && state.selection[0] !== '')
+			item(T('Select \'{0}\'', parent || (state.view ? state.view.className : '')), 'Esc', () => select(parent, false));
+		sep();
+		item(T('Properties'), '', () => {
+			state.tab = 'properties';
+			remember();
+			renderInspector();
+			requestInspector();
+			const search = document.querySelector('.insp-search');
+			if (search) search.focus();
+		});
+		document.body.append(menu);
+		// Inside the window, however near its edge the click was.
+		const w = menu.offsetWidth, h = menu.offsetHeight;
+		menu.style.left = Math.max(0, Math.min(e.clientX, window.innerWidth - w - 2)) + 'px';
+		menu.style.top = Math.max(0, Math.min(e.clientY, window.innerHeight - h - 2)) + 'px';
+	}
+
+	/** Right-click selects what is under the mouse (unless it is already part of the selection), then shows the menu. */
+	function onContextMenu(e, id) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (state.busy || state.drag) return;
+		if (!state.selection.includes(id)) select(id, false);
+		showContextMenu(e);
+	}
+
+	document.addEventListener('mousedown', (e) => { if (!e.target.closest || !e.target.closest('.ctx-menu')) closeMenu(); });
+	document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.querySelector('.ctx-menu')) { closeMenu(); e.stopImmediatePropagation(); } }, true);
+	window.addEventListener('blur', closeMenu);
+	document.addEventListener('wheel', closeMenu, { passive: true });
+
 	// --- tray ---------------------------------------------------------------------------------------
 
 	function renderTray() {
@@ -650,6 +792,7 @@
 			const n = el('div', 'tray-item' + (state.selection.includes(t.id) ? ' selected' : ''), `${t.id} : ${shortType(t.type)}`);
 			n.addEventListener('mousedown', (e) => select(t.id, e.ctrlKey || e.shiftKey));
 			n.addEventListener('dblclick', () => wireDefaultEvent(t.id));
+			n.addEventListener('contextmenu', (e) => onContextMenu(e, t.id));
 			tray.append(n);
 		}
 	}

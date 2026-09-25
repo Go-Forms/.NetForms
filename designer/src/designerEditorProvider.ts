@@ -16,7 +16,15 @@ type FromWebview =
 	| { type: 'gotoHandler'; handler: string }
 	| { type: 'viewCode' }
 	| { type: 'openAsText' }
-	| { type: 'run' };
+	| { type: 'run' }
+	| { type: 'setStartup' }
+	| { type: 'copy'; ids: string[] }
+	| { type: 'cut'; ids: string[]; select?: string[] }
+	| { type: 'paste'; parent: string }
+	| { type: 'duplicate'; ids: string[] };
+
+/** The marker of the text the host's copy produces (DesignSurface.ClipboardFormat). */
+const clipboardFormat = 'netforms/components-1';
 
 /** The designer file's hand-written half: MainForm.Designer.cs → MainForm.cs. */
 export function companionOf(designerPath: string): string {
@@ -105,6 +113,25 @@ export class DesignerSession implements vscode.Disposable {
 				case 'gotoHandler': await this.gotoHandler(m.handler); break;
 				case 'viewCode': await this.viewCode(); break;
 				case 'run': await vscode.commands.executeCommand('netforms.run', this.document.uri); break;
+				case 'setStartup': await vscode.commands.executeCommand('netforms.setStartupForm', this.document.uri); break;
+				case 'copy': {
+					await vscode.env.clipboard.writeText(await this.ensureHost().copy(m.ids));
+					this.post({ type: 'copied', count: m.ids.length });
+					break;
+				}
+				case 'cut': {
+					const host = this.ensureHost();
+					await vscode.env.clipboard.writeText(await host.copy(m.ids));
+					this.show(await this.write(() => host.apply(m.ids.map((id) => ({ op: 'remove', id } as Op)))), m.select);
+					break;
+				}
+				case 'paste': {
+					const text = await vscode.env.clipboard.readText();
+					if (!text.includes(clipboardFormat)) throw new Error(vscode.l10n.t('The clipboard holds no NetForms controls. Copy some in a NetForms designer first.'));
+					this.show(await this.write(() => this.ensureHost().apply([{ op: 'paste', value: text, parent: m.parent }])));
+					break;
+				}
+				case 'duplicate': this.show(await this.write(() => this.ensureHost().apply([{ op: 'duplicate', ids: m.ids }]))); break;
 				case 'openAsText': await vscode.commands.executeCommand('vscode.openWith', this.document.uri, 'default'); break;
 			}
 		} catch (err) {

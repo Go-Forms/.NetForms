@@ -351,3 +351,72 @@ test('tab pages switch with a click and are edited by their captions', { skip, t
 	await page.screenshot({ path: path.join(out, 'tabs-3-edited.png') });
 	assert.deepEqual(errors, []);
 });
+
+test('controls are copied, pasted and duplicated, by keys and from the context menu', { skip, timeout: 90000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-clip-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 720 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		return file();
+	};
+	const selected = () => page.$$eval('.hit.primary, .hit.selected', (n) => n.map((x) => x.dataset.id));
+
+	// Ctrl+C, Ctrl+V: a copy, selected, with the original's handler.
+	const b = await (await page.waitForSelector('.hit[data-id="button1"]')).boundingBox();
+	await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+	await page.keyboard.down('Control'); await page.keyboard.press('c'); await page.keyboard.up('Control');
+	await page.waitForSelector('.toast');
+	assert.match(harness.clipboard.text, /netforms\/components-1/);
+	let before = file();
+	await page.keyboard.down('Control'); await page.keyboard.press('v'); await page.keyboard.up('Control');
+	let text = await waitFile(before);
+	assert.match(text, /button2\.Click \+= button1_Click;/);
+	await page.waitForFunction(() => document.querySelector('.hit.primary')?.dataset.id === 'button2');
+
+	// Ctrl+D duplicates the selection.
+	before = file();
+	await page.keyboard.down('Control'); await page.keyboard.press('d'); await page.keyboard.up('Control');
+	text = await waitFile(before);
+	assert.match(text, /button3 = new Button\(\);/);
+	assert.deepEqual(await selected(), ['button3']);
+
+	// Right-click: the menu; Delete from it removes the control.
+	const b3 = await (await page.waitForSelector('.hit[data-id="button3"]')).boundingBox();
+	await page.mouse.click(b3.x + b3.width / 2, b3.y + b3.height / 2, { button: 'right' });
+	await page.waitForSelector('.ctx-menu');
+	const labels = await page.$$eval('.ctx-menu .ctx-label', (n) => n.map((x) => x.textContent));
+	for (const l of ['View Code', 'Cut', 'Copy', 'Paste', 'Duplicate', 'Delete', 'Bring to Front', 'Send to Back', 'Lock Controls', 'Properties']) assert.ok(labels.includes(l), l);
+	await page.screenshot({ path: path.join(out, 'clip-menu.png') });
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.ctx-item')].find((n) => n.textContent.startsWith('Delete')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+	text = await waitFile(before);
+	assert.doesNotMatch(text, /button3/);
+	assert.equal(await page.$('.ctx-menu'), null, 'the menu closes');
+
+	// Cut from the menu, paste back: the same name again (it is free once cut).
+	const b2 = await (await page.waitForSelector('.hit[data-id="button2"]')).boundingBox();
+	await page.mouse.click(b2.x + b2.width / 2, b2.y + b2.height / 2, { button: 'right' });
+	await page.waitForSelector('.ctx-menu');
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.ctx-item')].find((n) => n.textContent.startsWith('Cut')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+	text = await waitFile(before);
+	assert.doesNotMatch(text, /button2/);
+	before = file();
+	await page.keyboard.down('Control'); await page.keyboard.press('v'); await page.keyboard.up('Control');
+	text = await waitFile(before);
+	assert.match(text, /button2 = new Button\(\);/);
+	assert.deepEqual(errors, []);
+});

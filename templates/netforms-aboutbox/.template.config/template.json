@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "NetForms contributors",
+  "classifications": [
+    "Common",
+    "WinForms",
+    "NetForms"
+  ],
+  "identity": "NetForms.AboutBox.CSharp",
+  "name": "NetForms About Box",
+  "description": "An About box that shows the product name, version, copyright, company and description from the assembly attributes.",
+  "shortName": "netforms-aboutbox",
+  "sourceName": "AboutBox1",
+  "tags": {
+    "language": "C#",
+    "type": "item"
+  },
+  "symbols": {
+    "Namespace": {
+      "type": "parameter",
+      "datatype": "string",
+      "description": "The namespace of the new files. Default: the RootNamespace of the project."
+    },
+    "DefaultNamespace": {
+      "type": "bind",
+      "binding": "msbuild:RootNamespace"
+    },
+    "ActualNamespace": {
+      "type": "generated",
+      "generator": "coalesce",
+      "parameters": {
+        "sourceVariableName": "Namespace",
+        "fallbackVariableName": "DefaultNamespace"
+      },
+      "replaces": "NetFormsNamespace"
+    }
+  },
+  "defaultName": "AboutBox1",
+  "preferDefaultName": true,
+  "constraints": {
+    "csharp-only": {
+      "type": "project-capability",
+      "args": "CSharp"
+    }
+  }
+}

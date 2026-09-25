@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+- **Copy, cut, paste and duplicate** controls: Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+D (and VS Code's Edit menu). A copy
+  carries everything inside it - child controls, a SplitContainer's panels, menu and tool strip items, columns,
+  TableLayoutPanel cells and styles, list items - and pastes into another form too. A pasted control keeps its name
+  when the form has it free (else `button2`), its handlers when pasted into the form it came from, and moves down and
+  right when it would lie exactly on a control already there.
+- **Context menu** on the canvas, the tray and the form's title, as in Visual Studio: View Code, Cut, Copy, Paste,
+  Duplicate, Delete, Bring to Front, Send to Back, Lock Controls, Select the parent, Properties; on the form, Set as
+  Startup Form.
+- **New Form…** offers forms made for a purpose besides the empty one: Dialog, About Box, Login Form, Splash Screen
+  (new templates `netforms-dialog`, `netforms-aboutbox`, `netforms-login`, `netforms-splash`).
+- **NetForms: Set as Startup Form** points `Application.Run` in `Program.cs` at the form (Explorer context menu of a
+  `*.Designer.cs`, the canvas' context menu).
+- **NetForms: Publish Application…**: `dotnet publish` for Windows or Linux, x64 or ARM64, self-contained or
+  framework-dependent, into `publish/<rid>` next to the project, then shows the folder.
+- The property grid offers the form's buttons for `AcceptButton` and `CancelButton` (an `IButtonControl`, not a
+  component type); before, the name typed there was quietly dropped.
+
 ## 0.1.4
 
 - TabControl: a click on a tab header on the canvas brings its page to the front, so the controls of every page can

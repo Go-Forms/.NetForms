@@ -162,6 +162,24 @@ button, input, select { font: inherit; color: inherit; }
 .align-bar { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--vscode-panel-border, #8884); }
 .align-bar button { border: 1px solid var(--vscode-button-border, #8884); background: var(--vscode-button-secondaryBackground, transparent); padding: 1px 6px; cursor: pointer; }
 
+/* --- context menu ------------------------------------------------------------------------------ */
+.ctx-menu {
+	position: fixed; z-index: 90; min-width: 220px; padding: 4px 0;
+	background: var(--vscode-menu-background, var(--vscode-editorWidget-background, #fff));
+	color: var(--vscode-menu-foreground, inherit);
+	border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, #8886));
+	border-radius: 5px; box-shadow: 0 2px 8px var(--vscode-widget-shadow, #0005);
+}
+.ctx-item { display: flex; justify-content: space-between; gap: 24px; padding: 3px 12px 3px 20px; cursor: default; white-space: nowrap; }
+.ctx-item:hover:not(.disabled) {
+	background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, #0078d4));
+	color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, #fff));
+}
+.ctx-item.disabled { opacity: .45; }
+.ctx-keys { opacity: .7; }
+.ctx-sep { height: 1px; margin: 4px 8px; background: var(--vscode-menu-separatorBackground, #8884); }
+.ctx-sep + .ctx-sep, .ctx-sep:last-child { display: none; }
+
 /* --- status, toasts, errors -------------------------------------------------------------------- */
 #status { padding: 2px 8px; font-size: 90%; opacity: .75; border-top: 1px solid var(--vscode-panel-border, #8884); white-space: nowrap; overflow: hidden; }
 .toast {

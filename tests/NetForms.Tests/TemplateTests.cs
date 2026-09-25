@@ -28,6 +28,10 @@ public sealed class TemplateTests : IDisposable
         { "netforms-app", "MainForm.Designer.cs" },
         { "netforms-form", "Form1.Designer.cs" },
         { "netforms-usercontrol", "UserControl1.Designer.cs" },
+        { "netforms-dialog", "Dialog1.Designer.cs" },
+        { "netforms-aboutbox", "AboutBox1.Designer.cs" },
+        { "netforms-login", "LoginForm1.Designer.cs" },
+        { "netforms-splash", "SplashScreen1.Designer.cs" },
     };
 
     /// <summary>
@@ -50,7 +54,13 @@ public sealed class TemplateTests : IDisposable
         var path = Path.Combine(Templates, template, file);
         var source = File.ReadAllText(path);
         var model = new DesignerCodeReader().ReadFile(path);
-        Assert.Equal(source, new DesignerCodeWriter().Write(model, source));
+        // The one thing text metrics decide: the height of a one-line text box (its font's height + 7), which the
+        // file holds as Visual Studio writes it with Segoe UI (23) and a machine without Segoe UI measures otherwise.
+        var expected = source;
+        foreach (var c in model.Components)
+            if (c.Instance is TextBoxBase { Multiline: false } box)
+                expected = expected.Replace($"{c.Name}.Size = new Size({box.Width}, 23);", $"{c.Name}.Size = new Size({box.Width}, {box.Height});");
+        Assert.Equal(expected, new DesignerCodeWriter().Write(model, source));
     }
 
     [Theory]
@@ -110,12 +120,16 @@ public sealed class TemplateTests : IDisposable
             Run(project, "restore", "-nologo", "-v", "quiet");
             Run(project, "new", "netforms-form", "-n", "SettingsForm", "--debug:custom-hive", hive);
             Run(project, "new", "netforms-usercontrol", "-n", "Toolbar", "--debug:custom-hive", hive);
+            foreach (var (template, name) in new[] { ("netforms-dialog", "OptionsDialog"), ("netforms-aboutbox", "AboutBox"), ("netforms-login", "LoginForm"), ("netforms-splash", "SplashScreen") })
+                Run(project, "new", template, "-n", name, "--debug:custom-hive", hive);
             // ...or take it as a parameter, as the VS Code extension passes it (with the folder, as VS does).
             Directory.CreateDirectory(Path.Combine(project, "Views"));
             Run(Path.Combine(project, "Views"), "new", "netforms-form", "-n", "AboutForm", "--Namespace", "Demo.Views", "--debug:custom-hive", hive);
 
             Assert.StartsWith("namespace Demo", File.ReadAllText(Path.Combine(project, "SettingsForm.Designer.cs")));
             Assert.Contains("partial class Toolbar", File.ReadAllText(Path.Combine(project, "Toolbar.Designer.cs")));
+            Assert.Contains("CancelButton = cancelButton;", File.ReadAllText(Path.Combine(project, "OptionsDialog.Designer.cs")));
+            Assert.Contains("public partial class AboutBox : Form", File.ReadAllText(Path.Combine(project, "AboutBox.cs")));
             Assert.StartsWith("namespace Demo.Views", File.ReadAllText(Path.Combine(project, "Views", "AboutForm.Designer.cs")));
 
             Run(project, "build", "-c", "Release", "-nologo", "-v", "quiet");
