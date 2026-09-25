@@ -132,4 +132,9 @@ public static class Cursors
     public static Cursor HSplit { get; } = Cursor.Named("HSplit");
     public static Cursor VSplit { get; } = Cursor.Named("VSplit");
     public static Cursor UpArrow { get; } = Cursor.Named("UpArrow");
+
+    // The OLE drag cursors (not public in WinForms either): what a drag shows while GiveFeedback keeps the defaults.
+    internal static Cursor DragCopy { get; } = Cursor.Named("DragCopy");
+    internal static Cursor DragMove { get; } = Cursor.Named("DragMove");
+    internal static Cursor DragLink { get; } = Cursor.Named("DragLink");
 }

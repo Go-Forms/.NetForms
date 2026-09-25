@@ -44,6 +44,8 @@ internal static class Theme
     public static Color WindowBorderFocused => Color.FromArgb(0x00, 0x78, 0xD7);
     public static Color Highlight => Color.FromArgb(0x00, 0x78, 0xD7);
     public static Color HighlightText => Color.White;
+    /// <summary>Hot-tracked text (TreeView.HotTracking): the system's hot-track blue.</summary>
+    public static Color HotTrackText => Color.FromArgb(0x00, 0x66, 0xCC);
     public static Color HighlightInactive => Color.FromArgb(0xCC, 0xCC, 0xCC);
     public static Color Selection => Color.FromArgb(0x00, 0x78, 0xD7);
 

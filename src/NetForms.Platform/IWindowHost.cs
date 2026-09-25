@@ -37,6 +37,37 @@ public interface IWindowHost
     void Closed();
     /// <summary>The window is now visible on screen.</summary>
     void Shown();
+
+    // A drag from another application over the window. Each returns the effect to show (and, for Drop, the one
+    // performed); the defaults refuse, so a host that does not take drops need not implement them.
+
+    PlatformDragEffects DragEnter(Point position, PlatformDragData data, PlatformDragEffects allowed, InputModifiers modifiers) => PlatformDragEffects.None;
+
+    PlatformDragEffects DragOver(Point position, PlatformDragData data, PlatformDragEffects allowed, InputModifiers modifiers) => PlatformDragEffects.None;
+
+    void DragLeave() { }
+
+    PlatformDragEffects Drop(Point position, PlatformDragData data, PlatformDragEffects allowed, InputModifiers modifiers) => PlatformDragEffects.None;
+}
+
+/// <summary>What an OS drag carries, in the forms NetForms understands: file paths, text, an image as PNG.</summary>
+public sealed class PlatformDragData
+{
+    public System.Collections.Generic.IReadOnlyList<string>? Files { get; init; }
+
+    public string? Text { get; init; }
+
+    public byte[]? ImagePng { get; init; }
+}
+
+/// <summary>The effects of a drag (the values of WinForms' DragDropEffects).</summary>
+[System.Flags]
+public enum PlatformDragEffects
+{
+    None = 0,
+    Copy = 1,
+    Move = 2,
+    Link = 4,
 }
 
 [System.Flags]

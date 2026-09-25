@@ -493,11 +493,59 @@ public partial class Control
         ?? GetType().Assembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version
         ?? GetType().Assembly.GetName().Version?.ToString() ?? "";
 
-    // --- drag and drop (decision 114: declared; the platform starts and delivers no drag yet) -------------
+    // --- drag and drop (decision 155: NetForms runs the OLE protocol itself, DragDropManager) -------------
 
-    public DragDropEffects DoDragDrop(object data, DragDropEffects allowedEffects) => DragDropEffects.None;
+    /// <summary>
+    /// Start a drag with <paramref name="data"/> (an <see cref="IDataObject"/>, or any object, wrapped in a
+    /// <see cref="DataObject"/>) and return when it is dropped or cancelled: the effect the target chose, or None.
+    /// </summary>
+    public DragDropEffects DoDragDrop(object data, DragDropEffects allowedEffects) =>
+        DragDropManager.DoDragDrop(this, data, allowedEffects);
 
-    public DragDropEffects DoDragDrop(object data, DragDropEffects allowedEffects, Bitmap? dragImage, Point cursorOffset, bool useDefaultDragImage) => DragDropEffects.None;
+    /// <summary>As <see cref="DoDragDrop(object, DragDropEffects)"/>; the drag image is not drawn (decision 155).</summary>
+    public DragDropEffects DoDragDrop(object data, DragDropEffects allowedEffects, Bitmap? dragImage, Point cursorOffset, bool useDefaultDragImage) =>
+        DragDropManager.DoDragDrop(this, data, allowedEffects);
+
+    /// <summary>Drag <paramref name="data"/> serialized as JSON under its type's name (.NET 9+); TryGetData&lt;T&gt; reads it back.</summary>
+    public DragDropEffects DoDragDropAsJson<T>(T data, DragDropEffects allowedEffects)
+    {
+        var dataObject = new DataObject();
+        dataObject.SetDataAsJson(data);
+        return DoDragDrop(dataObject, allowedEffects);
+    }
+
+    public DragDropEffects DoDragDropAsJson<T>(T data, DragDropEffects allowedEffects, Bitmap? dragImage, Point cursorOffset, bool useDefaultDragImage)
+    {
+        var dataObject = new DataObject();
+        dataObject.SetDataAsJson(data);
+        return DoDragDrop(dataObject, allowedEffects, dragImage, cursorOffset, useDefaultDragImage);
+    }
+
+    // The event keys RaiseDragEvent takes (WinForms' EventDragDrop, EventDragEnter, EventDragOver).
+    internal static readonly object s_dragDropEvent = new();
+    internal static readonly object s_dragEnterEvent = new();
+    internal static readonly object s_dragOverEvent = new();
+
+    /// <summary>Raise the drag event named by <paramref name="key"/> without the On* method (a control forwarding a child's drag).</summary>
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    protected void RaiseDragEvent(object key, DragEventArgs e)
+    {
+        if (ReferenceEquals(key, s_dragDropEvent)) DragDrop?.Invoke(this, e);
+        else if (ReferenceEquals(key, s_dragEnterEvent)) DragEnter?.Invoke(this, e);
+        else if (ReferenceEquals(key, s_dragOverEvent)) DragOver?.Invoke(this, e);
+    }
+
+    internal void RaiseDragEnter(DragEventArgs e) => OnDragEnter(e);
+
+    internal void RaiseDragOver(DragEventArgs e) => OnDragOver(e);
+
+    internal void RaiseDragLeave(EventArgs e) => OnDragLeave(e);
+
+    internal void RaiseDragDrop(DragEventArgs e) => OnDragDrop(e);
+
+    internal void RaiseGiveFeedback(GiveFeedbackEventArgs e) => OnGiveFeedback(e);
+
+    internal void RaiseQueryContinueDrag(QueryContinueDragEventArgs e) => OnQueryContinueDrag(e);
 
     [Category("Drag Drop")]
     [Description("Occurs when a drag-and-drop operation is completed.")]

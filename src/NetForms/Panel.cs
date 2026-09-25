@@ -78,6 +78,11 @@ public class Panel : ScrollableControl
         PaintBorder(e.Graphics, ClientRectangle, _borderStyle);
     }
 
+    /// <summary>A panel reads as a plain client area (WinForms' PanelAccessibleObject: role Client, no name of its own).</summary>
+    protected override AccessibleObject CreateAccessibilityInstance() => new ControlAccessibleObject(this);
+
+    public override string ToString() => base.ToString() + ", BorderStyle: " + _borderStyle;
+
     internal static void PaintBorder(Graphics g, Rectangle rect, BorderStyle style)
     {
         if (style == BorderStyle.None || rect.Width <= 0 || rect.Height <= 0) return;

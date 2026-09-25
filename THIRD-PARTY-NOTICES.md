@@ -39,6 +39,16 @@ Studio designer attributes naming `System.Design` types are left out. Each file 
 message handling, and the edit/commit/validation sequence of `DataGridView` and the editing members of the cells
 follow the same sources.
 
+`src/NetForms.Drawing/Printing/*.cs` - `System.Drawing.Printing`: `Margins`, `MarginsConverter`, `PaperSize`,
+`PaperSource`, `PrinterResolution`, `PrinterUnitConvert`, the print event arguments, `PrintDocument` and the page loop of
+`PrintController`, `PreviewPrintController` - are copied from `src/System.Drawing.Common/src/System/Drawing/Printing`
+(main, September 2026); `PageSettings`, `PrinterSettings` and the enumerations keep its public surface, defaults and
+`ToString` formats, with the DEVMODE reads replaced by the NetForms print backends (CUPS, winspool/GDI).
+`src/NetForms/PrintPreviewControl.cs` (zoom, rows/columns and centring), `PrintPreviewDialog.cs` (the members it hides
+from the designer, its tool bar and keys), `PrintDialog.cs`, `PageSetupDialog.cs` and
+`PrintControllerWithStatusDialog.cs` follow `src/System.Windows.Forms/System/Windows/Forms/Printing` the same way;
+`ScrollableControl.DockPaddingEdgesConverter` is copied from `.../Scrolling`.
+
 Layout semantics and control metrics elsewhere in the code were derived from the same repository by
 reading it as a specification; where whole algorithms were ported the file says so in a comment.
 

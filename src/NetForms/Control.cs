@@ -829,7 +829,7 @@ public partial class Control : Component, IWin32Window
         }
     }
 
-    public void ResetBackColor() => BackColor = Color.Empty;
+    public virtual void ResetBackColor() => BackColor = Color.Empty;
 
     /// <summary>True when BackColor was set on this control rather than inherited.</summary>
     internal bool IsBackColorSet => !_backColor.IsEmpty;
@@ -855,7 +855,7 @@ public partial class Control : Component, IWin32Window
         }
     }
 
-    public void ResetForeColor() => ForeColor = Color.Empty;
+    public virtual void ResetForeColor() => ForeColor = Color.Empty;
 
     private Cursor? _cursor;
 
@@ -1015,7 +1015,7 @@ public partial class Control : Component, IWin32Window
     [Category("Behavior")]
     [Description("Indicates whether the control can accept data that the user drags onto it.")]
     [DefaultValue(false)]
-    public bool AllowDrop { get; set; }
+    public virtual bool AllowDrop { get; set; }
 
     /// <summary>The menu shown on right-click; a control without one lets the click fall through to its parent.</summary>
     [Category("Behavior")]
@@ -1035,8 +1035,17 @@ public partial class Control : Component, IWin32Window
     private ContextMenuStrip? _contextMenuStrip;
 
     /// <summary>Right mouse-up: find the nearest ContextMenuStrip up the parent chain and pop it up.</summary>
+    /// <summary>A menu for what is under <paramref name="clientPoint"/> (a TreeView node's own), before the control's.</summary>
+    internal virtual ContextMenuStrip? ContextMenuStripAt(Point clientPoint) => null;
+
     internal void ShowContextMenuStrip(Point clientPoint)
     {
+        if (ContextMenuStripAt(clientPoint) is { } itemMenu)
+        {
+            itemMenu.SourceControl = this;
+            itemMenu.Show(this, clientPoint);
+            return;
+        }
         for (Control? c = this; c != null; c = c._parent)
         {
             var menu = c.ContextMenuStrip;

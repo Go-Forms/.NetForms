@@ -2,9 +2,7 @@ using System.Drawing;
 
 namespace System.Windows.Forms;
 
-// Drag and drop (Ф6, decision 114): the types and the events of Control, as in WinForms. NetForms does
-// not start or accept an OLE drag yet - DoDragDrop returns None and the drag events are never raised
-// by the platform - but code that wires them compiles and runs.
+// Drag and drop: the types of WinForms. The protocol itself is DragDropManager (decision 155).
 
 [Flags]
 public enum DragDropEffects
@@ -110,3 +108,23 @@ public class QueryContinueDragEventArgs : EventArgs
 }
 
 public delegate void QueryContinueDragEventHandler(object? sender, QueryContinueDragEventArgs e);
+
+/// <summary>ItemDrag of TreeView and ListView: the user started dragging an item with <see cref="Button"/>.</summary>
+public class ItemDragEventArgs : EventArgs
+{
+    public ItemDragEventArgs(MouseButtons button) : this(button, null)
+    {
+    }
+
+    public ItemDragEventArgs(MouseButtons button, object? item)
+    {
+        Button = button;
+        Item = item;
+    }
+
+    public MouseButtons Button { get; }
+
+    public object? Item { get; }
+}
+
+public delegate void ItemDragEventHandler(object? sender, ItemDragEventArgs e);

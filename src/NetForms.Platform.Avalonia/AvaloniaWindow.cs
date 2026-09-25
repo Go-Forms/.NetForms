@@ -307,6 +307,9 @@ internal sealed class AvaloniaWindow : IPlatformWindow
             "HSplit" => StandardCursorType.SizeNorthSouth,
             "VSplit" => StandardCursorType.SizeWestEast,
             "UpArrow" => StandardCursorType.UpArrow,
+            "DragCopy" => StandardCursorType.DragCopy,
+            "DragMove" => StandardCursorType.DragMove,
+            "DragLink" => StandardCursorType.DragLink,
             _ => StandardCursorType.Arrow,
         };
         _surface.Cursor = new global::Avalonia.Input.Cursor(type);

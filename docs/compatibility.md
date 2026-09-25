@@ -81,8 +81,8 @@ Measured on a corpus of real projects (`tests/corpus/corpus.json`): **7 of 7** o
 .NET Framework 4.8/4.8.1 projects and **28 of 45** open-source WinForms projects convert and build with no
 manual edit. Of the 17 that do not, 6 use `BinaryFormatter` and 4 Windows-only components (WebView2, CefSharp, a
 package that demands the Windows Desktop runtime) — the last rows of the table; 5 need API NetForms does not have
-yet (printing, `ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, Visual Basic's
-`Microsoft.VisualBasic.Devices`); 2 stop on a package (a build task that fails on .NET 10, a package reference the
+yet (MDBEditor's printing is in now, it still needs `ImageFormat.Icon`/`Tiff`/`Wmf` and a few members;
+`ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, Visual Basic's `Microsoft.VisualBasic.Devices`); 2 stop on a package (a build task that fails on .NET 10, a package reference the
 converter does not carry over). What gets added next: [§ 8](#8-what-comes-next).
 
 ---
@@ -105,7 +105,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `Label` | ✅ Works · 12 missing | Missing: `Image`/`ImageList` on a label, `PreferredWidth/Height`. |
 | `LinkLabel` | ✅ Works · 3 missing | |
 | `ListBox` | ✅ Works · 7 missing | Owner draw, multi-select, `DataSource`/`DisplayMember`/`ValueMember` as in `ComboBox`. Missing: `CustomTabOffsets`, `Sort()` override hook. |
-| `ListView` | ✅ Works · 43 missing | All views (Details, List, SmallIcon, LargeIcon, Tile), groups, check boxes, label edit, sorting. Missing: `VirtualMode`, column reordering by drag, `HotTracking`, insertion mark. |
+| `ListView` | ✅ Works · 38 missing | All views (Details, List, SmallIcon, LargeIcon, Tile), groups, check boxes, label edit, sorting, `ItemDrag` (a press on one of several selected items keeps them all for the drag), `ItemMouseHover`. Missing: `VirtualMode`, column reordering by drag, `HotTracking`, insertion mark. |
 | `MaskedTextBox` | ✅ Works · 1 missing | Masks via the same `MaskedTextProvider` WinForms uses. |
 | `MonthCalendar` | ✅ Works · 8 missing | One month is shown (`CalendarDimensions` is stored). |
 | `NotifyIcon` | ✅ Works · API complete | System tray via the OS (StatusNotifierItem on Linux); the context menu is drawn by the shell. See §6. |
@@ -116,7 +116,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `RichTextBox` | ✅ Works · 1 missing | Own RTF reader/writer: fonts, colours, bold/italic/underline, bullets, alignment, links, undo. Not yet: numbered lists, images/OLE objects, justify, drag-and-drop, IME. |
 | `TextBox` | ✅ Works · 1 missing | Selection, undo, clipboard, context menu, multiline, password, `CharacterCasing`. `AutoCompleteCustomSource` is stored, suggestions are not shown. |
 | `ToolTip` | ✅ Works · 2 missing | |
-| `TreeView` | ✅ Works · 9 missing | Check boxes, images, label edit, owner draw. Missing: `ItemDrag`, `NodeMouseHover`. |
+| `TreeView` | ✅ Works · API complete | Check boxes, images by index or key, state images (`StateImageList`, `StateImageKey`), label edit, owner draw, `ItemDrag` (left and right button), `NodeMouseHover`, `HotTracking`, node tool tips (`ShowNodeToolTips`), a node's own `ContextMenuStrip`, `GetItemRenderStyles`, `TreeNode.Handle`/`FromHandle`, `TreeNode` serialization. As the native tree, a press on a node selects it on release, so dragging a node does not select it, and the right button does not select. `RightToLeftLayout` is stored, not mirrored (see §4, Text). |
 | `WebBrowser` | ❌ Missing | Internet Explorer control; will not come (see §5). |
 | `DomainUpDown` | ❌ Missing | |
 | `HScrollBar`, `VScrollBar`, `TrackBar` | ✅ Works | |
@@ -125,7 +125,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 
 | Control | Status | Notes |
 |---|---|---|
-| `Panel`, `GroupBox` | ✅ Works · 1 missing each | `AutoScroll`, `AutoSize`, `BorderStyle`. |
+| `Panel`, `GroupBox` | ✅ Works · API complete | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, the scroll state (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (override it to stop a panel jumping to the focused control), `SetAutoScrollMargin`, accessibility (`Client`, `Grouping`). `GroupBoxRenderer` draws the group box frame for owner-drawn controls. |
 | `FlowLayoutPanel` | ✅ Works · API complete | Layout engine ported from dotnet/winforms, including the `SetFlowBreak` quirk. |
 | `TableLayoutPanel` | ✅ Works · 1 missing | Percent/absolute/auto-size rows and columns, spans. |
 | `SplitContainer` | ✅ Works · 2 missing | |
@@ -162,7 +162,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `MessageBox`, `TaskDialog` | ✅ Own dialogs in the NetForms theme; button captions follow the UI language (English, Russian). |
 | `OpenFileDialog`, `SaveFileDialog`, `FolderBrowserDialog` | ✅ Native dialogs of the OS (portal / GTK on Linux). A few properties missing (`ClientGuid`, custom places). |
 | `ColorDialog`, `FontDialog` | ✅ Own dialogs. |
-| `PrintDialog`, `PrintPreviewDialog`, `PrintPreviewControl`, `PageSetupDialog`, `PrintDocument` | ❌ Missing — the whole `System.Drawing.Printing` namespace. Next on the list. |
+| `PrintDocument`, `PrintDialog`, `PageSetupDialog`, `PrintPreviewControl`, `PrintPreviewDialog`, `PrintControllerWithStatusDialog` | ✅ Works · API complete — see Printing in §4. The dialogs are NetForms' own forms (the same on Windows and Linux) and write back to `PrinterSettings`/`PageSettings` what the Win32 dialogs write. |
 | `NotifyIcon` | ✅ See above. |
 
 ---
@@ -181,11 +181,11 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | **Theme** | One built-in light theme that looks like WinForms with visual styles. `Application.SetColorMode(Dark)` is accepted, dark mode is not drawn yet. `VisualStyleRenderer` types exist; drawing goes through the NetForms theme. |
 | **Resources (`.resx`)** | Strings, images, icons, typed values, `ResXFileRef` — read at run time through `ComponentResourceManager`, as in WinForms. The designer opens `Localizable = true` forms but does not write them yet. `ImageList.ImageStream` (BinaryFormatter in the VS designer's format) is read by NetForms. Other BinaryFormatter resources are not (see §2). |
 | **Settings** | `Properties.Settings` (`ApplicationSettingsBase`), `ConfigurationManager`, `app.config` compile and run: the NetForms package brings `System.Configuration.ConfigurationManager`, as the Windows Desktop runtime does. |
-| **Clipboard** | Text goes through the OS clipboard both ways. Images, file lists, audio and custom formats work inside the application only. |
-| **Drag and drop** | Events and `AllowDrop` exist so code compiles; the platform does not start or deliver drags yet (`DoDragDrop` returns `None`). |
+| **Clipboard** | Text goes through the OS clipboard both ways. Images, file lists, audio and custom formats work inside the application only. `DataObject` is WinForms' own (format conversions: `Text`/`UnicodeText`/`System.String`, `FileDrop`/`FileNameW`, `Bitmap`; `SetDataAsJson`/`TryGetData<T>` of .NET 9+). |
+| **Drag and drop** | ✅ The OLE protocol, run by NetForms: `DoDragDrop` is modal and returns the effect; the source gets `QueryContinueDrag` (Escape cancels, releasing the button drops) and `GiveFeedback` (standard drag cursors unless it draws its own); the control under the pointer with `AllowDrop` — or its nearest parent that has it, as OLE finds a registered window — gets `DragEnter`/`DragOver`/`DragLeave`/`DragDrop` with screen `X`/`Y`, `KeyState` and `Effect` exactly as in WinForms. Drags cross between the application's forms. **Drops from other applications** (files from the file manager, text) arrive through the platform as `FileDrop`/`Text`. Not yet: dragging *out* to another application, the drag image of `DoDragDrop(…, dragImage, …)`, `RichTextBox.EnableAutoDragDrop`. |
 | **IME** | Committed text from input methods (Chinese, Japanese, Korean…) arrives in `KeyPress`/`TextBox`. The composition string is shown by the input method's own window, not inline. |
-| **Accessibility** | ❌ Not yet. `AccessibleObject` and UI Automation are missing; `AccessibleName`/`AccessibleDescription` are stored. Screen readers do not see NetForms controls. |
-| **Printing** | ❌ Missing (see §3). |
+| **Accessibility** | 🟡 The model: `AccessibleObject`, `Control.ControlAccessibleObject`, `AccessibilityObject`/`CreateAccessibilityInstance` (custom controls describe themselves as in WinForms), `AccessibleRole`, names from the text or the label before the control, keyboard shortcuts from mnemonics, states, bounds, children, `DoDefaultAction`, `QueryAccessibilityHelp`. Not yet: the bridge to the OS (UI Automation / AT-SPI through Avalonia's automation peers) — screen readers do not see NetForms controls yet. |
+| **Printing** | ✅ `System.Drawing.Printing` complete: `PrintDocument` with WinForms' page loop and events, `PageSettings`/`PrinterSettings` with the printer's paper sizes, trays, resolutions, duplex, colour and hard margins, `Margins`, `PrinterUnitConvert`, `QueryPageSettings` per page (landscape pages mixed in), `OriginAtMargins`, cancel from `BeginPrint`/`PrintPage`. A page's `Graphics` works in 1/100 inch with text at its physical size and `DpiX` of the printer. **Linux/macOS**: the printers and their options come from CUPS (`lpstat`, `lpoptions`); a job is a PDF handed to `lp` with copies, collation, duplex and colour mode. **Windows**: winspool and the driver (`DeviceCapabilities`, DEVMODE), a job goes through GDI (each page drawn by Skia at up to 300 dpi). **Print to file** writes PDF. Preview (`PrintPreviewControl`/`Dialog`) keeps each page as a vector drawing and replays it sharp at any zoom, and works on a machine without printers. `GetHdevmode`/`SetHdevmode`/`GetHdevnames` hand out DEVMODE/DEVNAMES blocks in the Win32 layout. |
 | **Help** | `Help.ShowHelp` opens files and URLs with the system program; `F1` raises `HelpRequested`. CHM viewers exist on Windows only. |
 | **Sound** | `System.Media.SoundPlayer` is part of .NET and Windows-only there; NetForms does not add one. |
 
@@ -231,6 +231,8 @@ is a bug — please report it.
 - **`Form.TopLevel = false`**: an embedded form has no frame (WinForms draws one).
 - **`RichTextBox.Rtf`** writes non-ASCII characters as `\uN?` (RichEdit uses `\'hh` in the font's code page); both are read.
 - **Negative sizes** of an unparented docked control are clamped to 0 immediately (WinForms does it when the window is created).
+- **Printing**: `PreviewPageInfo.Image` is a `Bitmap` (WinForms: an EMF `Metafile`, which NetForms does not have); print preview does not need a printer (WinForms throws `InvalidPrinterException` without one); print to file writes PDF (WinForms: what the driver produces); `IsDirectPrintingSupported` is always `false`; on Windows pages are sent to the driver as bitmaps (at most 300 dpi), not as GDI drawing commands.
+- **Drag and drop** within the application does not go through the OS (NetForms runs the protocol), so a drag cannot yet leave the application, and `DoDragDrop`'s drag image is not drawn.
 - **System colours**: `SystemColors.*` are .NET's own table on Linux (the classic Windows palette),
   the OS palette on Windows. The NetForms theme always paints with the Windows 10/11 light palette.
 
@@ -240,11 +242,11 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **415/415**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **483/483**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
-  regenerates [the tables](api/README.md). Today: **664** of 1254 types complete, **163** partial,
-  **427** missing (most of them `EventArgs`, accessibility, printing and the removed 1.x controls).
+  regenerates [the tables](api/README.md). Today: **747** of 1254 types complete, **144** partial,
+  **363** missing (most of them `EventArgs`, the accessible objects of individual controls and the removed 1.x controls).
 - **Corpus of real projects** (`NETFORMS_CORPUS=1`, CI job `corpus`): converted and built without
   manual edits, with the reason for every failure recorded in `tests/corpus/corpus.json`.
 
@@ -255,11 +257,11 @@ is a bug — please report it.
 What to add first is decided by the code people write, not by the length of the list:
 `NetForms.ApiDiff --usage` compiles every project of the corpus against the real WinForms and counts each reference
 to a type or member NetForms lacks — [Missing API by use](api/usage.md). Of 25,887 references to the WinForms API in
-63 projects (24 repositories), 11 types and members are missing, and each of them stops a build:
+63 projects (24 repositories), 11 types and members were missing at the last count, and each of them stopped a build;
+printing has been added since (decision 153):
 
 | Next | Code that needs it |
 |---|---|
-| Printing: `PrintDocument`, `PrintPageEventArgs`, `PrintDialog` (with them `PrintPreviewDialog`, `PageSetupDialog`) | MDBEditor |
 | `ImageList.Images.Add(string, Icon)` | Surviving-WinForms (GetStockIcon sample) |
 | `LinkLabel.OverrideCursor` — the protected property a derived link label sets | xrails-login-ui (both projects) |
 | `ImageFormat.Icon`/`Tiff`/`Wmf`, `OpenFileDialog.SafeFileName`, `TabControl.TabPages.Remove`, `new Font(FontFamily, float, FontStyle, GraphicsUnit, byte)` | MDBEditor, xrails-login-ui |

@@ -428,6 +428,60 @@ public class ListView : Control
     protected virtual void OnItemCheck(ItemCheckEventArgs ice) => ItemCheck?.Invoke(this, ice);
     protected virtual void OnItemChecked(ItemCheckedEventArgs e) => ItemChecked?.Invoke(this, e);
     protected virtual void OnItemActivate(EventArgs e) => ItemActivate?.Invoke(this, e);
+
+    [Category("Action")]
+    [Description("Occurs when the user begins dragging an item.")]
+    public event ItemDragEventHandler? ItemDrag;
+
+    [Category("Action")]
+    [Description("Occurs when the mouse hovers over an item.")]
+    public event ListViewItemMouseHoverEventHandler? ItemMouseHover;
+
+    protected virtual void OnItemDrag(ItemDragEventArgs e) => ItemDrag?.Invoke(this, e);
+
+    protected virtual void OnItemMouseHover(ListViewItemMouseHoverEventArgs e) => ItemMouseHover?.Invoke(this, e);
+
+    /// <summary>A button pressed on an item, until released or turned into a drag.</summary>
+    private sealed class DragPress(ListViewItem item, MouseButtons button, Point at)
+    {
+        public ListViewItem Item { get; } = item;
+        public MouseButtons Button { get; } = button;
+        public Point At { get; } = at;
+        public bool SelectOnRelease { get; set; }
+    }
+
+    private DragPress? _dragPress;
+    private ListViewItem? _hoverCandidate;
+    private ListViewItem? _lastHoverItem;
+    private Timer? _hoverTimer;
+
+    private Timer CreateHoverTimer()
+    {
+        var timer = new Timer { Interval = SystemInformation.MouseHoverTime };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            OnHoverElapsed();
+        };
+        return timer;
+    }
+
+    /// <summary>The pointer rested: ItemMouseHover for a new item, MouseHover over empty space (WM_MOUSEHOVER).</summary>
+    internal void OnHoverElapsed()
+    {
+        var item = _hoverCandidate;
+        if (item != null)
+        {
+            if (item == _lastHoverItem) return;
+            _lastHoverItem = item;
+            OnItemMouseHover(new ListViewItemMouseHoverEventArgs(item));
+        }
+        else
+        {
+            _lastHoverItem = null;
+            OnMouseHover(EventArgs.Empty);
+        }
+    }
     protected virtual void OnBeforeLabelEdit(LabelEditEventArgs e) => BeforeLabelEdit?.Invoke(this, e);
     protected virtual void OnAfterLabelEdit(LabelEditEventArgs e) => AfterLabelEdit?.Invoke(this, e);
     protected virtual void OnDrawItem(DrawListViewItemEventArgs e) => DrawItem?.Invoke(this, e);
@@ -1128,10 +1182,20 @@ public class ListView : Control
 
             bool control = (ModifierKeys & Keys.Control) != 0;
             bool shift = (ModifierKeys & Keys.Shift) != 0;
+            _dragPress = new DragPress(item, e.Button, e.Location);
             if (_multiSelect && shift && _anchor != null) SelectRange(_anchor, item);
             else if (_multiSelect && control) { SetItemSelected(item, !item.Selected); _anchor = item; }
+            // A press on one of several selected items keeps them all, so they can be dragged together; the
+            // release without a drag then selects just this one (the native list view does the same).
+            else if (item.Selected && _selection.Count > 1) { _dragPress.SelectOnRelease = true; _anchor = item; }
             else { SelectOnly(item); _anchor = item; }
             SetFocusedItem(item);
+        }
+        else if (item != null && e.Button == MouseButtons.Right)
+        {
+            if (!item.Selected) SelectOnly(item);
+            SetFocusedItem(item);
+            _dragPress = new DragPress(item, e.Button, e.Location);
         }
         else if (item == null && e.Button == MouseButtons.Left && _selection.Count > 0)
         {
@@ -1161,11 +1225,36 @@ public class ListView : Control
             var item = GetItemAt(e.X, e.Y);
             if (item != null && !item.Selected) SelectOnly(item);
         }
+
+        if (_dragPress is { } press && (e.Button & press.Button) != 0)
+        {
+            var drag = SystemInformation.DragSize;
+            if (Math.Abs(e.X - press.At.X) > drag.Width / 2 || Math.Abs(e.Y - press.At.Y) > drag.Height / 2)
+            {
+                _dragPress = null;
+                // LVN_BEGINDRAG / LVN_BEGINRDRAG: the item under the press; the handler usually drags SelectedItems.
+                OnItemDrag(new ItemDragEventArgs(press.Button, press.Item));
+            }
+        }
+
+        var hovered = GetItemAt(e.X, e.Y);
+        if (hovered != _hoverCandidate)
+        {
+            _hoverCandidate = hovered;
+            _hoverTimer ??= CreateHoverTimer();
+            _hoverTimer.Stop();
+            _hoverTimer.Start();
+        }
         base.OnMouseMove(e);
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
+        if (_dragPress is { } press && press.Button == e.Button)
+        {
+            _dragPress = null;
+            if (press.SelectOnRelease && press.Item.ListView == this) SelectOnly(press.Item);
+        }
         if (e.Button == MouseButtons.Left)
         {
             if (_vVisible) _vscroll.MouseUp(e.Location);
@@ -1190,6 +1279,9 @@ public class ListView : Control
     {
         _vscroll.MouseLeave();
         _hscroll.MouseLeave();
+        _hoverTimer?.Stop();
+        _hoverCandidate = null;
+        _lastHoverItem = null;
         if (_hotColumn != -1)
         {
             _hotColumn = -1;
@@ -1553,6 +1645,7 @@ public class ListView : Control
         {
             _vscroll.Dispose();
             _hscroll.Dispose();
+            _hoverTimer?.Dispose();
         }
         base.Dispose(disposing);
     }

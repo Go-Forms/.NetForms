@@ -938,6 +938,8 @@ public sealed class DesignerCodeWriter
                 case byte or sbyte or short or ushort: return SmallInteger(value, declared);
                 case Array array: return ArrayExpression(array);
                 case TableLayoutStyle style: return StyleExpression(style);
+                // VS writes tree nodes as locals (LocalFor), not through TreeNodeConverter's constructor call.
+                case TreeNode: return null;
             }
 
             var converter = TypeDescriptor.GetConverter(value);

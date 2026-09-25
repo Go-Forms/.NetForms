@@ -43,8 +43,25 @@ public sealed partial class Graphics : IDeviceContext, IDisposable
 
     internal SKCanvas Canvas { get; }
 
-    public float DpiX => 96f;
-    public float DpiY => 96f;
+    public float DpiX => _dpiX;
+    public float DpiY => _dpiY;
+
+    private float _dpiX = 96f;
+    private float _dpiY = 96f;
+
+    /// <summary>A printer page (Graphics handed to PrintPage) reports the printer's resolution.</summary>
+    internal void SetDpi(float dpiX, float dpiY)
+    {
+        _dpiX = dpiX;
+        _dpiY = dpiY;
+    }
+
+    /// <summary>
+    /// World units per device-independent pixel for text. 1 on screen; on a printer page, whose unit is
+    /// 1/100 inch (GraphicsUnit.Display), a 12pt font must still be 12/72 inch tall, so text is drawn and
+    /// measured scaled by 100/96.
+    /// </summary>
+    internal float TextScale { get; set; } = 1f;
     public GraphicsUnit PageUnit { get; set; } = GraphicsUnit.Display;
     public float PageScale { get; set; } = 1f;
 
@@ -776,7 +793,26 @@ public sealed partial class Graphics : IDeviceContext, IDisposable
         ArgumentNullException.ThrowIfNull(font);
         ArgumentNullException.ThrowIfNull(brush);
         if (string.IsNullOrEmpty(s)) return;
+        if (TextScale != 1f)
+        {
+            float k = TextScale;
+            Canvas.Save();
+            Canvas.Scale(k, k);
+            try
+            {
+                DrawStringCore(s, font, brush, new RectangleF(layoutRectangle.X / k, layoutRectangle.Y / k, layoutRectangle.Width / k, layoutRectangle.Height / k), format);
+            }
+            finally
+            {
+                Canvas.Restore();
+            }
+            return;
+        }
+        DrawStringCore(s, font, brush, layoutRectangle, format);
+    }
 
+    private void DrawStringCore(string s, Font font, Brush brush, RectangleF layoutRectangle, StringFormat? format)
+    {
         var fmt = format ?? StringFormat.GenericDefault;
         bool unbounded = layoutRectangle.Width <= 0 && layoutRectangle.Height <= 0;
         bool wrap = !unbounded && layoutRectangle.Width > 0 && !fmt.FormatFlags.HasFlag(StringFormatFlags.NoWrap);
@@ -825,6 +861,17 @@ public sealed partial class Graphics : IDeviceContext, IDisposable
     {
         ArgumentNullException.ThrowIfNull(font);
         if (string.IsNullOrEmpty(text)) return SizeF.Empty;
+        if (TextScale != 1f)
+        {
+            float k = TextScale;
+            var scaled = MeasureStringCore(text, font, new SizeF(layoutArea.Width / k, layoutArea.Height / k), format);
+            return new SizeF(scaled.Width * k, scaled.Height * k);
+        }
+        return MeasureStringCore(text, font, layoutArea, format);
+    }
+
+    private static SizeF MeasureStringCore(string text, Font font, SizeF layoutArea, StringFormat? format)
+    {
         var fmt = format ?? StringFormat.GenericDefault;
         bool wrap = layoutArea.Width > 0 && !fmt.FormatFlags.HasFlag(StringFormatFlags.NoWrap);
         float pad = font.SizeInPixels / 6f;
@@ -852,8 +899,13 @@ public sealed partial class Graphics : IDeviceContext, IDisposable
 
     // --- lifetime ------------------------------------------------------------------
 
+    private bool _disposed;
+
+    /// <summary>Idempotent, as GDI+: the print loop disposes a page's Graphics after its controller already has.</summary>
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _paint.Dispose();
         if (_ownsCanvas)
         {

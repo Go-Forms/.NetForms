@@ -25,6 +25,7 @@ public static class DesignerToolbox
         ("Menus & Toolbars", new[] { "ContextMenuStrip", "MenuStrip", "StatusStrip", "ToolStrip", "ToolStripContainer" }),
         ("Data", new[] { "BindingSource", "DataGridView" }),
         ("Components", new[] { "ErrorProvider", "HelpProvider", "ImageList", "Timer" }),
+        ("Printing", new[] { "PageSetupDialog", "PrintDialog", "System.Drawing.Printing.PrintDocument", "PrintPreviewControl", "PrintPreviewDialog" }),
         ("Dialogs", new[] { "ColorDialog", "FolderBrowserDialog", "FontDialog", "OpenFileDialog", "SaveFileDialog" }),
     };
 
@@ -60,7 +61,8 @@ public static class DesignerToolbox
     {
         Type = type.FullName!,
         Name = type.Name,
-        Tray = !typeof(Control).IsAssignableFrom(type) || typeof(ToolStripDropDown).IsAssignableFrom(type),
+        // Components, drop-downs and forms (PrintPreviewDialog) go to the component tray, as in VS.
+        Tray = !typeof(Control).IsAssignableFrom(type) || typeof(ToolStripDropDown).IsAssignableFrom(type) || typeof(Form).IsAssignableFrom(type),
     };
 
     /// <summary>
@@ -71,7 +73,8 @@ public static class DesignerToolbox
     public static Type? ResolveType(string name)
     {
         var assembly = typeof(Control).Assembly;
-        var type = assembly.GetType(name) ?? assembly.GetType("System.Windows.Forms." + name);
+        // PrintDocument lives in System.Drawing (NetForms.Drawing), as in WinForms.
+        var type = assembly.GetType(name) ?? assembly.GetType("System.Windows.Forms." + name) ?? typeof(System.Drawing.Graphics).Assembly.GetType(name);
         if (type == null || !type.IsPublic || type.IsAbstract || !typeof(IComponent).IsAssignableFrom(type)) return null;
         if (type.GetConstructor(Type.EmptyTypes) == null) return null;
         return type;

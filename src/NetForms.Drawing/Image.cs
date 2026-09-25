@@ -9,6 +9,12 @@ public abstract partial class Image : ICloneable, IDisposable
 {
     internal SKBitmap? SkBitmap { get; set; }
 
+    /// <summary>
+    /// The page as vector drawing, when the image is a print-preview page (the Metafile of WinForms'
+    /// PreviewPrintController): PrintPreviewControl replays it at any zoom; everything else sees the bitmap.
+    /// </summary>
+    internal SKPicture? Picture { get; set; }
+
     public int Width => SkBitmap?.Width ?? 0;
     public int Height => SkBitmap?.Height ?? 0;
     public Size Size => new Size(Width, Height);
@@ -69,6 +75,8 @@ public abstract partial class Image : ICloneable, IDisposable
     {
         SkBitmap?.Dispose();
         SkBitmap = null;
+        Picture?.Dispose();
+        Picture = null;
     }
 
     ~Image() => Dispose(false);

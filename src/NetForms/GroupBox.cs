@@ -12,9 +12,6 @@ namespace System.Windows.Forms;
 [DefaultEvent("Enter")]
 public class GroupBox : Control
 {
-    private const int CaptionX = 8;
-    private const int CaptionGap = 5;
-
     private FlatStyle _flatStyle = FlatStyle.Standard;
 
     public GroupBox()
@@ -94,35 +91,27 @@ public class GroupBox : Control
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        var g = e.Graphics;
-        int w = Width, h = Height;
-        if (w <= 0 || h <= 0) return;
-
-        var text = Text;
-        var textSize = string.IsNullOrEmpty(text) ? Size.Empty : TextRenderer.MeasureText(text, Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.SingleLine);
-        int captionHeight = Font.Height;
-        int top = captionHeight / 2;
-
+        if (Width <= 0 || Height <= 0) return;
         var lineColor = _flatStyle == FlatStyle.Flat ? ForeColor : Theme.GroupBoxBorder;
-        using var pen = new Pen(lineColor);
+        var textColor = Enabled ? ForeColor : Theme.DisabledText;
+        var flags = RightToLeft == RightToLeft.Yes ? TextFormatFlags.Right : TextFormatFlags.Left;
+        GroupBoxRenderer.DrawFrame(e.Graphics, new Rectangle(0, 0, Width, Height), Text, Font, textColor, lineColor, flags);
+        base.OnPaint(e);
+    }
 
-        int gapStart = string.IsNullOrEmpty(text) ? w : Math.Max(0, CaptionX - CaptionGap);
-        int gapEnd = string.IsNullOrEmpty(text) ? w : Math.Min(w, CaptionX + textSize.Width + CaptionGap);
+    protected override AccessibleObject CreateAccessibilityInstance() => new GroupBoxAccessibleObject(this);
 
-        // Top line, interrupted under the caption.
-        if (gapStart > 0) g.DrawLine(pen, 0, top, gapStart - 1, top);
-        if (gapEnd < w) g.DrawLine(pen, gapEnd, top, w - 1, top);
-        g.DrawLine(pen, 0, top, 0, h - 1);
-        g.DrawLine(pen, w - 1, top, w - 1, h - 1);
-        g.DrawLine(pen, 0, h - 1, w - 1, h - 1);
-
-        if (!string.IsNullOrEmpty(text))
+    /// <summary>A group box reads as a grouping named by its caption, as in WinForms.</summary>
+    private sealed class GroupBoxAccessibleObject : ControlAccessibleObject
+    {
+        public GroupBoxAccessibleObject(GroupBox owner) : base(owner)
         {
-            var color = Enabled ? ForeColor : Theme.DisabledText;
-            TextRenderer.DrawText(g, text, Font, new Rectangle(CaptionX, 0, Math.Max(0, w - CaptionX), captionHeight), color, TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
         }
 
-        base.OnPaint(e);
+        public override AccessibleRole Role => Owner.AccessibleRole != AccessibleRole.Default ? Owner.AccessibleRole : AccessibleRole.Grouping;
+
+        // The caption, without its mnemonic, unless AccessibleName says otherwise.
+        public override string? Name => Owner.AccessibleName ?? base.Name;
     }
 
     // Members WinForms hides or re-defaults on this control; TypeDescriptor reads them

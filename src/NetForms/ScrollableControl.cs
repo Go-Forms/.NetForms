@@ -11,7 +11,7 @@ namespace System.Windows.Forms;
 /// so a scrolled child reports a negative Left/Top. The scroll bars are drawn inside the
 /// client area, over the children.
 /// </summary>
-public class ScrollableControl : Control
+public partial class ScrollableControl : Control
 {
     private bool _autoScroll;
     private Size _autoScrollMargin;
@@ -183,6 +183,16 @@ public class ScrollableControl : Control
     public void ScrollControlIntoView(Control? activeControl)
     {
         if (!_autoScroll || activeControl == null || !Contains(activeControl)) return;
+        // Through the virtual, as WinForms: a panel overriding ScrollToControl (the classic "stop jumping to
+        // the focused control" fix returns DisplayRectangle.Location) decides where it scrolls.
+        var location = ScrollToControl(activeControl);
+        SetDisplayRectLocation(location.X, location.Y);
+    }
+
+    /// <summary>Where the display rectangle has to be for <paramref name="activeControl"/> to be in view.</summary>
+    protected virtual Point ScrollToControl(Control activeControl)
+    {
+        ArgumentNullException.ThrowIfNull(activeControl);
         var bounds = activeControl.Bounds;
         for (var c = activeControl.Parent; c != null && c != this; c = c.Parent) bounds.Offset(c.Left, c.Top);
         var client = ScrollClientRectangle;
@@ -191,7 +201,7 @@ public class ScrollableControl : Control
         if (bounds.Left < client.Left) x += client.Left - bounds.Left;
         if (bounds.Bottom > client.Bottom) y -= bounds.Bottom - client.Bottom;
         if (bounds.Top < client.Top) y += client.Top - bounds.Top;
-        SetDisplayRectLocation(x, y);
+        return new Point(x, y);
     }
 
     protected virtual void OnScroll(ScrollEventArgs se) => Scroll?.Invoke(this, se);

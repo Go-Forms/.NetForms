@@ -95,6 +95,35 @@ public static class Clipboard
     public static System.IO.Stream? GetAudioStream() => GetData(DataFormats.WaveAudio) as System.IO.Stream;
 
     public static bool ContainsAudio() => ContainsData(DataFormats.WaveAudio);
+
+    // --- typed access (.NET 9+) ---------------------------------------------------------------------
+
+    public static void SetDataAsJson<T>(string format, T data)
+    {
+        var dataObject = new DataObject();
+        dataObject.SetDataAsJson(format, data);
+        SetDataObject(dataObject);
+    }
+
+    public static bool TryGetData<T>([System.Diagnostics.CodeAnalysis.NotNullWhen(true), System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out T data) =>
+        TryGetData(typeof(T).FullName!, out data);
+
+    public static bool TryGetData<T>(string format, [System.Diagnostics.CodeAnalysis.NotNullWhen(true), System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out T data)
+    {
+        data = default;
+        var dataObject = GetDataObject();
+        if (dataObject == null) return false;
+        return (dataObject as ITypedDataObject ?? new DataObject(dataObject)).TryGetData(format, out data);
+    }
+
+    public static bool TryGetData<T>(string format, Func<System.Reflection.Metadata.TypeName, Type?> resolver,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true), System.Diagnostics.CodeAnalysis.MaybeNullWhen(false)] out T data)
+    {
+        data = default;
+        var dataObject = GetDataObject();
+        if (dataObject == null) return false;
+        return (dataObject as ITypedDataObject ?? new DataObject(dataObject)).TryGetData(format, resolver, autoConvert: true, out data);
+    }
 }
 
 public enum TextDataFormat
@@ -104,17 +133,6 @@ public enum TextDataFormat
     Rtf = 2,
     Html = 3,
     CommaSeparatedValue = 4,
-}
-
-public interface IDataObject
-{
-    object? GetData(string format);
-    object? GetData(Type format);
-    bool GetDataPresent(string format);
-    bool GetDataPresent(Type format);
-    string[] GetFormats();
-    void SetData(string format, object? data);
-    void SetData(object? data);
 }
 
 public static class DataFormats
@@ -188,35 +206,4 @@ public static class DataFormats
             return added;
         }
     }
-}
-
-public class DataObject : IDataObject
-{
-    private readonly System.Collections.Generic.Dictionary<string, object?> _data = new();
-
-    public DataObject() { }
-
-    public DataObject(object? data) => SetData(data);
-
-    public DataObject(string format, object? data) => SetData(format, data);
-
-    public object? GetData(string format) => _data.TryGetValue(Normalize(format), out var v) ? v : null;
-    public object? GetData(Type format) => GetData(format.FullName!);
-    public bool GetDataPresent(string format) => _data.ContainsKey(Normalize(format));
-    public bool GetDataPresent(Type format) => GetDataPresent(format.FullName!);
-    public string[] GetFormats() => new System.Collections.Generic.List<string>(_data.Keys).ToArray();
-
-    public void SetData(string format, object? data) => _data[Normalize(format)] = data;
-
-    public void SetData(object? data)
-    {
-        if (data is string) SetData(DataFormats.Text, data);
-        else if (data != null) SetData(data.GetType().FullName!, data);
-    }
-
-    public bool ContainsText() => GetDataPresent(DataFormats.Text);
-    public string GetText() => GetData(DataFormats.Text) as string ?? string.Empty;
-    public void SetText(string text) => SetData(DataFormats.Text, text);
-
-    private static string Normalize(string format) => format is DataFormats.UnicodeText or DataFormats.StringFormat ? DataFormats.Text : format;
 }

@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+- **Printing — `System.Drawing.Printing` complete:** `PrintDocument` with WinForms' page loop (`BeginPrint`,
+  `QueryPageSettings`, `PrintPage`, `EndPrint`, cancel), `PageSettings`/`PrinterSettings` with the printer's paper
+  sizes, trays, resolutions, duplex and colour, `Margins`, `PrinterUnitConvert`, `OriginAtMargins`; a page's `Graphics`
+  works in 1/100 inch with text at its physical size. Printers come from CUPS on Linux (a job is a PDF given to `lp`)
+  and from winspool/GDI on Windows; print to file writes PDF. **`PrintDialog`, `PageSetupDialog`,
+  `PrintPreviewControl`, `PrintPreviewDialog`, `PrintControllerWithStatusDialog`**; the preview keeps pages as vector
+  drawings and works without a printer. The designer's toolbox has a Printing group.
+- **Drag and drop:** `DoDragDrop` works — `QueryContinueDrag`, `GiveFeedback`, `DragEnter`/`DragOver`/`DragLeave`/
+  `DragDrop` as in WinForms, within a form and across the application's forms; files and text dropped from other
+  applications arrive as `FileDrop`/`Text`. `DataObject` is WinForms' own (format conversions, `SetDataAsJson`,
+  `TryGetData<T>`); `DoDragDropAsJson`, `Clipboard.TryGetData`/`SetDataAsJson`. `ListView.ItemDrag`/`ItemMouseHover`.
+- **TreeView — API complete:** `ItemDrag`, `NodeMouseHover`, `HotTracking`, node tool tips, a node's own
+  `ContextMenuStrip`, state images and image keys, `GetItemRenderStyles`, `RightToLeftLayout`, `TreeNode.Handle`/
+  `FromHandle`/serialization, the rest of `TreeNodeCollection`. **Behaviour change:** as in the native tree, a press
+  on a node selects it on release and `NodeMouseClick` comes after the release; the right button does not select.
+- **Panel, GroupBox, ScrollableControl — API complete:** `DockPadding`, the scroll state, `ScrollToControl` (now
+  called by `ScrollControlIntoView`, so overriding it works), `SetAutoScrollMargin`, `GroupBoxRenderer`.
+- **Accessibility model:** `AccessibleObject`, `Control.ControlAccessibleObject`, `AccessibilityObject`,
+  `CreateAccessibilityInstance`, `AccessibleRole`, `QueryAccessibilityHelp` (the bridge to screen readers is next).
+
 ## 0.1.0-preview.6 — ready-made forms, copy and paste in the designer
 
 - **Templates:** four forms made for a purpose - `dotnet new netforms-dialog` (OK/Cancel with `DialogResult`,

@@ -252,7 +252,18 @@ public class TreeView : Control
     [Category("Behavior")]
     [Description("The ImageList control used by the TreeView for custom states.")]
     [DefaultValue(null)]
-    public ImageList? StateImageList { get; set; }
+    public ImageList? StateImageList
+    {
+        get => _stateImageList;
+        set
+        {
+            if (_stateImageList == value) return;
+            _stateImageList = value;
+            InvalidateLayout();
+        }
+    }
+
+    private ImageList? _stateImageList;
 
     [Category("Behavior")]
     [Description("The default image index for nodes.")]
@@ -405,6 +416,75 @@ public class TreeView : Control
     protected virtual void OnNodeMouseDoubleClick(TreeNodeMouseClickEventArgs e) => NodeMouseDoubleClick?.Invoke(this, e);
     protected virtual void OnDrawNode(DrawTreeNodeEventArgs e) => DrawNode?.Invoke(this, e);
 
+    [Category("Action")]
+    [Description("Occurs when the user begins dragging an item.")]
+    public event ItemDragEventHandler? ItemDrag;
+
+    [Category("Action")]
+    [Description("Occurs when the mouse hovers over a TreeNode.")]
+    public event TreeNodeMouseHoverEventHandler? NodeMouseHover;
+
+    [Category("Property Changed")]
+    [Description("Occurs when the value of the RightToLeftLayout property changes.")]
+    public event EventHandler? RightToLeftLayoutChanged;
+
+    protected virtual void OnItemDrag(ItemDragEventArgs e) => ItemDrag?.Invoke(this, e);
+
+    protected virtual void OnNodeMouseHover(TreeNodeMouseHoverEventArgs e) => NodeMouseHover?.Invoke(this, e);
+
+    [EditorBrowsable(EditorBrowsableState.Advanced)]
+    protected virtual void OnRightToLeftLayoutChanged(EventArgs e) => RightToLeftLayoutChanged?.Invoke(this, e);
+
+    private bool _rightToLeftLayout;
+
+    /// <summary>Mirror the tree when RightToLeft is Yes (the native WS_EX_LAYOUTRTL).</summary>
+    [Category("Appearance")]
+    [Localizable(true)]
+    [DefaultValue(false)]
+    [Description("Indicates whether the control layout is right-to-left when the RightToLeft property is set to Yes.")]
+    public virtual bool RightToLeftLayout
+    {
+        get => _rightToLeftLayout;
+        set
+        {
+            if (_rightToLeftLayout == value) return;
+            _rightToLeftLayout = value;
+            OnRightToLeftLayoutChanged(EventArgs.Empty);
+            Invalidate();
+        }
+    }
+
+    /// <summary>
+    /// The font and colours an owner-drawing derived tree wants for <paramref name="node"/> (WinForms asks it
+    /// before custom-drawing each item). The default is the node's own NodeFont, ForeColor and BackColor.
+    /// </summary>
+    protected OwnerDrawPropertyBag GetItemRenderStyles(TreeNode? node, int state)
+    {
+        var bag = new OwnerDrawPropertyBag();
+        if (node == null) return bag;
+        bag.Font = node.NodeFont;
+        if (!node.ForeColorOwn.IsEmpty) bag.ForeColor = node.ForeColorOwn;
+        if (node.IsBackColorSet) bag.BackColor = node.BackColor;
+        return bag;
+    }
+
+    protected override AccessibleObject CreateAccessibilityInstance() => new ControlAccessibleObject(this);
+
+    /// <summary>The node whose native handle is <paramref name="handle"/> (TreeNode.FromHandle).</summary>
+    internal TreeNode? NodeFromHandle(IntPtr handle)
+    {
+        TreeNode? Find(TreeNodeCollection nodes)
+        {
+            foreach (TreeNode n in nodes)
+            {
+                if (n.HandleValue == handle) return n;
+                if (Find(n.Nodes) is { } found) return found;
+            }
+            return null;
+        }
+        return handle == IntPtr.Zero ? null : Find(_nodes);
+    }
+
     // --- bulk updates ---------------------------------------------------------------------------
 
     public void BeginUpdate() => _updateCount++;
@@ -458,7 +538,8 @@ public class TreeView : Control
     /// <summary>Horizontal offset of a node's glyph column; root nodes are indented only when root lines show.</summary>
     private int NodeIndent(TreeNode node) => (node.Level + (_showRootLines ? 1 : 0)) * _indent;
 
-    private int CheckWidth => _checkBoxes ? 16 : 0;
+    // Check boxes, or a state image list: the native tree reserves the state-image column for every node.
+    private int CheckWidth => _checkBoxes ? 16 : StateImageList != null ? StateImageList.ImageSize.Width + 2 : 0;
 
     private int ImageWidth => ImageList != null ? ImageList.ImageSize.Width + 2 : 0;
 
@@ -586,6 +667,11 @@ public class TreeView : Control
     private Rectangle CheckBounds(TreeNode node, Rectangle row)
     {
         int x = row.X + NodeIndent(node) - _scroll.X;
+        if (!_checkBoxes && StateImageList != null)
+        {
+            var size = StateImageList.ImageSize;
+            return new Rectangle(x + 1, row.Y + (row.Height - size.Height) / 2, size.Width, size.Height);
+        }
         return new Rectangle(x + 1, row.Y + (row.Height - 13) / 2, 13, 13);
     }
 
@@ -611,7 +697,7 @@ public class TreeView : Control
         var bounds = RowBounds(row);
         if (_showPlusMinus && node.Nodes.Count > 0 && GlyphBounds(node, bounds).Contains(x, y))
             return new TreeViewHitTestInfo(node, TreeViewHitTestLocations.PlusMinus);
-        if (_checkBoxes && CheckBounds(node, bounds).Contains(x, y))
+        if ((_checkBoxes || StateImageList != null) && CheckBounds(node, bounds).Contains(x, y))
             return new TreeViewHitTestInfo(node, TreeViewHitTestLocations.StateImage);
 
         var label = GetNodeBounds(node);
@@ -805,6 +891,7 @@ public class TreeView : Control
     protected override void OnMouseDown(MouseEventArgs e)
     {
         if (CanFocus) Focus();
+        HideNodeToolTip();
 
         if (e.Button == MouseButtons.Left)
         {
@@ -813,34 +900,54 @@ public class TreeView : Control
         }
 
         var hit = HitTest(e.Location);
+        _press = null;
         if (hit.Node != null)
         {
+            // The glyph and the check box act at once; a press on the node itself waits for the release, as the
+            // native tree does: moving the mouse far enough first starts a drag (ItemDrag) and selects nothing.
             switch (hit.Location)
             {
-                case TreeViewHitTestLocations.PlusMinus:
+                case TreeViewHitTestLocations.PlusMinus when e.Button == MouseButtons.Left:
                     if (hit.Node.IsExpanded) CollapseNode(hit.Node, TreeViewAction.Collapse);
                     else ExpandNode(hit.Node, TreeViewAction.Expand);
                     break;
-                case TreeViewHitTestLocations.StateImage:
+                case TreeViewHitTestLocations.StateImage when e.Button == MouseButtons.Left && _checkBoxes:
                     SetNodeChecked(hit.Node, !hit.Node.Checked, TreeViewAction.ByMouse);
                     break;
-                case TreeViewHitTestLocations.Label:
-                    SelectNode(hit.Node, TreeViewAction.ByMouse);
-                    break;
-                default:
-                    if (_fullRowSelect) SelectNode(hit.Node, TreeViewAction.ByMouse);
-                    break;
             }
-            OnNodeMouseClick(new TreeNodeMouseClickEventArgs(hit.Node, e.Button, e.Clicks, e.X, e.Y));
+            _press = new Press(hit.Node, hit.Location, e.Button, e.Location, e.Clicks);
         }
         base.OnMouseDown(e);
     }
+
+    /// <summary>A button pressed on a node, until it is released or becomes a drag.</summary>
+    private sealed record Press(TreeNode Node, TreeViewHitTestLocations Location, MouseButtons Button, Point At, int Clicks)
+    {
+        public bool Dragging { get; set; }
+    }
+
+    private Press? _press;
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         bool left = (e.Button & MouseButtons.Left) != 0;
         if (_vVisible) _vscroll.MouseMove(e.Location, left);
         if (_hVisible) _hscroll.MouseMove(e.Location, left);
+
+        if (_press is { Dragging: false } press && (e.Button & press.Button) != 0
+            && press.Location is not (TreeViewHitTestLocations.PlusMinus or TreeViewHitTestLocations.StateImage))
+        {
+            var drag = SystemInformation.DragSize;
+            if (Math.Abs(e.X - press.At.X) > drag.Width / 2 || Math.Abs(e.Y - press.At.Y) > drag.Height / 2)
+            {
+                press.Dragging = true;
+                HideNodeToolTip();
+                // TVN_BEGINDRAG / TVN_BEGINRDRAG. The handler usually calls DoDragDrop, which returns after the drop.
+                OnItemDrag(new ItemDragEventArgs(press.Button, press.Node));
+            }
+        }
+
+        TrackHover(e.Location);
         base.OnMouseMove(e);
     }
 
@@ -851,14 +958,124 @@ public class TreeView : Control
             if (_vVisible) _vscroll.MouseUp(e.Location);
             if (_hVisible) _hscroll.MouseUp(e.Location);
         }
+
+        var press = _press;
+        if (press != null && press.Button == e.Button)
+        {
+            _press = null;
+            if (!press.Dragging && !press.Node.IsDisposedFrom(this))
+            {
+                if (press.Button == MouseButtons.Left
+                    && (press.Location == TreeViewHitTestLocations.Label || press.Location == TreeViewHitTestLocations.Image || _fullRowSelect && press.Location != TreeViewHitTestLocations.PlusMinus && press.Location != TreeViewHitTestLocations.StateImage))
+                {
+                    SelectNode(press.Node, TreeViewAction.ByMouse);
+                }
+                // NM_CLICK / NM_RCLICK: after the release, for any part of the node.
+                OnNodeMouseClick(new TreeNodeMouseClickEventArgs(press.Node, press.Button, press.Clicks, press.At.X, press.At.Y));
+            }
+        }
         base.OnMouseUp(e);
     }
+
+    /// <summary>A right click on a node with a ContextMenuStrip opens that menu instead of the tree's.</summary>
+    internal override ContextMenuStrip? ContextMenuStripAt(Point clientPoint) => GetNodeAt(clientPoint)?.ContextMenuStrip;
 
     protected override void OnMouseLeave(EventArgs e)
     {
         _vscroll.MouseLeave();
         _hscroll.MouseLeave();
+        SetHotNode(null);
+        _hoverTimer?.Stop();
+        _hoverCandidate = null;
+        _lastHoverNode = null;
+        HideNodeToolTip();
         base.OnMouseLeave(e);
+    }
+
+    // --- hover: hot tracking, NodeMouseHover, node tool tips -------------------------------------------
+
+    private TreeNode? _hotNode;
+    private TreeNode? _hoverCandidate;
+    private TreeNode? _lastHoverNode;
+    private Timer? _hoverTimer;
+    private ToolTip? _nodeToolTip;
+    private TreeNode? _toolTipNode;
+
+    internal TreeNode? HotNode => _hotNode;
+
+    private void TrackHover(Point p)
+    {
+        var hit = HitTest(p);
+        var overLabel = hit.Location is TreeViewHitTestLocations.Label or TreeViewHitTestLocations.Image ? hit.Node : null;
+        SetHotNode(HotTracking ? overLabel : null);
+
+        if (hit.Node != _hoverCandidate)
+        {
+            _hoverCandidate = hit.Node;
+            if (_toolTipNode != null && _toolTipNode != hit.Node) HideNodeToolTip();
+            _hoverTimer ??= CreateHoverTimer();
+            _hoverTimer.Stop();
+            _hoverTimer.Start();
+        }
+    }
+
+    private Timer CreateHoverTimer()
+    {
+        var timer = new Timer { Interval = SystemInformation.MouseHoverTime };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            OnHoverElapsed();
+        };
+        return timer;
+    }
+
+    /// <summary>The pointer rested: NodeMouseHover for a new node (MouseHover elsewhere), and the node's tool tip.</summary>
+    internal void OnHoverElapsed()
+    {
+        var node = _hoverCandidate;
+        if (node != null)
+        {
+            if (node != _lastHoverNode)
+            {
+                _lastHoverNode = node;
+                OnNodeMouseHover(new TreeNodeMouseHoverEventArgs(node));
+            }
+            if (ShowNodeToolTips && !string.IsNullOrEmpty(node.ToolTipText) && _press == null)
+            {
+                _nodeToolTip ??= new ToolTip();
+                _toolTipNode = node;
+                var bounds = node.Bounds;
+                _nodeToolTip.Show(node.ToolTipText, this, new Point(bounds.X, bounds.Bottom + 2));
+            }
+        }
+        else
+        {
+            _lastHoverNode = null;
+            OnMouseHover(EventArgs.Empty);
+        }
+    }
+
+    private void HideNodeToolTip()
+    {
+        if (_toolTipNode == null) return;
+        _toolTipNode = null;
+        _nodeToolTip?.Hide(this);
+    }
+
+    private void SetHotNode(TreeNode? node)
+    {
+        if (_hotNode == node) return;
+        if (_hotNode != null) InvalidateNode(_hotNode);
+        _hotNode = node;
+        if (node != null) InvalidateNode(node);
+        Cursor = node != null ? Cursors.Hand : Cursors.Default;
+    }
+
+    private void InvalidateNode(TreeNode node)
+    {
+        var bounds = GetNodeBounds(node);
+        if (!bounds.IsEmpty) Invalidate(new Rectangle(0, bounds.Y, Width, bounds.Height));
     }
 
     protected override void OnMouseWheel(MouseEventArgs e)
@@ -1028,16 +1245,29 @@ public class TreeView : Control
 
         if (_checkBoxes)
         {
-            CheckBox.PaintBox(g, CheckBounds(node, row), node.Checked ? CheckState.Checked : CheckState.Unchecked,
-                Enabled, hot: false, pressed: false, flat: false, ForeColor);
+            var box = CheckBounds(node, row);
+            if (StateImageList is { } states && states.Images.Count >= 2)
+            {
+                // With a StateImageList, check boxes are its first two images, as in WinForms.
+                var size = states.ImageSize;
+                states.Draw(g, box.X + (box.Width - size.Width) / 2, row.Y + (row.Height - size.Height) / 2, size.Width, size.Height, node.Checked ? 1 : 0);
+            }
+            else
+            {
+                CheckBox.PaintBox(g, box, node.Checked ? CheckState.Checked : CheckState.Unchecked,
+                    Enabled, hot: false, pressed: false, flat: false, ForeColor);
+            }
+        }
+        else if (StateImageList is { } states && StateIndex(node, states) is int stateIndex and >= 0)
+        {
+            var box = CheckBounds(node, row);
+            var size = states.ImageSize;
+            states.Draw(g, box.X + (box.Width - size.Width) / 2, row.Y + (row.Height - size.Height) / 2, size.Width, size.Height, stateIndex);
         }
 
         if (ImageList != null)
         {
-            int index = selected && node.SelectedImageIndex >= 0 ? node.SelectedImageIndex
-                : node.ImageIndex >= 0 ? node.ImageIndex
-                : selected && SelectedImageIndex >= 0 ? SelectedImageIndex
-                : ImageIndex;
+            int index = ImageIndexFor(node, selected, ImageList);
             if (index >= 0)
             {
                 var size = ImageList.ImageSize;
@@ -1053,11 +1283,32 @@ public class TreeView : Control
         }
 
         var color = showSelection ? Theme.HighlightText : node.ForeColor;
-        TextRenderer.DrawText(g, node.Text, node.NodeFont ?? Font, label, color,
+        var font = node.NodeFont ?? Font;
+        using var hotFont = node == _hotNode && !showSelection ? new Font(font, font.Style | FontStyle.Underline) : null;
+        if (hotFont != null) color = Theme.HotTrackText;
+        TextRenderer.DrawText(g, node.Text, hotFont ?? font, label, color,
             TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding);
 
         if (selected && Focused && ShowFocusCues && !_fullRowSelect) ControlPaint.DrawFocusRectangle(g, label);
     }
+
+    /// <summary>The image of a node: its own index or key, the selected one when selected, else the tree's defaults.</summary>
+    private int ImageIndexFor(TreeNode node, bool selected, ImageList list)
+    {
+        int Resolve(int index, string key) => index >= 0 ? index : !string.IsNullOrEmpty(key) ? list.Images.IndexOfKey(key) : -1;
+        if (selected)
+        {
+            int own = Resolve(node.SelectedImageIndex, node.SelectedImageKey);
+            if (own >= 0) return own;
+            int tree = Resolve(SelectedImageIndex, SelectedImageKey);
+            if (tree >= 0 && node.ImageIndex < 0 && string.IsNullOrEmpty(node.ImageKey)) return tree;
+        }
+        int image = Resolve(node.ImageIndex, node.ImageKey);
+        return image >= 0 ? image : Resolve(ImageIndex, ImageKey);
+    }
+
+    private static int StateIndex(TreeNode node, ImageList states) =>
+        node.StateImageIndex >= 0 ? node.StateImageIndex : !string.IsNullOrEmpty(node.StateImageKey) ? states.Images.IndexOfKey(node.StateImageKey) : -1;
 
     private void PaintGlyph(Graphics g, TreeNode node, Rectangle row)
     {
@@ -1100,6 +1351,8 @@ public class TreeView : Control
         {
             _vscroll.Dispose();
             _hscroll.Dispose();
+            _hoverTimer?.Dispose();
+            _nodeToolTip?.Dispose();
         }
         base.Dispose(disposing);
     }

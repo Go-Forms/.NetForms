@@ -1,3 +1,4 @@
+using System.Runtime.Serialization;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -40,8 +41,12 @@ public enum TreeViewHitTestLocations
 
 /// <summary>One node of a <see cref="TreeView"/>: a label, an optional image and its children.</summary>
 [DefaultProperty(nameof(Text))]
-public class TreeNode : ICloneable
+[TypeConverter(typeof(TreeNodeConverter))]
+[Serializable]
+public class TreeNode : MarshalByRefObject, ICloneable, ISerializable
 {
+    private static long s_nextHandle;
+    private IntPtr _handle;
     private string _text = string.Empty;
     private bool _expanded;
     private bool _checked;
@@ -138,6 +143,53 @@ public class TreeNode : ICloneable
     [DefaultValue(-1)]
     [Localizable(true)]
     public int StateImageIndex { get; set; } = -1;
+
+    [Category("Behavior")]
+    [Description("The key of the image in the StateImageList displayed when CheckBoxes is set to false on the TreeView.")]
+    [DefaultValue("")]
+    [Localizable(true)]
+    public string StateImageKey
+    {
+        get => _stateImageKey;
+        set
+        {
+            _stateImageKey = value ?? string.Empty;
+            if (_stateImageKey.Length > 0) StateImageIndex = -1;
+            TreeView?.Invalidate();
+        }
+    }
+
+    private string _stateImageKey = string.Empty;
+
+    [Category("Behavior")]
+    [Description("The shortcut menu associated with this tree node.")]
+    [DefaultValue(null)]
+    public virtual ContextMenuStrip? ContextMenuStrip { get; set; }
+
+    /// <summary>The node's HTREEITEM in WinForms; here an id unique in the process, stable for the node's life.</summary>
+    [Browsable(false)]
+    public IntPtr Handle
+    {
+        get
+        {
+            if (_handle == IntPtr.Zero) _handle = (IntPtr)System.Threading.Interlocked.Increment(ref s_nextHandle);
+            return _handle;
+        }
+    }
+
+    internal IntPtr HandleValue => _handle;
+
+    public static TreeNode? FromHandle(TreeView tree, IntPtr handle)
+    {
+        ArgumentNullException.ThrowIfNull(tree);
+        return tree.NodeFromHandle(handle);
+    }
+
+    /// <summary>The colour set on the node itself (empty: the tree's).</summary>
+    internal Color ForeColorOwn => _foreColor;
+
+    /// <summary>True when the node no longer belongs to <paramref name="tree"/> (removed while a button was down on it).</summary>
+    internal bool IsDisposedFrom(TreeView tree) => TreeView != tree;
 
     [Category("Appearance")]
     [Description("The font used to display the text on the tree node's label.")]
@@ -339,7 +391,13 @@ public class TreeNode : ICloneable
             Name = Name,
             Tag = Tag,
             ImageIndex = ImageIndex,
+            ImageKey = ImageKey,
             SelectedImageIndex = SelectedImageIndex,
+            SelectedImageKey = SelectedImageKey,
+            StateImageIndex = StateImageIndex,
+            StateImageKey = StateImageKey,
+            ToolTipText = ToolTipText,
+            ContextMenuStrip = ContextMenuStrip,
             NodeFont = NodeFont,
             _foreColor = _foreColor,
             _backColor = _backColor,
@@ -350,6 +408,70 @@ public class TreeNode : ICloneable
     }
 
     public override string ToString() => "TreeNode: " + _text;
+
+    // --- serialization (clipboard and drag-and-drop of nodes, as WinForms' ISerializable) ----------------
+
+    protected TreeNode(SerializationInfo serializationInfo, StreamingContext context) : this()
+    {
+        Deserialize(serializationInfo, context);
+    }
+
+    protected virtual void Deserialize(SerializationInfo serializationInfo, StreamingContext context)
+    {
+        ArgumentNullException.ThrowIfNull(serializationInfo);
+        int childCount = 0;
+        int imageIndex = -1, selectedImageIndex = -1, stateImageIndex = -1;
+        string? imageKey = null, selectedImageKey = null, stateImageKey = null;
+        foreach (SerializationEntry entry in serializationInfo)
+        {
+            switch (entry.Name)
+            {
+                case "Text": _text = serializationInfo.GetString(entry.Name) ?? string.Empty; break;
+                case "Name": Name = serializationInfo.GetString(entry.Name) ?? string.Empty; break;
+                case "ToolTipText": ToolTipText = serializationInfo.GetString(entry.Name) ?? string.Empty; break;
+                case "IsChecked": _checked = serializationInfo.GetBoolean(entry.Name); break;
+                case "ImageIndex": imageIndex = serializationInfo.GetInt32(entry.Name); break;
+                case "ImageKey": imageKey = serializationInfo.GetString(entry.Name); break;
+                case "SelectedImageIndex": selectedImageIndex = serializationInfo.GetInt32(entry.Name); break;
+                case "SelectedImageKey": selectedImageKey = serializationInfo.GetString(entry.Name); break;
+                case "StateImageIndex": stateImageIndex = serializationInfo.GetInt32(entry.Name); break;
+                case "StateImageKey": stateImageKey = serializationInfo.GetString(entry.Name); break;
+                case "ChildCount": childCount = serializationInfo.GetInt32(entry.Name); break;
+                case "UserData": Tag = entry.Value; break;
+                case "ForeColor": _foreColor = (Color)entry.Value!; break;
+                case "BackColor": _backColor = (Color)entry.Value!; break;
+            }
+        }
+        if (imageKey != null) ImageKey = imageKey; else if (imageIndex != -1) ImageIndex = imageIndex;
+        if (selectedImageKey != null) SelectedImageKey = selectedImageKey; else if (selectedImageIndex != -1) SelectedImageIndex = selectedImageIndex;
+        if (stateImageKey != null) StateImageKey = stateImageKey; else if (stateImageIndex != -1) StateImageIndex = stateImageIndex;
+        for (int i = 0; i < childCount; i++)
+        {
+            if (serializationInfo.GetValue("children" + i, typeof(TreeNode)) is TreeNode child) Nodes.Add(child);
+        }
+    }
+
+    protected virtual void Serialize(SerializationInfo si, StreamingContext context)
+    {
+        ArgumentNullException.ThrowIfNull(si);
+        si.AddValue("Text", _text);
+        si.AddValue("Name", Name);
+        si.AddValue("ToolTipText", ToolTipText);
+        si.AddValue("IsChecked", _checked);
+        si.AddValue("ImageIndex", ImageIndex);
+        si.AddValue("ImageKey", ImageKey);
+        si.AddValue("SelectedImageIndex", SelectedImageIndex);
+        si.AddValue("SelectedImageKey", SelectedImageKey);
+        si.AddValue("StateImageIndex", StateImageIndex);
+        si.AddValue("StateImageKey", StateImageKey);
+        if (!_foreColor.IsEmpty) si.AddValue("ForeColor", _foreColor);
+        if (!_backColor.IsEmpty) si.AddValue("BackColor", _backColor);
+        si.AddValue("ChildCount", Nodes.Count);
+        for (int i = 0; i < Nodes.Count; i++) si.AddValue("children" + i, Nodes[i], typeof(TreeNode));
+        if (Tag != null && Tag.GetType().IsSerializable) si.AddValue("UserData", Tag, Tag.GetType());
+    }
+
+    void ISerializable.GetObjectData(SerializationInfo si, StreamingContext context) => Serialize(si, context);
 }
 
 public class TreeNodeCollection : IList, IList<TreeNode>
@@ -417,6 +539,20 @@ public class TreeNodeCollection : IList, IList<TreeNode>
         return node;
     }
 
+    public virtual TreeNode Add(string? key, string? text, string? imageKey)
+    {
+        var node = Add(key, text);
+        node.ImageKey = imageKey ?? string.Empty;
+        return node;
+    }
+
+    public virtual TreeNode Add(string? key, string? text, string? imageKey, string? selectedImageKey)
+    {
+        var node = Add(key, text, imageKey);
+        node.SelectedImageKey = selectedImageKey ?? string.Empty;
+        return node;
+    }
+
     public virtual int Add(TreeNode node)
     {
         ArgumentNullException.ThrowIfNull(node);
@@ -472,7 +608,46 @@ public class TreeNodeCollection : IList, IList<TreeNode>
         return node;
     }
 
-    public bool Remove(TreeNode node)
+    public virtual TreeNode Insert(int index, string? key, string? text)
+    {
+        var node = new TreeNode(text) { Name = key ?? string.Empty };
+        Insert(index, node);
+        return node;
+    }
+
+    public virtual TreeNode Insert(int index, string? key, string? text, int imageIndex)
+    {
+        var node = Insert(index, key, text);
+        node.ImageIndex = imageIndex;
+        return node;
+    }
+
+    public virtual TreeNode Insert(int index, string? key, string? text, string? imageKey)
+    {
+        var node = Insert(index, key, text);
+        node.ImageKey = imageKey ?? string.Empty;
+        return node;
+    }
+
+    public virtual TreeNode Insert(int index, string? key, string? text, int imageIndex, int selectedImageIndex)
+    {
+        var node = Insert(index, key, text, imageIndex);
+        node.SelectedImageIndex = selectedImageIndex;
+        return node;
+    }
+
+    public virtual TreeNode Insert(int index, string? key, string? text, string? imageKey, string? selectedImageKey)
+    {
+        var node = Insert(index, key, text, imageKey);
+        node.SelectedImageKey = selectedImageKey ?? string.Empty;
+        return node;
+    }
+
+    public void Remove(TreeNode node) => RemoveCore(node);
+
+    bool ICollection<TreeNode>.Remove(TreeNode item) => RemoveCore(item);
+
+    private bool RemoveCore(TreeNode node)
     {
         if (node == null || !_nodes.Remove(node)) return false;
         Detach(node);
@@ -542,8 +717,9 @@ public class TreeNodeCollection : IList, IList<TreeNode>
     }
 
     public void CopyTo(TreeNode[] array, int index) => _nodes.CopyTo(array, index);
-    public IEnumerator<TreeNode> GetEnumerator() => _nodes.GetEnumerator();
-    IEnumerator IEnumerable.GetEnumerator() => _nodes.GetEnumerator();
+    public void CopyTo(Array dest, int index) => ((ICollection)_nodes).CopyTo(dest, index);
+    public IEnumerator GetEnumerator() => _nodes.GetEnumerator();
+    IEnumerator<TreeNode> IEnumerable<TreeNode>.GetEnumerator() => _nodes.GetEnumerator();
 
     bool IList.IsFixedSize => false;
     bool ICollection.IsSynchronized => false;
@@ -554,7 +730,6 @@ public class TreeNodeCollection : IList, IList<TreeNode>
     int IList.IndexOf(object? value) => value is TreeNode n ? IndexOf(n) : -1;
     void IList.Insert(int index, object? value) => Insert(index, (TreeNode)value!);
     void IList.Remove(object? value) { if (value is TreeNode n) Remove(n); }
-    void ICollection.CopyTo(Array array, int index) => ((ICollection)_nodes).CopyTo(array, index);
 }
 
 // --- event args ---------------------------------------------------------------------------

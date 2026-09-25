@@ -737,6 +737,8 @@ public partial class Form : ContainerControl
         s_modifiers = ToModifiers(mods);
         s_pressedButtons = ToButtons(pressed);
         s_lastMouseScreen = new Point(_windowLocation.X + p.X, _windowLocation.Y + p.Y);
+        // A drag in progress takes the mouse (the OLE modal loop).
+        if (DragDropManager.MouseMove(s_lastMouseScreen, s_pressedButtons, s_modifiers)) return;
         var target = MouseTarget(p);
         var local = target.PointFromForm(p);
         UpdateMouseOver(_capture != null ? (target.ClientRectangle.Contains(local) ? target : null) : target);
@@ -748,6 +750,7 @@ public partial class Form : ContainerControl
         s_modifiers = ToModifiers(mods);
         var b = ToButtons(button);
         s_pressedButtons |= b;
+        if (DragDropManager.MouseButton(new Point(_windowLocation.X + p.X, _windowLocation.Y + p.Y), s_pressedButtons, s_modifiers)) return;
         MouseDownAnywhere?.Invoke(this, new MouseEventArgs(b, clicks, p.X, p.Y, 0));
         var target = MouseTarget(p);
 
@@ -764,6 +767,8 @@ public partial class Form : ContainerControl
         s_modifiers = ToModifiers(mods);
         var b = ToButtons(button);
         s_pressedButtons &= ~b;
+        s_lastMouseScreen = new Point(_windowLocation.X + p.X, _windowLocation.Y + p.Y);
+        if (DragDropManager.MouseButton(s_lastMouseScreen, s_pressedButtons, s_modifiers)) return;
         var target = MouseTarget(p);
         var local = target.PointFromForm(p);
         target.RaiseMouseUp(new MouseEventArgs(b, 1, local.X, local.Y, 0));
@@ -869,6 +874,7 @@ public partial class Form : ContainerControl
     {
         s_modifiers = ToModifiers(mods);
         var keyData = (Keys)virtualKey | s_modifiers;
+        if (DragDropManager.Key((Keys)virtualKey, s_pressedButtons, s_modifiers, down: true)) return true;
         var target = _focused ?? this;
         if (FilterKeyMessage(Message.WM_KEYDOWN, keyData)) return true;
 
@@ -913,6 +919,7 @@ public partial class Form : ContainerControl
     {
         s_modifiers = ToModifiers(mods);
         var keyData = (Keys)virtualKey | s_modifiers;
+        if (DragDropManager.Key((Keys)virtualKey, s_pressedButtons, s_modifiers, down: false)) return true;
         if (FilterKeyMessage(Message.WM_KEYUP, keyData)) return true;
         var target = _focused ?? this;
         if (KeyPreview && target != this)
@@ -1088,6 +1095,17 @@ public partial class Form : ContainerControl
         public void MouseWheel(Point position, int delta, InputModifiers modifiers) => Application.Dispatch(() => _form.HandleMouseWheel(position, delta, modifiers));
 
         public void MouseLeave() => Application.Dispatch(_form.HandleMouseLeave);
+
+        public PlatformDragEffects DragEnter(Point position, PlatformDragData data, PlatformDragEffects allowed, InputModifiers modifiers) =>
+            Application.Dispatch(() => DragDropManager.ToPlatform(DragDropManager.ExternalOver(_form, position, data, DragDropManager.FromPlatform(allowed), ToModifiers(modifiers), enter: true)), PlatformDragEffects.None);
+
+        public PlatformDragEffects DragOver(Point position, PlatformDragData data, PlatformDragEffects allowed, InputModifiers modifiers) =>
+            Application.Dispatch(() => DragDropManager.ToPlatform(DragDropManager.ExternalOver(_form, position, data, DragDropManager.FromPlatform(allowed), ToModifiers(modifiers), enter: false)), PlatformDragEffects.None);
+
+        public void DragLeave() => Application.Dispatch(DragDropManager.ExternalLeave);
+
+        public PlatformDragEffects Drop(Point position, PlatformDragData data, PlatformDragEffects allowed, InputModifiers modifiers) =>
+            Application.Dispatch(() => DragDropManager.ToPlatform(DragDropManager.ExternalDrop(_form, position, data, DragDropManager.FromPlatform(allowed), ToModifiers(modifiers))), PlatformDragEffects.None);
 
         public bool KeyDown(int virtualKey, InputModifiers modifiers) => Application.Dispatch(() => _form.HandleKeyDown(virtualKey, modifiers), true);
 

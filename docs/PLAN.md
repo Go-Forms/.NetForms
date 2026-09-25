@@ -1974,7 +1974,104 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     `NetForms.Templates`. Версия поднята везде, как в решениях 143–150; расширение — `0.1.5`. Разделы «Unreleased»
     журналов стали разделами выпуска.
 
-**Состояние тестов на конец сессии (решение 147, 2026-09-25, Linux):** .NET — **421/421** (+6
+### Печать, перетаскивание, TreeView, Panel/GroupBox, специальные возможности (2026-09-25, Linux)
+
+Задание заказчика: `System.Drawing.Printing` полностью, `TreeView`, недостающее у `Panel` и `GroupBox`, drag-and-drop.
+
+153. **Печать — `System.Drawing.Printing` целиком (31 тип) и диалоги WinForms.** Типы лежат в `NetForms.Drawing`
+    (как в `System.Drawing.Common`), фасад `System.Drawing.Common` перегенерирован (`ApiDiff --forwards`). Управляемые
+    части вендорены из dotnet/winforms (`Margins`, `MarginsConverter`, `PaperSize`, `PaperSource`, `PrinterResolution`,
+    `PrinterUnitConvert`, аргументы событий, `PrintDocument`, цикл страниц `PrintController`); у `PageSettings`/
+    `PrinterSettings` сохранены поверхность, умолчания и форматы `ToString`, а чтения DEVMODE заменены **бэкендом
+    печати** (`PrintBackend`, внутренний): что за принтеры и что они умеют (`PrinterInfo`: бумага, лотки, разрешения,
+    дуплекс, цвет, физические поля) и задание (`PrintJob`: страница — `SKCanvas` в 1/100 дюйма от начала печатаемой
+    области). **Linux/macOS — CUPS**: `lpstat -e`/`-a`/`-d`, `lpoptions -p X -l` (PPD-имена и IPP-имена `iso_a4_210x297mm`,
+    `InputSlot`, `Resolution`, `Duplex`/`sides`, `ColorModel`/`print-color-mode`), задание — PDF (`SKDocument.CreatePdf`),
+    отданный `lp -n -o collate -o sides -o print-color-mode`. **Windows — winspool/GDI**: `EnumPrinters`,
+    `GetDefaultPrinter`, `DeviceCapabilities`, DEVMODE через `DocumentProperties`, задание `CreateDC`/`StartDoc`, каждая
+    страница рисуется Skia в битмап (≤ 300 dpi) и уходит `StretchDIBits`; смена ориентации между страницами — `ResetDC`.
+    **Печать в файл — PDF** (и без принтеров; путь не задан — спрашивает `SaveFileDialog` через `PrintBackend.PrintFilePrompt`
+    — хук NetForms, пока не подключён, тогда печать отменяется). `Graphics` страницы: единица 1/100 дюйма, `DpiX` —
+    принтера, текст физического размера (`Graphics.TextScale = 100/96`: 72 pt — ровно дюйм), `OriginAtMargins`.
+    Предпросмотр: `PreviewPrintController` записывает страницу в `SKPicture`; `PreviewPageInfo.Image` — `Bitmap` 1 px на
+    1/100 дюйма (Metafile в NetForms нет), а `PrintPreviewControl` проигрывает картинку векторно при любом масштабе.
+    Предпросмотр работает без принтера (WinForms бросает `InvalidPrinterException`) — осознанная разница.
+    `GetHdevmode`/`SetHdevmode`/`GetHdevnames`/`SetHdevnames` отдают блоки в раскладке Win32 (`DevModeLayout`) на любой ОС.
+    `IsDirectPrintingSupported` — всегда `false`. Диалоги (`PrintDialog`, `PageSetupDialog`) — свои формы, как
+    `FontDialog`: пишут в `PrinterSettings`/`PageSettings` то, что пишут `PrintDlg`/`PageSetupDlg` (включая проверку
+    `FromPage`/`ToPage` и `MinMargins`); `PrintPreviewControl` — раскладка dotnet/winforms (зум, ряды/столбцы, рамка
+    10/100 дюйма, центрирование); `PrintPreviewDialog` — панель WinForms (печать, масштаб, 1–6 страниц, счётчик,
+    закрыть, Ctrl+1…5) и 79 скрытых от дизайнера членов, перенесённых из исходника дословно; `PrintControllerWithStatusDialog`
+    — немодальная форма на UI-потоке с `DoEvents` после страницы (в WinForms — отдельный поток). Дизайнер: группа
+    «Printing» в панели элементов (`PrintDocument` из `System.Drawing`, `PrintPreviewDialog` — в лоток компонентов).
+    Попутно: `Graphics.Dispose` сделан идемпотентным (цикл страниц WinForms освобождает `Graphics` второй раз — падал
+    нативный Skia); `Control.ResetBackColor`/`ResetForeColor` и `AllowDrop` стали `virtual`, как в WinForms.
+    **Не проверено на железе:** путь Windows (GDI) только компилируется — проверить на реальном принтере и на
+    «Microsoft Print to PDF»; `lp` на Linux проверен только разбором вывода CUPS (в контейнере нет CUPS).
+    Проверено: `PrintingTests` (20: цикл и порядок событий, геометрия A4/альбом, пиксели предпросмотра, физический
+    размер текста, `OriginAtMargins`, отмена, принтеры из бэкенда, PDF-файл, машина без принтеров, разбор `lpoptions`,
+    DEVMODE туда-обратно, `Margins`/единицы, `PrintPreviewControl`/`Dialog`, `PrintDialog`, `PageSetupDialog`,
+    дизайнер туда-обратно и панель элементов).
+
+154. **Модель специальных возможностей.** Для `Panel`/`GroupBox`/`TreeView` «полностью» требует
+    `CreateAccessibilityInstance`, а `AccessibleObject` не было вовсе. Сделана управляемая модель WinForms без COM:
+    `AccessibleObject` (наследует `MarshalByRefObject`, не `StandardOleMarshalObject`), `Control.ControlAccessibleObject`,
+    перечисления `AccessibleRole`/`States`/`Navigation`/`Selection`/`Events` (значения — из эталонной сборки),
+    `System.Windows.Forms.Automation`, у `Control` — `AccessibilityObject`, `AccessibleRole`,
+    `AccessibleDefaultActionDescription`, `IsAccessible`, `QueryAccessibilityHelp`, `AccessibilityNotifyClients`.
+    Ответы — как у системного прокси: имя из текста или из подписи перед контролом по TabIndex, сочетание из мнемоники,
+    роль по типу контрола (`DefaultAccessibleRole`), состояния, экранные границы, дети, `DoDefaultAction` (кнопка —
+    `PerformClick`). Моста в ОС нет: следующий шаг — automation peers Avalonia (UIA на Windows, AT-SPI на Linux),
+    события для него — `AccessibleObject.ClientsNotified`/`AutomationNotificationRaised`. Проверено:
+    `ContainerAccessibilityTests`.
+
+155. **Drag-and-drop: протокол OLE ведёт NetForms.** `DragDropManager`: `DoDragDrop` — модальный цикл
+    (`Platform.RunMessageLoop`), пока идёт перетаскивание, мышь и клавиатура всех форм уходят ему (перехват в
+    `Form.HandleMouse*`/`HandleKey*`). На каждом шаге: `QueryContinueDrag` источнику (Escape — Cancel, отпущены кнопки,
+    начавшие перетаскивание, — Drop; без нажатой кнопки — Drop сразу, как OLE), цель — самый глубокий контрол под точкой
+    с `AllowDrop` или ближайший такой родитель (как OLE поднимается к зарегистрированному окну), среди всех видимых форм
+    (активная, `TopMost`, затем последние открытые); `DragEnter` с `Effect = None`, `DragOver` с последним эффектом,
+    `DragLeave`, `DragDrop`; эффект маскируется разрешёнными; `X`/`Y` — экранные, `KeyState` — биты MK_*.
+    `GiveFeedback` источнику; по умолчанию — курсоры `DragCopy`/`DragMove`/`DragLink`/`No` (Avalonia
+    `StandardCursorType`). После перетаскивания источник теряет захват и не получает `MouseUp`, как в WinForms.
+    **Из других программ**: `FormSurface` принимает `DragDrop.DragEnter/Over/Leave/Drop` Avalonia, файлы
+    (`TryGetFiles` → `TryGetLocalPath`) и текст идут в `IWindowHost.DragEnter/…/Drop` (новые методы с реализацией по
+    умолчанию, `PlatformDragData`, `PlatformDragEffects`) и дальше в те же события как `FileDrop`/`Text`.
+    **Наружу** (из NetForms в другую программу) — пока нет: Avalonia начинает перетаскивание ОС только из
+    `PointerPressedEventArgs`, а передать уже идущее своё перетаскивание ОС нельзя; кандидат — начинать через Avalonia,
+    когда данные содержат `FileDrop`/`Text` (открытый вопрос). Картинка перетаскивания не рисуется.
+    `DataObject` переписан по WinForms: хранилище форматов с autoConvert (`Text`/`UnicodeText`/`System.String` —
+    одно, `FileDrop` отвечает `FileName`/`FileNameW`, `Bitmap`/`System.Drawing.Bitmap`), обёртка другого
+    `IDataObject`, `ITypedDataObject`/`TryGetData<T>`, `SetDataAsJson`, `DataObjectExtensions`; `IDataObject` —
+    все 12 членов. `ListView.ItemDrag`/`ItemMouseHover` (нажатие на один из нескольких выделенных элементов сохраняет
+    выделение до отпускания, как системный список). Проверено: `DragDropTests` (12, в том числе пример Microsoft
+    «перетаскивание узлов TreeView» дословно).
+
+156. **TreeView, Panel, GroupBox, ScrollableControl — API полный.** `TreeView`: как системное дерево, нажатие на узле
+    выделяет его при **отпускании** (перетаскивание не выделяет — иначе `ItemDrag` из примеров Microsoft тащил бы
+    не тот узел), `NodeMouseClick` — после отпускания (NM_CLICK), правая кнопка не выделяет (известное поведение
+    WinForms); `ItemDrag` левой и правой кнопкой после `SystemInformation.DragSize`; `NodeMouseHover` по таймеру
+    `MouseHoverTime` (один раз на узел, над пустым местом — `MouseHover`); `HotTracking` (подчёркивание, курсор-рука);
+    `ShowNodeToolTips`; свой `ContextMenuStrip` узла (общий хук `Control.ContextMenuStripAt`); картинки по ключу и
+    картинки состояния (колонка резервируется для всех узлов, как в системном дереве); `RightToLeftLayout` (хранится,
+    без зеркалирования); `GetItemRenderStyles`/`OwnerDrawPropertyBag`; `TreeNode.Handle` (уникальный id) и
+    `FromHandle`, `StateImageKey`, сериализация `ISerializable`, `TreeNodeConverter` (дизайнер по-прежнему пишет узлы
+    локальными переменными — `DesignerCodeWriter` их конвертером не пишет), `TreeViewImageIndex/KeyConverter`;
+    `TreeNodeCollection` — все перегрузки, `Remove` возвращает `void`, `GetEnumerator` — не обобщённый (как в WinForms).
+    `ScrollableControl`: `DockPadding` (вид на `Padding`), биты `ScrollState*`, `HScroll`/`VScroll`,
+    `AdjustFormScrollbars`, `SetAutoScrollMargin`, `ScrollToControl` — и `ScrollControlIntoView` теперь зовёт его
+    (частое переопределение «панель не прыгает к фокусу» работает). `GroupBoxRenderer` — рамка `GroupBox` вынесена в
+    него. Найдено попутно (не исправлено): `Graphics.SetClip` внутри `Save`/`Restore` не откатывается `Restore`
+    (`RewindClip` снимает сохранение) — в `PrintPreviewControl` обойдено `IntersectClip`; открытый вопрос.
+    Проверено: `TreeViewCompletionTests` (10), `ContainerAccessibilityTests` (5).
+
+**Состояние тестов на конец сессии (решения 153–156, 2026-09-25, Linux):** .NET — **483/483** (было 436; +47:
+`PrintingTests` 20, `DragDropTests` 12, `TreeViewCompletionTests` 10, `ContainerAccessibilityTests` 5). Оракулы WinForms
+(атрибуты `PrintDialog`/`PageSetupDialog`/`PrintPreviewControl`/`PrintPreviewDialog` и новых членов `Control`/`TreeView`)
+проверит CI на Windows. ApiDiff: **747** полных (было 664), 144 частичных, 363 нет; **1581 член** (было 1712);
+`System.Drawing.Printing` — 31 из 31. `docs/api/usage.md` не перегенерирован (нет клонов корпуса в этой среде).
+
+Предыдущее (решение 147, 2026-09-25, Linux): .NET — **421/421** (+6
 `DataGridViewNewRowTests`); оракул `exact/dgv-newrow/*` ждёт Windows CI. ApiDiff: 664 полных, 163 частичных, 427 нет;
 **1712 членов** (было 1718); у `DataGridView` — 236 (было 242).
 

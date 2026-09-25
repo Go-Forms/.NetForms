@@ -92,6 +92,7 @@ public class DefaultValueTests
         "ToolStripLabel.Name", "ToolStripMenuItem.Name", "ToolStripProgressBar.Name",
         "ToolStripSeparator.Name", "ToolStripSplitButton.Name", "ToolStripStatusLabel.Name",
         "ToolStripTextBox.Name",                         // [DefaultValue(null)], actually ""
+        "PrintDialog.PrinterSettings",                   // [DefaultValue(null)], the getter creates one
 
         // --- ours, tracked in docs/PLAN.md ------------------------------------------------
         // (none: ToolStrip.AutoSize and the drop-downs' Dock were closed in phase 5.2, decision 70)

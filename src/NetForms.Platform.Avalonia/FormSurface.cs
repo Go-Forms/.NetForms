@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Rendering.SceneGraph;
 using Avalonia.Skia;
 using SkiaSharp;
@@ -45,6 +46,89 @@ internal sealed class FormSurface : AvaloniaControl
         Focusable = true;
         IsHitTestVisible = true;
         ClipToBounds = true;
+
+        // Drags from other applications (files from the file manager, text): the host decides per control.
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragEnterEvent, OnDragEnter);
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DragLeaveEvent, OnDragLeave);
+        AddHandler(DragDrop.DropEvent, OnDrop);
+    }
+
+    // --- drops from other applications -------------------------------------------------------------------
+
+    private PlatformDragData? _dragData;
+
+    private void OnDragEnter(object? sender, DragEventArgs e)
+    {
+        _dragData = ReadDragData(e.DataTransfer);
+        e.DragEffects = FromEffects(_host.DragEnter(ToPoint(e.GetPosition(this)), _dragData, ToEffects(e.DragEffects), ToModifiers(e.KeyModifiers)));
+        e.Handled = true;
+    }
+
+    private void OnDragOver(object? sender, DragEventArgs e)
+    {
+        _dragData ??= ReadDragData(e.DataTransfer);
+        e.DragEffects = FromEffects(_host.DragOver(ToPoint(e.GetPosition(this)), _dragData, ToEffects(e.DragEffects), ToModifiers(e.KeyModifiers)));
+        e.Handled = true;
+    }
+
+    private void OnDragLeave(object? sender, DragEventArgs e)
+    {
+        _dragData = null;
+        _host.DragLeave();
+    }
+
+    private void OnDrop(object? sender, DragEventArgs e)
+    {
+        var data = _dragData ?? ReadDragData(e.DataTransfer);
+        _dragData = null;
+        e.DragEffects = FromEffects(_host.Drop(ToPoint(e.GetPosition(this)), data, ToEffects(e.DragEffects), ToModifiers(e.KeyModifiers)));
+        e.Handled = true;
+    }
+
+    private static PlatformDragData ReadDragData(IDataTransfer transfer)
+    {
+        var files = new System.Collections.Generic.List<string>();
+        try
+        {
+            foreach (var item in transfer.TryGetFiles() ?? [])
+            {
+                var path = item.TryGetLocalPath();
+                if (!string.IsNullOrEmpty(path)) files.Add(path);
+            }
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+            // A format the platform cannot hand out synchronously: go on with the text.
+        }
+        string? text = null;
+        try
+        {
+            text = transfer.TryGetText();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException)
+        {
+        }
+        return new PlatformDragData { Files = files, Text = text };
+    }
+
+    private static PlatformDragEffects ToEffects(DragDropEffects effects)
+    {
+        var result = PlatformDragEffects.None;
+        if ((effects & DragDropEffects.Copy) != 0) result |= PlatformDragEffects.Copy;
+        if ((effects & DragDropEffects.Move) != 0) result |= PlatformDragEffects.Move;
+        if ((effects & DragDropEffects.Link) != 0) result |= PlatformDragEffects.Link;
+        return result;
+    }
+
+    private static DragDropEffects FromEffects(PlatformDragEffects effects)
+    {
+        var result = DragDropEffects.None;
+        if ((effects & PlatformDragEffects.Copy) != 0) result |= DragDropEffects.Copy;
+        if ((effects & PlatformDragEffects.Move) != 0) result |= DragDropEffects.Move;
+        if ((effects & PlatformDragEffects.Link) != 0) result |= DragDropEffects.Link;
+        return result;
     }
 
     /// <summary>Mark part of the client area (all of it for <c>null</c>) as needing a repaint.</summary>
