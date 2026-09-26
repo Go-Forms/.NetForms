@@ -34,9 +34,12 @@ public sealed class ControlLibraryTests : IDisposable
     /// <summary>The fixture's build output, copied to a folder of the test (the "bin" of a project).</summary>
     private string FixtureBuild()
     {
+        // The configuration of the tests first; a build of the fixture outside the solution may be the other one.
         var config = AppContext.BaseDirectory.Contains($"{Path.DirectorySeparatorChar}Release{Path.DirectorySeparatorChar}") ? "Release" : "Debug";
-        var output = Path.Combine(RepoRoot, "tests", "Fixtures", "ControlLibrary", "bin", config, "net10.0");
-        Assert.True(File.Exists(Path.Combine(output, "ControlLibrary.dll")), "The fixture is not built: " + output);
+        var bins = Path.Combine(RepoRoot, "tests", "Fixtures", "ControlLibrary", "bin");
+        var output = new[] { config, config == "Release" ? "Debug" : "Release" }.Select(c => Path.Combine(bins, c, "net10.0"))
+            .FirstOrDefault(d => File.Exists(Path.Combine(d, "ControlLibrary.dll")));
+        Assert.True(output != null, "The fixture is not built: " + Path.Combine(bins, config, "net10.0"));
         var bin = Path.Combine(_dir, "bin");
         Directory.CreateDirectory(bin);
         foreach (var f in Directory.GetFiles(output)) File.Copy(f, Path.Combine(bin, Path.GetFileName(f)));

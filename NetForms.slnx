@@ -20,6 +20,7 @@
     <Project Path="tools/NetFormsDesigner.Host/NetFormsDesigner.Host.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Fixtures/ControlLibrary/ControlLibrary.csproj" />
     <Project Path="tests/NetForms.Tests/NetForms.Tests.csproj" />
   </Folder>
 </Solution>

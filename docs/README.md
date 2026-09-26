@@ -14,6 +14,7 @@ NetForms' own.
 | [Compatibility guide](compatibility.md) | Supported .NET versions and OSes, which projects move over, status of every control and subsystem, Windows-only API, intentional differences. |
 | [API coverage](api/README.md) | Generated: every public type of WinForms and `System.Drawing.Common`, complete / partial / missing, with the missing members and a link to Microsoft's page. |
 | [The visual designer](designer.md) | The VS Code extension. |
+| [Control libraries in the designer](control-libraries.md) | Your project's own controls in the toolbox; adding NuGet packages, `.dll`s, other projects; what the check says; writing a control library for NetForms. |
 | [Releasing](RELEASING.md) | For maintainers: publishing to NuGet, the VS Code Marketplace, Open VSX, GitHub Pages. |
 | [Документация на русском](ru/README.md) | The same pages in Russian. |
 | [Plan and decision log](PLAN.md) | Architecture, roadmap and every design decision (in Russian). |

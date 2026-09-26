@@ -94,6 +94,9 @@ down; `-` adds a menu separator.
 
 ## Control libraries
 
+Step by step, with the check, `.vscode/netforms.json` and writing a library of your own: **[Control libraries in the
+designer](control-libraries.md)**.
+
 The toolbox has the project's own controls, as Visual Studio's **<Project> Components** group: every public control,
 user control and component of the project (not its forms) from the **last successful build**. After a build - in the
 terminal, F5 or **↻** in the toolbox - the designer reloads them by itself; a control added since the last build stays a
