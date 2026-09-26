@@ -18,7 +18,7 @@ NetForms — это Windows Forms для .NET 10 на Windows и Linux. Если
 Из командной строки:
 
 ```sh
-dotnet new install NetForms.Templates::0.1.0-preview.6
+dotnet new install NetForms.Templates::0.1.0-preview.7
 dotnet new netforms -n HelloForms
 cd HelloForms
 dotnet run
@@ -41,7 +41,7 @@ dotnet run
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.6" />
+    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
   </ItemGroup>
 
   <ItemGroup>

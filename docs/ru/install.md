@@ -89,7 +89,7 @@ source ~/.bashrc
 
 ```sh
 # шаблоны проекта и элементов: dotnet new netforms, netforms-form, netforms-usercontrol
-dotnet new install NetForms.Templates::0.1.0-preview.6
+dotnet new install NetForms.Templates::0.1.0-preview.7
 
 # конвертер готовых WinForms-проектов
 dotnet tool install -g NetForms.Convert --prerelease
@@ -130,7 +130,7 @@ NuGet нужен NetForms только для восстановления па�
 
 ```sh
 dotnet nuget add source /srv/nuget -n internal          # папка с файлами .nupkg
-dotnet new install /srv/nuget/NetForms.Templates.0.1.0-preview.6.nupkg
+dotnet new install /srv/nuget/NetForms.Templates.0.1.0-preview.7.nupkg
 dotnet tool install -g NetForms.Convert --prerelease --add-source /srv/nuget
 ```
 

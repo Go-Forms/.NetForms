@@ -22,7 +22,7 @@ platform layer.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.6" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
 ```
 
 That is the whole migration for most projects — the code does not change. `netforms-convert` does it for
@@ -38,7 +38,7 @@ Everything comes from NuGet.
 
 ```sh
 # a new app
-dotnet new install NetForms.Templates::0.1.0-preview.6
+dotnet new install NetForms.Templates::0.1.0-preview.7
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # an existing WinForms app
@@ -65,19 +65,22 @@ own pages (the same Markdown is in [docs/](docs/README.md)):
 - [Compatibility guide](https://go-forms.github.io/.NetForms/docs/compatibility.html) — .NET versions, OSes, the state of every control, what is missing
 - [API coverage](https://go-forms.github.io/.NetForms/docs/api/) — generated, type by type
 - [The visual designer](https://go-forms.github.io/.NetForms/docs/designer.html)
+- [Control libraries in the designer](https://go-forms.github.io/.NetForms/docs/control-libraries.html) — your own controls, NuGet packages, `.dll`s in the toolbox
 
 ## Status
 
 Preview. Measured, not guessed:
 
-- **API:** 664 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
-  163 partial, 427 missing ([coverage](docs/api/README.md)).
-- **Behaviour:** 415/415 tests; layout, event order, text metrics and designer output diffed against the real
+- **API:** 747 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
+  144 partial, 363 missing ([coverage](docs/api/README.md)).
+- **Behaviour:** 504/504 tests; layout, event order, text metrics and designer output diffed against the real
   WinForms on Windows and rendered offscreen on both OSes.
 - **Real projects:** 7/7 customer .NET Framework projects and 28/45 open-source WinForms projects convert
   and build without manual edits.
-- Not yet: printing, accessibility, drag-and-drop, `WebBrowser`, dark theme, third-party control packages
-  from NuGet.
+- **Designer:** your project's own controls and control libraries built for NetForms (NuGet, `.dll`, other
+  projects) in the toolbox and live on the canvas ([control libraries](docs/control-libraries.md)).
+- Not yet: screen readers (the accessibility model is there), `WebBrowser`, dark theme, third-party control
+  packages built for the real WinForms.
 
 ## Repository
 

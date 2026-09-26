@@ -19,7 +19,7 @@ NetForms — копия Windows Forms. **Справочник по API — от 
 `System.Windows.Forms` и `System.Drawing.Common` — генерируется автоматически:
 **[покрытие API](../api/README.md)** (на английском).
 
-Состояние на версию **0.1.0-preview.6** (сентябрь 2026).
+Состояние на версию **0.1.0-preview.7** (сентябрь 2026).
 
 ---
 
@@ -73,6 +73,7 @@ self-contained, со средой внутри).
 | Проект с NuGet-пакетом, у которого `FrameworkReference Microsoft.WindowsDesktop.App` | ❌ Такой пакет требует настоящую среду Windows Desktop (`NETSDK1136`). Ищите кроссплатформенную версию пакета. |
 | Проект с `BinaryFormatter` (напрямую или в `.resx`, кроме картинок `ImageList`) | ❌ `BinaryFormatter` удалён из .NET 9+ — на любой ОС, не только в NetForms. `ImageList.ImageStream` из дизайнера VS NetForms читает сам. |
 | Проект с WebView2, CefSharp, ActiveX (`AxHost`), COM-ссылками | ❌ Нативные компоненты только для Windows. Конвертер отмечает `COMReference` как ошибку. |
+| Библиотеки контролов, собранные под NetForms, и собственные контролы проекта в дизайнере | ✅ Панель элементов их показывает, холст выполняет; пакеты NuGet, `.dll` и другие проекты подключаются командой **Add Control Library** ([Библиотеки элементов управления в дизайнере](control-libraries.md)). |
 | Сторонние пакеты контролов WinForms из NuGet (ZedGraph, OxyPlot.WindowsForms, ScottPlot.WinForms, FastColoredTextBox, ObjectListView, DockPanelSuite…) | ❌ Пока нет. Проверено на этих шести 2026-09-24: пакеты для .NET Framework собраны против подписанной сборки `System.Windows.Forms, PublicKeyToken=b77a5c561934e089`, а фасад NetForms ею не является, и сборка останавливается с `CS0012`; пакеты для `net*-windows` требуют среду Windows Desktop (`NETSDK1136`, DockPanelSuite). Контролы, исходники которых лежат в вашем проекте, компилируются как ваш собственный код. |
 
 Конвертер ничего не угадывает: без `--apply` он показывает, что изменит, и каждое место, которое не
@@ -245,7 +246,7 @@ self-contained, со средой внутри).
 
 - **Дифф-тесты против настоящего WinForms** (`tests/NetForms.Compat`, CI на Windows): одни и те же сценарии
   выполняются в `System.Windows.Forms` и в NetForms; сравниваются положения, размеры, порядок событий,
-  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **484/484**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
+  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **504/504**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
 - **Golden-тесты отрисовки** (без окна, одинаковые картинки на Windows и Linux).
 - **Покрытие API** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api` заново строит
   [таблицы](../api/README.md). Сейчас: **747** из 1254 типов полные, **144** частично, **363** нет

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.6
 
 - **The project's own controls in the toolbox**: its controls, user controls and components from the last build, in a
   **<Project> Components** group at the top, as in Visual Studio - live on the canvas, with their properties, events and
@@ -14,6 +14,10 @@
 - The toolbox groups live in `.vscode/netforms.json` - commit it and colleagues get the same toolbox.
 - **Restricted Mode:** the project's controls are listed from their metadata, greyed out; none of their code runs.
 - A control whose constructor or `OnPaint` throws is a **red cross with the error**; the form still opens.
+- A placeholder (a control of an unknown type) keeps its constructor arguments: `new MyGauge(components)` was written
+  back as `new MyGauge()`.
+- New projects reference NetForms 0.1.0-preview.7. How to add libraries, step by step:
+  [Control libraries in the designer](https://go-forms.github.io/.NetForms/docs/control-libraries.html).
 
 ## 0.1.5
 

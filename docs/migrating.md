@@ -48,7 +48,7 @@ What it does to an SDK-style project:
    </PropertyGroup>
 
 +  <ItemGroup>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.6" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
 +    <!-- What <UseWindowsForms>true</UseWindowsForms> added: the WinForms namespaces as implicit usings. -->
 +    <Using Include="System.Drawing" />
 +    <Using Include="System.Windows.Forms" />
@@ -95,7 +95,7 @@ to the real letter case.
 
 1. `TargetFramework`: `net10.0` (or `net10.0-windows` for Windows only).
 2. Remove `<UseWindowsForms>true</UseWindowsForms>` (and `<EnableWindowsTargeting>` if you added it).
-3. Add `<PackageReference Include="NetForms" Version="0.1.0-preview.6" />`.
+3. Add `<PackageReference Include="NetForms" Version="0.1.0-preview.7" />`.
 4. If `ImplicitUsings` is on, add `<Using Include="System.Drawing" />` and `<Using Include="System.Windows.Forms" />`.
 
 ## What the report may tell you

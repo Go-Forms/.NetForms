@@ -18,7 +18,7 @@ This guide covers only what that documentation cannot tell you:
 The member-by-member list — what exists and what is missing for each of the 1254 public types of
 `System.Windows.Forms` and `System.Drawing.Common` — is generated: **[API coverage](api/README.md)**.
 
-State as of version **0.1.0-preview.6** (September 2026).
+State as of version **0.1.0-preview.7** (September 2026).
 
 ---
 
@@ -71,6 +71,7 @@ used; text metrics then differ slightly from Windows (see §4, Text).
 | Project that uses a NuGet package with `FrameworkReference Microsoft.WindowsDesktop.App` | ❌ That package demands the real Windows Desktop runtime (`NETSDK1136`). Look for a cross-platform version of the package. |
 | Project using `BinaryFormatter` (directly, or in `.resx` other than `ImageList` images) | ❌ `BinaryFormatter` was removed from .NET 9+ — on every OS, not only in NetForms. `ImageList.ImageStream` from the VS designer is read by NetForms itself. |
 | Project using WebView2, CefSharp, ActiveX (`AxHost`), COM references | ❌ Windows-only native components. The converter reports `COMReference` as an error. |
+| Control libraries built for NetForms, and a project's own controls, in the designer | ✅ The toolbox shows them and the canvas runs them; NuGet packages, `.dll`s and other projects are added with **Add Control Library** ([Control libraries in the designer](control-libraries.md)). |
 | Third-party WinForms control packages from NuGet (ZedGraph, OxyPlot.WindowsForms, ScottPlot.WinForms, FastColoredTextBox, ObjectListView, DockPanelSuite…) | ❌ Not yet. Checked with those six on 2026-09-24: packages built for .NET Framework compile against the strong-named `System.Windows.Forms, PublicKeyToken=b77a5c561934e089`, which NetForms' facade is not, so the build stops with `CS0012`; packages built for `net*-windows` demand the Windows Desktop runtime (`NETSDK1136`, DockPanelSuite). Controls whose source you include in your project compile like your own code. |
 
 The converter never guesses: before `--apply` it prints what it would change and every place that will
@@ -242,7 +243,7 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **484/484**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **504/504**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
   regenerates [the tables](api/README.md). Today: **747** of 1254 types complete, **144** partial,

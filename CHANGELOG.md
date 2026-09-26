@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-preview.7 — control libraries in the designer, printing, drag and drop
 
 - **Designer — the project's own controls and control libraries:** the toolbox has the project's controls, user
   controls and components from its last build (a **<Project> Components** group, as in Visual Studio), live on the
