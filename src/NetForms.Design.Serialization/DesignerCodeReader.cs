@@ -39,7 +39,10 @@ public sealed class DesignerCodeReader
     /// <summary>A reader over NetForms, System.Drawing and the BCL.</summary>
     public DesignerCodeReader() : this(TypeResolver.DefaultAssemblies()) { }
 
-    /// <summary>A reader that also resolves types from <paramref name="assemblies"/>.</summary>
+    /// <summary>NetForms, System.Drawing and the BCL: what a designer file can name without the user's project.</summary>
+    public static IEnumerable<Assembly> DefaultAssemblies() => TypeResolver.DefaultAssemblies();
+
+    /// <summary>A reader that resolves types from <paramref name="assemblies"/> (<see cref="DefaultAssemblies"/> and the project's).</summary>
     public DesignerCodeReader(IEnumerable<Assembly> assemblies)
     {
         _assemblies = assemblies.ToList();
@@ -267,7 +270,8 @@ public sealed class DesignerCodeReader
                 var value = a.Right is BaseObjectCreationExpressionSyntax creation
                     ? EvalCreation(creation, slot.DeclaredType, componentName: fieldName)
                     : Eval(a.Right, slot.DeclaredType);
-                slot.Value = slot.DeclaredType != null ? Convert(value, slot.DeclaredType, a.Right) : value.Value;
+                // A placeholder stands in for the declared type (a control whose constructor threw).
+                slot.Value = slot.DeclaredType != null && value.Value is not DesignerPlaceholder ? Convert(value, slot.DeclaredType, a.Right) : value.Value;
                 slot.Component = slot.Value == null ? null : _model.FindByInstance(slot.Value);
                 if (slot.Component != null && slot.Component.Name != fieldName) slot.Component = null;
                 _model.AddStatement(new DesignerStatement(DesignerStatementKind.Create, slot.Component, fieldName, statement.ToString(), LineOf(statement)));
@@ -607,6 +611,7 @@ public sealed class DesignerCodeReader
 
             object instance;
             bool placeholder = false;
+            string? creationArguments = null;
             if (type == null)
             {
                 // A control from the user's own project: stand in for it rather than refuse the file.
@@ -614,6 +619,7 @@ public sealed class DesignerCodeReader
                 instance = new DesignerPlaceholder(typeName);
                 type = typeof(DesignerPlaceholder);
                 placeholder = true;
+                creationArguments = n.ArgumentList?.Arguments.ToString();
             }
             else if (type == typeof(System.ComponentModel.ComponentResourceManager))
             {
@@ -640,6 +646,16 @@ public sealed class DesignerCodeReader
                     var (ctor, converted) = PickOverload(ctors, args)
                         ?? throw Error($"'{type.FullName}' has no constructor that takes ({DescribeArgs(args)}).", n);
                     try { instance = ((ConstructorInfo)ctor).Invoke(converted); }
+                    catch (Exception ex) when (IsLibraryControl(type))
+                    {
+                        // A control of the user's project or a library whose constructor throws: the form still
+                        // opens, the control is a red cross saying why, and its statements are kept as written.
+                        var inner = Unwrap(ex);
+                        instance = new DesignerPlaceholder(typeName, $"{inner.GetType().Name}: {inner.Message}");
+                        type = typeof(DesignerPlaceholder);
+                        placeholder = true;
+                        creationArguments = n.ArgumentList?.Arguments.ToString();
+                    }
                     catch (Exception ex) { throw Error($"Creating '{type.FullName}' failed: {Unwrap(ex).Message}", n, Unwrap(ex)); }
                 }
             }
@@ -647,13 +663,20 @@ public sealed class DesignerCodeReader
             DesignerComponent? component = null;
             if (componentName != null || instance is IComponent)
             {
-                component = new DesignerComponent(componentName, typeName, instance.GetType(), instance, isRoot: false, isPlaceholder: placeholder);
+                component = new DesignerComponent(componentName, typeName, instance.GetType(), instance, isRoot: false, isPlaceholder: placeholder)
+                {
+                    CreationArguments = creationArguments,
+                };
                 _model.AddComponentCore(component);
             }
 
             if (n.Initializer != null) ApplyInitializer(instance, n.Initializer, component);
             return new ValueR(instance, type);
         }
+
+        /// <summary>A control type that is not NetForms's or the BCL's: its failures are the user's code, not the file's.</summary>
+        private static bool IsLibraryControl(Type type) =>
+            typeof(System.Windows.Forms.Control).IsAssignableFrom(type) && !TypeResolver.DefaultAssemblies().Contains(type.Assembly);
 
         private void ApplyInitializer(object instance, InitializerExpressionSyntax init, DesignerComponent? component)
         {

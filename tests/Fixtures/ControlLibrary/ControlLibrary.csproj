@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A small control library built for NetForms: the fixture of the designer's control libraries
+    (decision 157, docs/designer-control-libraries.md). NetForms.Tests builds it (ReferenceOutputAssembly
+    false: its types must not be loaded by the tests' own context) and loads its output the way the
+    designer host loads a project's build.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>ControlLibrary</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/NetForms/NetForms.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Gauge.bmp" LogicalName="ControlLibrary.Gauge.bmp" />
+  </ItemGroup>
+</Project>

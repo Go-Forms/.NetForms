@@ -284,6 +284,9 @@ public sealed class DesignerComponent
     /// </summary>
     public bool IsPlaceholder { get; }
 
+    /// <summary>For a placeholder: the constructor arguments as written (<c>this.components</c>), kept for the writer.</summary>
+    public string? CreationArguments { get; internal set; }
+
     /// <summary>Property assignments on this component, in source order (<c>Location</c>, <c>Panel1.BackColor</c>, …).</summary>
     public IReadOnlyList<DesignerPropertyAssignment> Assignments => _assignments;
 

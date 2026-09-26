@@ -5,7 +5,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { convertProject } from './convert';
 import { companionOf, DesignerEditorProvider } from './designerEditorProvider';
-import { findHost } from './hostClient';
+import { findHost, HostClient } from './hostClient';
+import { addControlLibrary, removeControlLibrary, rescanToolbox } from './libraryCommands';
 import { formClass, publishArgs, publishTargets, setStartupForm, startsAForm } from './project';
 import { installedTemplates, netformsVersion, newForm, newProject } from './scaffold';
 import { checkForUpdates, scheduleUpdateCheck } from './updates';
@@ -68,6 +69,23 @@ export function activate(context: vscode.ExtensionContext) {
 	command('netforms.setStartupForm', (uri?: vscode.Uri) => setStartup(activeFile(uri)));
 	command('netforms.publish', (uri?: vscode.Uri) => publishProject(activeFile(uri)));
 	command('netforms.checkForUpdates', () => checkForUpdates(context, log));
+
+	// Control libraries (decision 157). The scan before adding needs a host: the open designer's, else one of
+	// the commands' own, started on first use.
+	let toolHost: HostClient | undefined;
+	const host = () => {
+		const session = DesignerEditorProvider.active;
+		if (session) return session.hostClient();
+		if (toolHost?.alive) return toolHost;
+		const hostPath = findHost(context.extensionPath, activeFile());
+		if (!hostPath) throw new Error(vscode.l10n.t('The NetForms designer host was not found. Build tools/NetFormsDesigner.Host or set "netforms.designerHostPath".'));
+		toolHost = new HostClient(hostPath, log);
+		return toolHost;
+	};
+	context.subscriptions.push({ dispose: () => toolHost?.dispose() });
+	command('netforms.addControlLibrary', (uri?: vscode.Uri) => addControlLibrary(context, log, host, activeFile(uri)));
+	command('netforms.removeControlLibrary', (uri?: vscode.Uri) => removeControlLibrary(log, activeFile(uri)));
+	command('netforms.rescanToolbox', (uri?: vscode.Uri) => rescanToolbox(log, activeFile(uri)));
 	scheduleUpdateCheck(context, log);
 	command('netforms.checkSetup', async () => {
 		const dotnet = vscode.workspace.getConfiguration('netforms').get<string>('dotnetPath') || 'dotnet';

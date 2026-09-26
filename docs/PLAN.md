@@ -2065,7 +2065,7 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     (`RewindClip` снимает сохранение) — в `PrintPreviewControl` обойдено `IntersectClip`; открытый вопрос.
     Проверено: `TreeViewCompletionTests` (10), `ContainerAccessibilityTests` (5).
 
-157. **Дизайнер: библиотеки контролов подключаются командами (предложение, не реализовано).** Обсуждено с
+157. **Дизайнер: библиотеки контролов подключаются командами (реализовано 2026-09-26 — решения 158–161).** Обсуждено с
     заказчиком 2026-09-25. Сейчас набор сборок дизайнера фиксирован (`TypeResolver.DefaultAssemblies()`), чужие типы —
     `DesignerPlaceholder`. Предложение: команда палитры `NetForms: Add Control Library…` с шестью источниками (NuGet по
     имени, `.dll`, `.nupkg`/фид, папка проекта со своими контролами, другой `.csproj`, NuGet уже из csproj) — не
@@ -2077,6 +2077,55 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     кода (Workspace Trust, плашка ошибки вместо падения), блокировка `.dll` на Windows (теневая копия), выгрузка ALC.
     Порядок: свой проект + NuGet из csproj → другой csproj → `.dll` → NuGet по имени/`.nupkg`. Подробно —
     `docs/designer-control-libraries.md`.
+
+### Библиотеки контролов в дизайнере (2026-09-26, Linux)
+
+Заказчик: «в docs есть план по доработке дизайнера — делай» (`docs/designer-control-libraries.md`, решение 157). Сделаны
+все четыре этапа плана; подробности и отличия от предложения — в разделе «Как реализовано» того документа.
+
+158. **Сборки проекта — в collectible `AssemblyLoadContext` из теневой копии, общее — хостовое.** `DesignerLibraries`
+    грузит выход `dotnet build` проекта (его сборку и всё управляемое рядом; зависимости — `AssemblyDependencyResolver`
+    по `deps.json`, т. е. как при запуске приложения — резолвера пакетов своего нет). Всё, что есть у хоста (TPA и
+    загруженное: NetForms, фасад `System.Windows.Forms`, System.Drawing, BCL, SkiaSharp, Avalonia), берётся хостовое при
+    любой запрошенной версии — иначе `Control` проекта не `Control` дизайнера. Теневая копия пропускает сборки и нативы
+    хоста (выход приложения ~565 МБ → копия < 1 МБ, загрузка ~0,2 с) — `dotnet build` не упирается в занятую `.dll`.
+    Выгрузка: `TypeDescriptor.Refresh(Assembly)` недостаточно — компонентная модель держит типы в `s_defaultProviderInitialized`,
+    `s_providerTypeTable` и `_typeData` провайдера отражения; чистим их reflection-ом и зовём
+    `ReflectionCachesUpdateHandler.ClearCache` (обработчик hot reload). Тест `AnUnloadedLibraryIsCollected` (контекст
+    собирается после правки, панели свойств и рендера) найден через `dotnet-dump gcroot`. Протокол: `libraries`
+    (открытая форма перечитывается с новыми типами — файл остаётся правдой, отмена начинается заново), `toolbox
+    {libraries}`, `scan`, `scanPackage`. Форма может наследовать форму проекта (корень — экземпляр базового класса).
+159. **Красный крест вместо падения — как в WinForms.** `Control.PaintClientArea`: исключение в
+    `OnPaintBackground`/`OnPaint` запоминается, контрол с тех пор рисуется белым прямоугольником с красной рамкой и
+    крестом (`PaintWithErrorHandling` WinForms); вне дизайнера исключение один раз уходит дальше (к приложению), на
+    поверхности дизайна (`DesignMode`) — нет, в кресте тип и текст ошибки. Исключение конструктора контрола не из
+    NetForms/BCL при чтении формы — `DesignerPlaceholder(typeName, error)`, тоже крест с текстом; форма открывается.
+    Заглушка теперь хранит **аргументы конструктора** (`CreationArguments`) и пишет их обратно: раньше
+    `new MyGauge(components)` неизвестного типа превращался в `new MyGauge()` — исправлено для всех заглушек.
+160. **Проверка библиотеки — без выполнения её кода.** `ControlLibraryScanner` (`MetadataLoadContext`, файл не
+    блокируется): ссылается на `NetForms` — годится; на `System.Windows.Forms` без `NetForms` — предупреждение (фасад
+    отдаёт её контролы дизайнеру, но компиляция — решение 136); `.NETFramework`/.NET новее 10 — отказ. Пакет: папка
+    `lib/` для net10.0 (net10.0 > … > net5.0 > netcoreapp3.1 > netstandard2.1 > 2.0; `-windows` — предупреждение; только
+    net4x — отказ), нативы только `runtimes/win-*` — предупреждение, id/версия из `.nuspec`. Элемент тулбокса — как в VS:
+    открытый неабстрактный необобщённый `IComponent` с конструктором без параметров, без `[ToolboxItem(false)]` и
+    `[DesignTimeVisible(false)]` (наследуемых), не форма; иконка — `[ToolboxBitmap]` или ресурс `Namespace.Type.bmp`.
+    Группы библиотек в тулбоксе — **первыми** (как «Компоненты <Проект>» в VS).
+161. **Расширение: три команды, `.vscode/netforms.json`, Workspace Trust.** `Add Control Library…` — шесть источников
+    плана и «Недавние» (`globalState`); `Remove Control Library` («только с панели» / «и из проекта»); `Rescan Toolbox`
+    (`dotnet build` + перезагрузка). Сессия сама перечитывает библиотеки после сборки (наблюдение за `bin/`, `obj/`,
+    `.csproj`, `netforms.json`, `bin/` проектов-ссылок; перезагрузка — только если сменились пути/время файлов).
+    Состав тулбокса — `.vscode/netforms.json` рабочей папки, по проектам (ключ — путь `.csproj` от папки). Пакет
+    библиотеки классов (не копируется в `bin/`) — из кэша NuGet по `project.assets.json`; проект-ссылка — из его
+    собственного `bin/`, если он свежее копии. В ограниченном режиме — только метаданные, элементы серые, добавлять
+    нельзя (`capabilities.untrustedWorkspaces: limited`). Не с nuget.org — отдельное подтверждение. Поиск nuget.org
+    (`azuresearch-usnc`) в облачной среде закрыт прокси и проверен только адресом; без него id вводится руками.
+    Не сделано осознанно: свои дизайнеры и `UITypeEditor` библиотек (только `TypeConverter`).
+
+**Состояние тестов на конец сессии (решения 158–161, 2026-09-26, Linux):** .NET — **504/504** (было 484; +20
+`ControlLibraryTests`). Расширение — **40/40** (было 32: +8 `libraries.test.js`, +1 протокол с библиотекой, +1 UI —
+группа с иконкой и `Gauge` на форме; UI-тесты — в Chromium). ApiDiff не менялся (публичный API WinForms не тронут).
+Проверено вручную: приложение NetForms со своим контролом в папке и проектом-библиотекой — группы, живые контролы на
+холсте, правка пишет файл, перезагрузка после сборки.
 
 **Состояние тестов на конец сессии (решения 153–156, 2026-09-25, Linux):** .NET — **484/484** (было 436; +48:
 `PrintingTests` 21, `DragDropTests` 12, `TreeViewCompletionTests` 10, `ContainerAccessibilityTests` 5). Оракулы WinForms
@@ -2324,9 +2373,10 @@ Windows и Linux CI; процент собравшихся без ручной �
 > в `docs/compatibility.md` § 8 (он же `docs/api/usage.md`).
 > Каждое изменение — тест, сценарий оракула, `docs/compatibility.md` (англ. и рус.), `NetForms.ApiDiff --markdown
 > docs/api` и `--usage <клоны корпуса> --out docs/api/usage.md`; пуш — после зелёных `dotnet test NetForms.slnx` и
-> `designer: npm test`. Решения, которых нет в плане, записывай в журнал (со 153).
+> `designer: npm test`. Решения, которых нет в плане, записывай в журнал (со 162).
 
-**Состояние на 2026-09-25.** Выпущен `0.1.0-preview.6` (решение 152): копирование и вставка в дизайнере, контекстное
+**Состояние на 2026-09-26.** В `main` после `0.1.0-preview.6`: печать, drag-and-drop, TreeView, модель доступности
+(решения 153–156) и библиотеки контролов в дизайнере (решения 157–161) — ещё не выпущены. Выпущен `0.1.0-preview.6` (решение 152): копирование и вставка в дизайнере, контекстное
 меню, шаблоны форм, стартовая форма, публикация, проверка обновлений (решение 151). До него — `0.1.0-preview.5`
 (решение 150): редактор коллекций TabPages и пунктов меню, переключение вкладок на холсте дизайнера (решение 149). До него — `0.1.0-preview.4` (решение 148): строка для новых записей `DataGridView` —
 настоящая строка, первая ячейка показанной сетки становится текущей, столбцы-картинки (решение 147), порядок работ по
@@ -2376,8 +2426,9 @@ Windows и Linux CI; процент собравшихся без ручной �
    чтобы компилировались сторонние пакеты контролов (ZedGraph, OxyPlot, ScottPlot, FastColoredTextBox,
    ObjectListView); для DockPanelSuite ещё и снятие `FrameworkReference` WindowsDesktop.
 7. Держать рядом `../GoForms/GoFormsDesigner/README.md` — список приёмки дизайнера.
-8. **Библиотеки контролов в дизайнере** (решение 157, `docs/designer-control-libraries.md`) — по согласованию с
-   заказчиком; начинать с контролов своего проекта и NuGet, уже прописанного в csproj.
+8. ~~**Библиотеки контролов в дизайнере**~~ — **сделано 2026-09-26** (решения 157–161,
+   `docs/designer-control-libraries.md`). Осталось: свои дизайнеры и `UITypeEditor` библиотек; поиск nuget.org проверить
+   на машине с доступом к `azuresearch-*.nuget.org`; выпуск расширения с этими командами.
 
 Особенности облачной среды (Linux): .NET SDK — `apt-get update && apt-get install -y dotnet-sdk-10.0` (`dot.net`
 закрыт прокси); `azuresearch-*.nuget.org` и `marketplace.visualstudio.com` закрыты — `dotnet new install <id>` из

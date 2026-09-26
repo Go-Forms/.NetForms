@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { DesignerView, findHost, HostClient, HostRequestError, Op } from './hostClient';
+import { librariesChanged, ProjectLibraries, projectFileOf, resolveLibraries } from './libraryCommands';
 
 type FromWebview =
 	| { type: 'ready' }
@@ -21,7 +22,9 @@ type FromWebview =
 	| { type: 'copy'; ids: string[] }
 	| { type: 'cut'; ids: string[]; select?: string[] }
 	| { type: 'paste'; parent: string }
-	| { type: 'duplicate'; ids: string[] };
+	| { type: 'duplicate'; ids: string[] }
+	| { type: 'rescan' }
+	| { type: 'addLibrary' };
 
 /** The marker of the text the host's copy produces (DesignSurface.ClipboardFormat). */
 const clipboardFormat = 'netforms/components-1';
@@ -64,6 +67,11 @@ export class DesignerSession implements vscode.Disposable {
 	private readonly ownTexts: string[] = [];
 	private writing = 0;
 	private recheck = false;
+	/** The project's libraries as last loaded, and what they were loaded from (to skip a reload that changes nothing). */
+	private libraries: ProjectLibraries | undefined;
+	private loadedSignature = '';
+	private libraryTimer: NodeJS.Timeout | undefined;
+	private readonly projectFile: string | undefined;
 
 	constructor(
 		readonly document: vscode.TextDocument,
@@ -80,6 +88,80 @@ export class DesignerSession implements vscode.Disposable {
 		this.subscriptions.push(vscode.workspace.onDidSaveTextDocument((d) => {
 			if (d === document) this.changed();
 		}));
+		// The project's controls and libraries (decision 157): reloaded after each build of the project (its
+		// bin/ and obj/ change), after Add/Remove Control Library and Rescan, and when the folder becomes trusted.
+		this.projectFile = projectFileOf(this.file);
+		this.subscriptions.push(librariesChanged.event((project) => {
+			if (this.projectFile && path.resolve(project) === path.resolve(this.projectFile)) this.librariesSoon(0);
+		}));
+		this.subscriptions.push(vscode.workspace.onDidGrantWorkspaceTrust(() => this.librariesSoon(0)));
+		if (this.projectFile) {
+			const dir = path.dirname(this.projectFile);
+			for (const pattern of ['{bin,obj}/**/*.{dll,json}', '*.csproj']) {
+				const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(dir, pattern));
+				const soon = () => this.librariesSoon(1500);
+				watcher.onDidCreate(soon); watcher.onDidChange(soon); watcher.onDidDelete(soon);
+				this.subscriptions.push(watcher);
+			}
+			const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(this.projectFile));
+			if (folder) {
+				const config = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, '.vscode/netforms.json'));
+				const soon = () => this.librariesSoon(300);
+				config.onDidCreate(soon); config.onDidChange(soon); config.onDidDelete(soon);
+				this.subscriptions.push(config);
+			}
+		}
+	}
+
+	/** A build writes many files: the libraries are reloaded once it has settled. */
+	private librariesSoon(delay: number) {
+		if (this.libraryTimer) clearTimeout(this.libraryTimer);
+		this.libraryTimer = setTimeout(() => { this.libraryTimer = undefined; void this.reloadLibraries(); }, delay);
+	}
+
+	/** What the loaded assemblies were built from: the paths and their times. */
+	private static signature(libs: ProjectLibraries | undefined): string {
+		if (!libs) return '';
+		return libs.load.map((f) => { try { return `${f}@${fs.statSync(f).mtimeMs}`; } catch { return f; } }).join('|');
+	}
+
+	/** Loads the project's build output into the host (when it changed) and returns the toolbox groups. */
+	private async loadLibraries(host: HostClient): Promise<{ view?: DesignerView }> {
+		try { this.libraries = resolveLibraries(this.file); }
+		catch (err) { this.log.appendLine(`Libraries of ${this.file}: ${err instanceof Error ? err.message : err}`); this.libraries = undefined; }
+		const signature = DesignerSession.signature(this.libraries);
+		if (signature === this.loadedSignature) return {};
+		this.loadedSignature = signature;
+		let result;
+		try { result = await host.libraries(this.libraries?.load ?? []); }
+		catch (err) {
+			// A host older than the libraries (netforms.designerHostPath): the form opens without them.
+			this.log.appendLine(`Designer libraries: ${err instanceof Error ? err.message : err}`);
+			return {};
+		}
+		for (const e of result.errors) this.log.appendLine(`Designer libraries: ${e}`);
+		if (result.error) this.reportError(new HostRequestError(result.error));
+		return { view: result.view };
+	}
+
+	private async toolbox(host: HostClient) {
+		try { return await host.toolbox(this.libraries?.groups ?? []); }
+		catch (err) {
+			this.log.appendLine(`Toolbox of the project: ${err instanceof Error ? err.message : err}`);
+			return host.toolbox();
+		}
+	}
+
+	private async reloadLibraries() {
+		const host = this.host;
+		if (!host?.alive) return;
+		try {
+			const view: DesignerView | undefined = await this.write(async () => (await this.loadLibraries(host)).view as DesignerView);
+			if (view) this.post({ type: 'view', view });
+			this.post({ type: 'toolbox', toolbox: await this.toolbox(host), notice: this.libraries?.notice });
+		} catch (err) {
+			this.reportError(err);
+		}
 	}
 
 	get file(): string { return this.document.uri.fsPath; }
@@ -88,6 +170,7 @@ export class DesignerSession implements vscode.Disposable {
 
 	private ensureHost(): HostClient {
 		if (this.host?.alive) return this.host;
+		this.loadedSignature = ''; // a new process has nothing loaded
 		const hostPath = findHost(this.context.extensionPath, this.file);
 		if (!hostPath) throw new Error(vscode.l10n.t('The NetForms designer host was not found. Build tools/NetFormsDesigner.Host or set "netforms.designerHostPath".'));
 		this.log.appendLine(`Starting the designer host: ${hostPath}`);
@@ -100,11 +183,15 @@ export class DesignerSession implements vscode.Disposable {
 			switch (m.type) {
 				case 'ready': {
 					const host = this.ensureHost();
-					const [view, toolbox] = await Promise.all([host.open(this.file), host.toolbox()]);
+					this.loadedSignature = '';
+					await this.loadLibraries(host);
+					const [view, toolbox] = await Promise.all([host.open(this.file), this.toolbox(host)]);
 					const snap = vscode.workspace.getConfiguration('netforms').get<boolean>('snapToLines', true);
-					this.post({ type: 'init', view, toolbox, snap, strings: vscode.l10n.bundle ?? {} });
+					this.post({ type: 'init', view, toolbox, notice: this.libraries?.notice, snap, strings: vscode.l10n.bundle ?? {} });
 					break;
 				}
+				case 'rescan': await vscode.commands.executeCommand('netforms.rescanToolbox', this.document.uri); break;
+				case 'addLibrary': await vscode.commands.executeCommand('netforms.addControlLibrary', this.document.uri); break;
 				case 'apply': this.show(await this.write(() => this.ensureHost().apply(m.ops)), m.select); break;
 				case 'undo': this.show(await this.write(() => this.ensureHost().undo())); break;
 				case 'redo': this.show(await this.write(() => this.ensureHost().redo())); break;
@@ -226,7 +313,11 @@ export class DesignerSession implements vscode.Disposable {
 		this.show(await this.write(() => this.ensureHost().apply([])));
 	}
 
+	/** The host of this designer, for the library commands (scan before adding). */
+	hostClient(): HostClient { return this.ensureHost(); }
+
 	dispose() {
+		if (this.libraryTimer) clearTimeout(this.libraryTimer);
 		for (const s of this.subscriptions) s.dispose();
 		this.host?.dispose();
 	}

@@ -24,7 +24,11 @@ namespace NetForms.Design;
 /// <item><term>apply</term><description><c>{ops: [DesignerOp…]}</c> → view; one undoable step, all or nothing.</description></item>
 /// <item><term>undo / redo</term><description>→ view.</description></item>
 /// <item><term>properties / events</term><description><c>{id}</c> → the property grid / the Events tab of a component.</description></item>
-/// <item><term>toolbox</term><description>→ categories.</description></item>
+/// <item><term>toolbox</term><description><c>{libraries?: [DesignerToolboxLibrary…]}</c> → categories: a group per library of the project first, then NetForms's.</description></item>
+/// <item><term>libraries</term><description><c>{assemblies: [path…]}</c>: load the build output of the project (its own assembly; what is beside it
+/// comes along) for the forms to use; the open form is read again with it → <c>{assemblies, errors, view?}</c>. An empty list unloads.</description></item>
+/// <item><term>scan</term><description><c>{paths: [path…]}</c> → what each assembly offers the toolbox and whether it can be used; no code of it runs.</description></item>
+/// <item><term>scanPackage</term><description><c>{path}</c>: a <c>.nupkg</c> or an extracted package → the same, for the lib/ folder a net10.0 project takes.</description></item>
 /// <item><term>save</term><description>→ <c>{saved}</c> (only needed with autoSave off).</description></item>
 /// <item><term>close</term><description>closes the form; the host exits after answering.</description></item>
 /// </list>
@@ -39,6 +43,7 @@ public sealed class DesignerProtocol : IDisposable
     };
 
     private DesignSurface? _surface;
+    private DesignerLibraries _libraries = DesignerLibraries.None;
 
     /// <summary>Set once "close" has been answered; the host loop stops then.</summary>
     public bool Closed { get; private set; }
@@ -75,7 +80,7 @@ public sealed class DesignerProtocol : IDisposable
                 var path = (string?)p["path"] ?? throw new DesignerEditException("open needs a path.");
                 _surface?.Dispose();
                 _surface = null;
-                _surface = DesignSurface.Open(path);
+                _surface = DesignSurface.Open(path, _libraries);
                 _surface.AutoSave = (bool?)p["autoSave"] ?? true;
                 return _surface.Render();
             }
@@ -103,18 +108,62 @@ public sealed class DesignerProtocol : IDisposable
             case "events":
                 return Current().GetEvents((string?)p["id"]);
             case "toolbox":
-                return DesignerToolbox.Categories();
+                return DesignerToolbox.Categories(p["libraries"]?.Deserialize<List<DesignerToolboxLibrary>>(s_json), _libraries);
+            case "libraries":
+                return LoadLibraries(p["assemblies"]?.Deserialize<List<string>>(s_json) ?? new List<string>());
+            case "scan":
+                return ControlLibraryScanner.Scan(p["paths"]?.Deserialize<List<string>>(s_json) ?? new List<string>());
+            case "scanPackage":
+                return ControlLibraryScanner.ScanPackage((string?)p["path"] ?? throw new DesignerEditException("scanPackage needs a path."));
             case "save":
                 Current().Save();
                 return new { saved = true };
             case "close":
                 _surface?.Dispose();
                 _surface = null;
+                _libraries.Dispose();
+                _libraries = DesignerLibraries.None;
                 Closed = true;
                 return new { closed = true };
             default:
                 throw new DesignerEditException($"Unknown method '{method}'.");
         }
+    }
+
+    /// <summary>
+    /// Replaces the project's assemblies. The open form is read again with the new ones (its file is the
+    /// truth, so nothing is lost; undo history starts over), and only then are the old ones unloaded - no
+    /// object of theirs is left on the canvas.
+    /// </summary>
+    private object LoadLibraries(List<string> assemblies)
+    {
+        var next = DesignerLibraries.Load(assemblies);
+        var old = _libraries;
+        var oldSurface = _surface;
+        _libraries = next;
+        DesignerView? view = null;
+        object? error = null;
+        if (oldSurface?.FilePath != null)
+        {
+            oldSurface.Save();
+            _surface = null;
+            oldSurface.Dispose();
+            try
+            {
+                _surface = DesignSurface.Open(oldSurface.FilePath, _libraries);
+                _surface.AutoSave = oldSurface.AutoSave;
+                view = _surface.Render();
+            }
+            catch (Exception ex) { error = Error(ex); }
+        }
+        if (!ReferenceEquals(old, next)) old.Dispose();
+        return new
+        {
+            assemblies = next.Assemblies.Select(a => a.GetName().Name).ToList(),
+            errors = next.Errors,
+            view,
+            error,
+        };
     }
 
     private DesignSurface Current() => _surface ?? throw new DesignerEditException("No form is open.");
@@ -126,5 +175,9 @@ public sealed class DesignerProtocol : IDisposable
         _ => new { kind = "internal", message = ex.Message, detail = ex.ToString() },
     };
 
-    public void Dispose() => _surface?.Dispose();
+    public void Dispose()
+    {
+        _surface?.Dispose();
+        _libraries.Dispose();
+    }
 }

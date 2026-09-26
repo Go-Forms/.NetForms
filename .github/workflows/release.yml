@@ -108,6 +108,8 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: dotnet build ../tools/NetFormsDesigner.Host -c Release
+      # The control library the protocol and UI tests load as a project's build (decision 157).
+      - run: dotnet build ../tests/Fixtures/ControlLibrary -c Release
       - if: ${{ !inputs.tested }}
         run: npm test
       # One .vsix per platform (only that platform's SkiaSharp natives), plus the universal one. A NetForms

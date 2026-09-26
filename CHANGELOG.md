@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Designer — the project's own controls and control libraries:** the toolbox has the project's controls, user
+  controls and components from its last build (a **<Project> Components** group, as in Visual Studio), live on the
+  canvas with their own properties, events and painting. **NetForms: Add Control Library…** adds controls from a NuGet
+  package, a `.dll`, a local `.nupkg`/feed, another project, a folder of the project or a package the project already
+  references; each library is checked before it is added without running its code (built for NetForms, for the real
+  WinForms, Windows-only, no .NET 10-compatible framework). **Remove Control Library**, **Rescan Toolbox**; the toolbox
+  groups are kept in `.vscode/netforms.json`. Restricted Mode lists the controls but loads none of their code. A form can
+  derive from a form of the project.
+- **A control whose painting throws is drawn as a red cross**, as in WinForms: the exception reaches the application
+  once, then the control shows the cross. In the designer, a control whose constructor or `OnPaint` throws is a red
+  cross with the error, and the form still opens.
+- **Designer:** a placeholder (a control of an unknown type) keeps its constructor arguments — `new MyGauge(components)`
+  was written back as `new MyGauge()`.
 - **Printing — `System.Drawing.Printing` complete:** `PrintDocument` with WinForms' page loop (`BeginPrint`,
   `QueryPageSettings`, `PrintPage`, `EndPrint`, cancel), `PageSettings`/`PrinterSettings` with the printer's paper
   sizes, trays, resolutions, duplex and colour, `Margins`, `PrinterUnitConvert`, `OriginAtMargins`; a page's `Graphics`

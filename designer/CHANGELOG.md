@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **The project's own controls in the toolbox**: its controls, user controls and components from the last build, in a
+  **<Project> Components** group at the top, as in Visual Studio - live on the canvas, with their properties, events and
+  painting. After a build (terminal, F5, or **↻** in the toolbox) the designer reloads them by itself.
+- **NetForms: Add Control Library…** (also **+ Control Library…** in the toolbox and the `.csproj` context menu): a NuGet
+  package (search nuget.org, pick a version), a `.dll` (copied into `libs/`), a local `.nupkg` or feed (added to
+  `nuget.config`), another project (`dotnet add reference`), a folder of this project (a group of its own), or a package
+  the project already references. The library is checked before it is added - without running its code - and you tick
+  the controls to show, with their `[ToolboxBitmap]` icons. Libraries added before are offered first.
+- **NetForms: Remove Control Library** (from the toolbox, or from the project too) and **NetForms: Rescan Toolbox**.
+- The toolbox groups live in `.vscode/netforms.json` - commit it and colleagues get the same toolbox.
+- **Restricted Mode:** the project's controls are listed from their metadata, greyed out; none of their code runs.
+- A control whose constructor or `OnPaint` throws is a **red cross with the error**; the form still opens.
+
 ## 0.1.5
 
 - **Copy, cut, paste and duplicate** controls: Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+D (and VS Code's Edit menu). A copy

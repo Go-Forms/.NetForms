@@ -19,5 +19,9 @@
 	"config.designerHostPath": "Path to NetFormsDesigner.Host.dll (or the executable). Empty: the host bundled with the extension, then a NetForms checkout found above the opened file.",
 	"config.dotnetPath": "The dotnet executable used to run the designer host and new projects.",
 	"config.checkForUpdates": "Look for a newer NetForms (the projects' package, the templates, this extension, the .NET SDK) once a day and say when there is one.",
-	"config.snapToLines": "Snap controls to the edges, centres and margins of their neighbours while dragging (hold Alt to move freely)."
+	"config.snapToLines": "Snap controls to the edges, centres and margins of their neighbours while dragging (hold Alt to move freely).",
+	"command.addControlLibrary": "Add Control Library…",
+	"command.removeControlLibrary": "Remove Control Library",
+	"command.rescanToolbox": "Rescan Toolbox",
+	"capabilities.untrusted": "In Restricted Mode forms open and are edited, but the controls of the project and its libraries are only listed from their metadata: none of their code runs, and no library can be added."
 }

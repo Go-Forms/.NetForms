@@ -55,6 +55,9 @@ description from the assembly attributes), a **login form** (user name and passw
 | NetForms: Set as Startup Form | | `Application.Run` in `Program.cs` starts this form (context menu of a `*.Designer.cs`, and of the form on the canvas). |
 | NetForms: Check for Updates… | | What is behind, in one list to tick: the NetForms package of the workspace's projects, the templates, this extension (from the GitHub release), the .NET SDK (its update command is typed into a terminal for you to run: it may need `sudo`). Also once a day on its own (`netforms.checkForUpdates`). |
 | NetForms: Publish Application… | | `dotnet publish` for Windows or Linux (x64, ARM64), self-contained or framework-dependent, into `publish/<rid>` next to the project. |
+| NetForms: Add Control Library… | | Controls from a NuGet package, a `.dll`, a local `.nupkg`/feed, another project, a folder of this project, or a package the project already references ([Control libraries](#control-libraries)). Also in the toolbox and the Explorer context menu of a `.csproj`. |
+| NetForms: Remove Control Library | | Takes a library's group out of the toolbox, and its reference out of the `.csproj` if you say so. |
+| NetForms: Rescan Toolbox | | Builds the project and reads its controls and libraries again (**↻** in the toolbox). |
 | NetForms: Set Designer Host Path… | | Use another designer host. |
 | NetForms: Check Setup | | Shows the `dotnet`, the designer host and the templates found. |
 
@@ -89,15 +92,47 @@ A click on a tab header of a TabControl shows that page, so each page is laid ou
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
 down; `-` adds a menu separator.
 
+## Control libraries
+
+The toolbox has the project's own controls, as Visual Studio's **<Project> Components** group: every public control,
+user control and component of the project (not its forms) from the **last successful build**. After a build - in the
+terminal, F5 or **↻** in the toolbox - the designer reloads them by itself; a control added since the last build stays a
+placeholder with its type name until the next one.
+
+Other libraries are added with **NetForms: Add Control Library…** (the **+ Control Library…** button in the toolbox);
+nothing is installed on its own when a form opens or a control is dropped. The sources:
+
+| Source | What happens to the project |
+|---|---|
+| NuGet package | Search nuget.org, pick a version; the package is downloaded and checked first, then `dotnet add package`. |
+| `.dll` file | A `<Reference>` with a `HintPath`; the file is copied into `libs/` of the project so it builds elsewhere too. |
+| `.nupkg` or a local feed | The folder becomes a package source in the project's `nuget.config`, then as a NuGet package. |
+| Folder of this project | Nothing: the controls of that folder (its namespace) get a toolbox group of their own. |
+| Another project | `dotnet add reference`; its controls follow its builds. |
+| NuGet package already in the project | Nothing: you pick which packages to show. |
+
+Before a library is added, its assemblies are read **without running any of its code**: built for NetForms - added; built
+for the real System.Windows.Forms - a warning (the project may not compile on Linux); native parts for Windows only - a
+warning; built for the .NET Framework or without a .NET 10-compatible framework - not added, with the reason. Then it
+lists the controls and components it found, with their `[ToolboxBitmap]` icons; untick the ones the toolbox should not show.
+
+References live in the `.csproj`; the toolbox groups in **`.vscode/netforms.json`** (commit it, and colleagues get the same
+toolbox). A library whose reference has left the `.csproj` is hidden, not an error. Libraries added before are offered
+first in the next project.
+
+A library's code runs in the designer host, as it does in Visual Studio. In a folder you have not trusted (Restricted
+Mode) the toolbox lists the controls from their metadata only: none of their code is loaded, and nothing can be added.
+A control whose constructor or `OnPaint` throws is drawn as a red cross with the error - the form still opens and
+nothing of it is lost. The assemblies are loaded from a copy, so the next build is never blocked by a locked `.dll`.
+
 ## Not yet
 
 - Writing `.resx`: a new image picked in the property grid, editing a `Localizable = true` form (such forms
   open read-only with an explanation).
 - Extender properties (`ToolTip on toolTip1`, `Error on errorProvider1`) in the property grid — they are
   kept in the file, just not shown.
-- Controls from third-party libraries and the project's own controls: on the canvas they are still
-  placeholders showing the type name. The planned design (in Russian):
-  [designer-control-libraries.md](designer-control-libraries.md).
+- Design-time extras of third-party libraries: their own designers (`[Designer]`, smart tags) and `UITypeEditor`s.
+  Their `TypeConverter`s work. How the libraries are loaded (in Russian): [designer-control-libraries.md](designer-control-libraries.md).
 
 ## Language
 

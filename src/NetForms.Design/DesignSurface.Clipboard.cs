@@ -284,7 +284,7 @@ public sealed partial class DesignSurface
     /// <summary>A new component of the node's type, named as the original when that name is free.</summary>
     private object Create(ClipNode node, Dictionary<string, string> renames, out DesignerComponent component)
     {
-        var type = DesignerToolbox.ResolveType(node.Type ?? "")
+        var type = DesignerToolbox.ResolveType(node.Type ?? "", _libraries)
             ?? throw new DesignerEditException($"'{node.Type}' is not a component the designer knows.");
         IComponent instance;
         try { instance = (IComponent)Activator.CreateInstance(type)!; }

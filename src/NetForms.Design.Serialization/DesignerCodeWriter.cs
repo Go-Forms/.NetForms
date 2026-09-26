@@ -400,7 +400,8 @@ public sealed class DesignerCodeWriter
         private string Creation(DesignerComponent c)
         {
             string type = c.IsPlaceholder ? c.TypeName : _namer.Name(c.Type);
-            string args = UsesContainer(c) && _model.Fields.Any(f => f.Name == "components") ? Member(_model.Root.Instance, "components") : "";
+            string args = c.IsPlaceholder ? c.CreationArguments ?? ""
+                : UsesContainer(c) && _model.Fields.Any(f => f.Name == "components") ? Member(_model.Root.Instance, "components") : "";
             return $"{Target(c.Instance)} = new {type}({args});";
         }
 

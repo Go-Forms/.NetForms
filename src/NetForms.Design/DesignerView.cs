@@ -172,6 +172,15 @@ public sealed class DesignerEventRow
 public sealed class DesignerToolboxCategory
 {
     public string Name { get; set; } = "";
+
+    /// <summary>A group of the project's control libraries (decision 157), not of NetForms.</summary>
+    public bool Library { get; set; }
+
+    /// <summary>The library's key in the client's configuration.</summary>
+    public string? Id { get; set; }
+
+    /// <summary>Why assemblies of the library cannot be used (built for the .NET Framework, …).</summary>
+    public List<string> Errors { get; set; } = new();
     public List<DesignerToolboxItem> Items { get; set; } = new();
 }
 
@@ -183,4 +192,10 @@ public sealed class DesignerToolboxItem
 
     /// <summary>It lands in the component tray, not on the form.</summary>
     public bool Tray { get; set; }
+
+    /// <summary>16×16 PNG (base64) from the type's <c>[ToolboxBitmap]</c>; null for the default icon.</summary>
+    public string? Icon { get; set; }
+
+    /// <summary>Why it cannot be added now (its assembly is not loaded); null when it can.</summary>
+    public string? Unavailable { get; set; }
 }

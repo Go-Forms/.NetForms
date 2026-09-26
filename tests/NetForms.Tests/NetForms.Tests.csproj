@@ -20,6 +20,8 @@
     <ProjectReference Include="../../src/NetForms.Design/NetForms.Design.csproj" />
     <ProjectReference Include="../../tools/NetForms.Convert/NetForms.Convert.csproj" />
     <ProjectReference Include="../../tools/NetForms.ApiDiff/NetForms.ApiDiff.csproj" />
+    <!-- Built, never referenced: ControlLibraryTests load its output as the designer loads a project's. -->
+    <ProjectReference Include="../Fixtures/ControlLibrary/ControlLibrary.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../Shared/CompatScenarios.cs" />

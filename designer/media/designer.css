@@ -49,6 +49,16 @@ button, input, select { font: inherit; color: inherit; }
 .tb-item { padding: 3px 8px 3px 22px; cursor: grab; white-space: nowrap; }
 .tb-item:hover { background: var(--vscode-list-hoverBackground); }
 .tb-item .tray-mark { opacity: .6; font-size: 90%; }
+.tb-item .tb-icon { width: 16px; height: 16px; margin: 0 6px 0 -18px; vertical-align: -3px; display: inline-block; text-align: center; font-size: 12px; line-height: 16px; }
+.tb-item .tb-default-icon { opacity: .6; }
+.tb-item.unavailable { opacity: .45; cursor: not-allowed; }
+.tb-group > .tb-head.library { font-style: italic; }
+.tb-actions { display: flex; gap: 4px; padding: 0 8px 6px; }
+.tb-action { flex: 0 0 auto; font: inherit; font-size: 90%; padding: 2px 8px; color: var(--vscode-button-secondaryForeground, inherit); background: var(--vscode-button-secondaryBackground, transparent); border: 1px solid var(--vscode-button-border, var(--vscode-panel-border, #8884)); border-radius: 2px; cursor: pointer; }
+.tb-action:first-child { flex: 1 1 auto; text-align: left; }
+.tb-action:hover { background: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground)); }
+.tb-notice { margin: 0 8px 6px; padding: 4px 6px; font-size: 90%; border-left: 3px solid var(--vscode-editorInfo-foreground, #3794ff); background: var(--vscode-textBlockQuote-background, #8881); }
+.tb-error { padding: 2px 8px 2px 22px; font-size: 90%; color: var(--vscode-errorForeground, #f44); }
 
 /* --- workspace --------------------------------------------------------------------------------- */
 #workspace { flex: 1; overflow: auto; position: relative; display: flex; flex-direction: column; }

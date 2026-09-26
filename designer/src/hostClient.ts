@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import * as vscode from 'vscode';
+import type { ToolboxLibrary } from './libraries';
 
 export interface ViewItem {
 	id: string;
@@ -53,6 +54,33 @@ export interface Op {
 	x?: number; y?: number; w?: number; h?: number;
 	prop?: string; value?: string; values?: string[]; ids?: string[];
 	event?: string; handler?: string;
+}
+
+export interface LibrariesResult { assemblies: string[]; errors: string[]; view?: DesignerView; error?: HostError; }
+
+export interface LibraryFinding { code: string; severity: 'warning' | 'error'; message: string; }
+
+export interface LibraryItem { type: string; name: string; namespace: string; tray: boolean; icon?: string; }
+
+export interface LibraryReport {
+	path: string;
+	name: string;
+	targetFramework?: string;
+	netForms: boolean;
+	verdict: 'ok' | 'warning' | 'error';
+	findings: LibraryFinding[];
+	items: LibraryItem[];
+}
+
+export interface PackageReport {
+	path: string;
+	id?: string;
+	version?: string;
+	frameworks: string[];
+	framework?: string;
+	verdict: 'ok' | 'warning' | 'error';
+	findings: LibraryFinding[];
+	assemblies: LibraryReport[];
 }
 
 export interface HostError { kind: 'edit' | 'code' | 'internal'; message: string; file?: string; line?: number; column?: number; detail?: string; }
@@ -140,7 +168,13 @@ export class HostClient implements vscode.Disposable {
 	redo() { return this.request<DesignerView>('redo'); }
 	properties(id: string) { return this.request<any[]>('properties', { id }); }
 	events(id: string) { return this.request<any[]>('events', { id }); }
-	toolbox() { return this.request<any[]>('toolbox'); }
+	/** NetForms's groups, then one per library of the project (decision 157). */
+	toolbox(libraries?: ToolboxLibrary[]) { return this.request<any[]>('toolbox', libraries ? { libraries } : undefined); }
+	/** Loads the project's build output (or unloads it: []); the open form is read again with it. */
+	libraries(assemblies: string[]) { return this.request<LibrariesResult>('libraries', { assemblies }); }
+	/** What the assemblies offer the toolbox and whether they can be used; runs none of their code. */
+	scan(paths: string[]) { return this.request<LibraryReport[]>('scan', { paths }); }
+	scanPackage(file: string) { return this.request<PackageReport>('scanPackage', { path: file }); }
 	/** The components as clipboard text (with everything inside them). */
 	copy(ids: string[]) { return this.request<{ text: string }>('copy', { ids }).then((r) => r.text); }
 

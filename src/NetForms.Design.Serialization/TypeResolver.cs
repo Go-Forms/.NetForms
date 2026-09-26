@@ -37,6 +37,7 @@ internal sealed class TypeResolver
             Type[] types;
             try { types = asm.GetExportedTypes(); }
             catch (ReflectionTypeLoadException ex) { types = ex.Types.Where(t => t != null).ToArray()!; }
+            catch (Exception) { continue; } // a library whose dependencies are missing: its types stay unknown (placeholders)
             foreach (var t in types)
             {
                 var name = (t.FullName ?? t.Name).Replace('+', '.');

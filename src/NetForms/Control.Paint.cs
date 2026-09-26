@@ -50,15 +50,32 @@ public partial class Control
         clip.Intersect(client);
         if (clip.IsEmpty) return;
 
-        using (var e = new PaintEventArgs(g, clip))
+        if (_paintException != null)
         {
+            DrawPaintException(g, client);
+        }
+        else
+        {
+            using var e = new PaintEventArgs(g, clip);
             var state = g.Save();
-            OnPaintBackground(e);
-            g.Restore(state);
-
-            state = g.Save();
-            OnPaint(e);
-            g.Restore(state);
+            try
+            {
+                OnPaintBackground(e);
+                g.Restore(state);
+                state = g.Save();
+                OnPaint(e);
+                g.Restore(state);
+            }
+            catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException or AccessViolationException))
+            {
+                // WinForms (PaintWithErrorHandling): the control is drawn as a red cross from now on, and the
+                // exception goes on to the application - except on a design surface, which must stay up
+                // whatever a control of the user's does (decision 159): there the cross says what failed.
+                g.Restore(state);
+                _paintException = ex;
+                DrawPaintException(g, client);
+                if (!DesignMode) throw;
+            }
         }
 
         if (_controls != null)
@@ -71,6 +88,30 @@ public partial class Control
             foreach (var adornment in _adornments) PaintChild(g, adornment, clip);
         }
         OnPaintOverlay(g);
+    }
+
+    /// <summary>The exception the control's painting threw; it is drawn as a red cross ever after (WinForms).</summary>
+    private Exception? _paintException;
+
+    /// <summary>The red cross of a control whose painting failed; on a design surface with what failed written in it.</summary>
+    private void DrawPaintException(Graphics g, Rectangle client)
+    {
+        DrawErrorPlate(g, client, DesignMode ? $"{GetType().Name}: {_paintException!.GetType().Name}: {_paintException.Message}" : null);
+    }
+
+    /// <summary>White, a red frame and a red cross (Control.PaintException in WinForms), and an optional text.</summary>
+    internal static void DrawErrorPlate(Graphics g, Rectangle r, string? text)
+    {
+        if (r.Width <= 0 || r.Height <= 0) return;
+        g.FillRectangle(Brushes.White, r);
+        using var pen = new Pen(Color.Red, 2);
+        g.DrawRectangle(pen, r.X + 1, r.Y + 1, r.Width - 2, r.Height - 2);
+        g.DrawLine(pen, r.Left, r.Top, r.Right, r.Bottom);
+        g.DrawLine(pen, r.Left, r.Bottom, r.Right, r.Top);
+        if (string.IsNullOrEmpty(text)) return;
+        var inner = Rectangle.Inflate(r, -4, -4);
+        TextRenderer.DrawText(g, text, DefaultFont, inner, Color.Black, Color.White,
+            TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis);
     }
 
     private static void PaintChild(Graphics g, Control child, Rectangle clip)

@@ -4,6 +4,9 @@
     <Description>Design-time services of the NetForms designer: a live form on a headless platform, edit operations, undo, rendering and the host protocol.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="System.Reflection.MetadataLoadContext" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="../NetForms/NetForms.csproj" />
     <ProjectReference Include="../NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
   </ItemGroup>

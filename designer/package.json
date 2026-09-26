@@ -41,6 +41,12 @@
 		"cross-platform",
 		"visual designer"
 	],
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": "limited",
+			"description": "%capabilities.untrusted%"
+		}
+	},
 	"activationEvents": [
 		"workspaceContains:**/*.Designer.cs",
 		"workspaceContains:**/*.csproj"
@@ -131,6 +137,23 @@
 				"command": "netforms.checkForUpdates",
 				"title": "%command.checkForUpdates%",
 				"category": "NetForms"
+			},
+			{
+				"command": "netforms.addControlLibrary",
+				"title": "%command.addControlLibrary%",
+				"category": "NetForms",
+				"enablement": "isWorkspaceTrusted"
+			},
+			{
+				"command": "netforms.removeControlLibrary",
+				"title": "%command.removeControlLibrary%",
+				"category": "NetForms"
+			},
+			{
+				"command": "netforms.rescanToolbox",
+				"title": "%command.rescanToolbox%",
+				"category": "NetForms",
+				"icon": "$(refresh)"
 			}
 		],
 		"menus": {
@@ -159,6 +182,11 @@
 				},
 				{
 					"command": "netforms.publish",
+					"when": "resourceExtname == .csproj",
+					"group": "navigation@9"
+				},
+				{
+					"command": "netforms.addControlLibrary",
 					"when": "resourceExtname == .csproj",
 					"group": "navigation@9"
 				},
@@ -214,7 +242,7 @@
 		"typecheck": "tsc --noEmit -p .",
 		"watch": "npm run build -- --watch",
 		"package": "vsce package",
-		"test": "node --test test/geometry.test.js test/l10n.test.js test/version.test.js test/project.test.js test/protocol.test.js test/ui/ui.test.js",
+		"test": "node --test test/geometry.test.js test/l10n.test.js test/version.test.js test/project.test.js test/libraries.test.js test/protocol.test.js test/ui/ui.test.js",
 		"package:targets": "node scripts/package-targets.js",
 		"copy:license": "node -e \"require('fs').copyFileSync('../LICENSE', 'LICENSE')\""
 	},

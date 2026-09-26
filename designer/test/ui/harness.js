@@ -75,9 +75,12 @@ function start(designerFile, options = {}) {
 		const wrap = (res, ok) => (res.error ? [{ type: res.error.kind === 'code' ? 'parseError' : 'error', message: res.error.message, line: res.error.line }] : [ok(res.result)]);
 		switch (m.type) {
 			case 'ready': {
+				// options.libraries = { load, groups }: the project's build and toolbox groups, as the extension
+				// works them out with src/libraries.ts (decision 157).
+				if (options.libraries) await host.call('libraries', { assemblies: options.libraries.load });
 				const opened = await host.call('open', { path: designerFile });
-				const toolbox = await host.call('toolbox');
-				return wrap(opened, (view) => ({ type: 'init', view, toolbox: toolbox.result, snap: true, strings }));
+				const toolbox = await host.call('toolbox', options.libraries ? { libraries: options.libraries.groups } : undefined);
+				return wrap(opened, (view) => ({ type: 'init', view, toolbox: toolbox.result, notice: options.libraries?.notice, snap: true, strings }));
 			}
 			case 'apply': return wrap(await host.call('apply', { ops: m.ops }), (view) => ({ type: 'view', view, select: m.select }));
 			case 'undo': return wrap(await host.call('undo'), (view) => ({ type: 'view', view }));

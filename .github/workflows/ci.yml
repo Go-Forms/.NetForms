@@ -96,6 +96,8 @@ jobs:
         with:
           node-version: 22
       - run: dotnet build ../tools/NetFormsDesigner.Host -c Release
+      # The control library the protocol and UI tests load as a project's build (decision 157).
+      - run: dotnet build ../tests/Fixtures/ControlLibrary -c Release
       - run: npm ci
       - run: npm run typecheck
       - run: npm test

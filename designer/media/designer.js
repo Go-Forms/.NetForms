@@ -23,6 +23,7 @@
 	const state = {
 		view: null,
 		toolbox: [],
+		notice: null, // why the project's own controls are not in the toolbox (not built, restricted mode)
 		selection: [], // ids; the last one is the primary (VS aligns to it); '' is the form
 		zoom: saved.zoom || 1,
 		tab: saved.tab || 'properties',
@@ -63,12 +64,19 @@
 			case 'init':
 				Object.assign(L, m.strings || {});
 				state.toolbox = m.toolbox || [];
+				state.notice = m.notice || null;
 				state.snap = m.snap !== false;
 				receiveView(m.view, null);
 				renderToolbox();
 				break;
 			case 'view':
 				receiveView(m.view, m.select);
+				break;
+			case 'toolbox':
+				// The project was built, or a control library added or removed (decision 157).
+				state.toolbox = m.toolbox || [];
+				state.notice = m.notice || null;
+				renderToolbox();
 				break;
 			case 'properties':
 				if (m.id === primaryId()) { state.props = { id: m.id, rows: m.rows }; renderInspector(); }
@@ -269,7 +277,18 @@
 		search.value = state.filter;
 		search.addEventListener('input', () => { state.filter = search.value.toLowerCase(); renderToolboxGroups(groups); });
 		const groups = el('div');
-		box.append(search, groups);
+		// The project's controls and libraries: add one, or build and read them again.
+		const actions = el('div', 'tb-actions');
+		const add = el('button', 'tb-action', '+ ' + T('Control Library…'));
+		add.title = T('Add Control Library: a NuGet package, a .dll, another project, a folder of this one');
+		add.addEventListener('click', () => post({ type: 'addLibrary' }));
+		const rescan = el('button', 'tb-action', '↻');
+		rescan.title = T('Rescan Toolbox: build the project and read its controls again');
+		rescan.addEventListener('click', () => post({ type: 'rescan' }));
+		actions.append(add, rescan);
+		box.append(search, actions);
+		if (state.notice) box.append(el('div', 'tb-notice', state.notice));
+		box.append(groups);
 		renderToolboxGroups(groups);
 	}
 
@@ -279,20 +298,35 @@
 			const items = cat.items.filter((i) => !state.filter || i.name.toLowerCase().includes(state.filter));
 			if (!items.length) continue;
 			const g = el('div', 'tb-group' + (state.toolboxCollapsed.has(cat.name) && !state.filter ? ' collapsed' : ''));
-			const head = el('div', 'tb-head', T(cat.name));
+			const head = el('div', 'tb-head' + (cat.library ? ' library' : ''), cat.library ? cat.name : T(cat.name));
 			head.addEventListener('click', () => {
 				if (state.toolboxCollapsed.has(cat.name)) state.toolboxCollapsed.delete(cat.name); else state.toolboxCollapsed.add(cat.name);
 				remember();
 				g.classList.toggle('collapsed');
 			});
 			const list = el('div', 'tb-items');
+			for (const error of cat.errors || []) list.append(el('div', 'tb-error', error));
 			for (const item of items) {
-				const row = el('div', 'tb-item', item.name);
+				const row = el('div', 'tb-item' + (item.unavailable ? ' unavailable' : ''));
+				if (item.icon) {
+					const icon = el('img', 'tb-icon');
+					icon.src = 'data:image/png;base64,' + item.icon;
+					icon.alt = '';
+					row.append(icon);
+				} else if (cat.library) {
+					row.append(el('span', 'tb-icon tb-default-icon', '⚙'));
+				}
+				row.append(document.createTextNode(item.name));
 				if (item.tray) row.append(el('span', 'tray-mark', '  ' + T('(tray)')));
-				row.title = item.tray ? T('Click to add to the component tray') : T('Click to add to the selected container, or drag onto the form');
-				row.draggable = !item.tray;
-				row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/netforms-type', item.type); e.dataTransfer.effectAllowed = 'copy'; });
-				row.addEventListener('click', () => addFromToolbox(item));
+				if (item.unavailable) {
+					row.title = item.unavailable;
+					row.addEventListener('click', () => toast(item.unavailable, 'info'));
+				} else {
+					row.title = (cat.library ? item.type + '\n' : '') + (item.tray ? T('Click to add to the component tray') : T('Click to add to the selected container, or drag onto the form'));
+					row.draggable = !item.tray;
+					row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/netforms-type', item.type); e.dataTransfer.effectAllowed = 'copy'; });
+					row.addEventListener('click', () => addFromToolbox(item));
+				}
 				list.append(row);
 			}
 			g.append(head, list);

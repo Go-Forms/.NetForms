@@ -42,16 +42,20 @@ public sealed partial class DesignSurface : IDisposable
 {
     private sealed record Snapshot(string Source, string? Companion);
 
-    private readonly DesignerCodeReader _reader = new();
-    private readonly DesignerCodeWriter _writer = new();
+    private readonly DesignerCodeReader _reader;
+    private readonly DesignerCodeWriter _writer;
+    private readonly DesignerLibraries _libraries;
     private readonly List<Snapshot> _undo = new();
     private readonly List<Snapshot> _redo = new();
     private DesignerHandlerLocation? _lastHandler;
     private DesignerModel? _model;
 
-    private DesignSurface(string source, string? companion, string? path, string? companionPath)
+    private DesignSurface(string source, string? companion, string? path, string? companionPath, DesignerLibraries? libraries)
     {
         HeadlessPlatform.Install();
+        _libraries = libraries ?? DesignerLibraries.None;
+        _reader = new DesignerCodeReader(_libraries.AllAssemblies());
+        _writer = new DesignerCodeWriter(_libraries.AllAssemblies());
         Source = source;
         CompanionSource = companion;
         FilePath = path;
@@ -60,16 +64,22 @@ public sealed partial class DesignSurface : IDisposable
     }
 
     /// <summary>Opens <c>MainForm.Designer.cs</c> (and <c>MainForm.cs</c> beside it, when there is one).</summary>
-    public static DesignSurface Open(string designerPath)
+    public static DesignSurface Open(string designerPath) => Open(designerPath, null);
+
+    /// <summary>
+    /// Opens a form whose file may name the controls of the project and its libraries: types are resolved
+    /// from <paramref name="libraries"/> too (the caller keeps them loaded while the surface is open).
+    /// </summary>
+    public static DesignSurface Open(string designerPath, DesignerLibraries? libraries)
     {
         var companionPath = DesignerCodeReader.CompanionPath(designerPath);
         var companion = companionPath != null && File.Exists(companionPath) ? File.ReadAllText(companionPath) : null;
-        return new DesignSurface(File.ReadAllText(designerPath), companion, Path.GetFullPath(designerPath), companion != null ? Path.GetFullPath(companionPath!) : null);
+        return new DesignSurface(File.ReadAllText(designerPath), companion, Path.GetFullPath(designerPath), companion != null ? Path.GetFullPath(companionPath!) : null, libraries);
     }
 
     /// <summary>A form from memory; <see cref="Save"/> is then a no-op.</summary>
-    public static DesignSurface Load(string designerSource, string? companionSource = null) =>
-        new(designerSource, companionSource, null, null);
+    public static DesignSurface Load(string designerSource, string? companionSource = null, DesignerLibraries? libraries = null) =>
+        new(designerSource, companionSource, null, null, libraries);
 
     public string? FilePath { get; }
     public string? CompanionPath { get; }
@@ -640,7 +650,7 @@ public sealed partial class DesignSurface : IDisposable
 
     private void Add(DesignerOp op)
     {
-        var type = DesignerToolbox.ResolveType(Required(op.Type, "type"))
+        var type = DesignerToolbox.ResolveType(Required(op.Type, "type"), _libraries)
             ?? throw new DesignerEditException($"'{op.Type}' is not a component the designer knows.");
         IComponent instance;
         try { instance = (IComponent)Activator.CreateInstance(type)!; }

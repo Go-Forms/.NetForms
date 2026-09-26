@@ -71,3 +71,56 @@ test('the host opens a form, applies edits, and writes the file', { skip: !host 
 		fs.rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+// Decision 157: the project's own controls. The fixture library (tests/Fixtures/ControlLibrary) stands for
+// a project: its build output is found, loaded, and its controls are in the toolbox and on the canvas.
+const fixture = path.join(repo, 'tests', 'Fixtures', 'ControlLibrary');
+const fixtureBuilt = ['Debug', 'Release'].some((c) => fs.existsSync(path.join(fixture, 'bin', c, 'net10.0', 'ControlLibrary.dll')));
+
+test('the host loads the project\'s build and its controls go to the toolbox and the form', { skip: (!host && 'build tools/NetFormsDesigner.Host first') || (!fixtureBuilt && 'build tests/Fixtures/ControlLibrary first') }, async () => {
+	const esbuild = require('esbuild');
+	const { code } = esbuild.transformSync(fs.readFileSync(path.join(repo, 'designer', 'src', 'libraries.ts'), 'utf8'), { loader: 'ts', format: 'cjs' });
+	const lib = { exports: {} };
+	new Function('module', 'exports', 'require', code)(lib, lib.exports, require);
+	const { projectInfo, findOutput, toolboxLibraries, assembliesToLoad } = lib.exports;
+
+	const projectFile = path.join(fixture, 'ControlLibrary.csproj');
+	const project = projectInfo(projectFile, fs.readFileSync(projectFile, 'utf8'));
+	const output = findOutput(project);
+	assert.ok(output && output.endsWith('ControlLibrary.dll'));
+	const groups = toolboxLibraries(project, fs.readFileSync(projectFile, 'utf8'), { libraries: [] }, output);
+	assert.deepEqual(groups.map((g) => g.name), ['ControlLibrary Components']);
+
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-protocol-lib-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const { proc, call } = startHost();
+	try {
+		const loaded = await call('libraries', { assemblies: assembliesToLoad(output, groups) });
+		assert.deepEqual(loaded.result.assemblies, ['ControlLibrary']);
+		const toolbox = (await call('toolbox', { libraries: groups })).result;
+		const group = toolbox.find((c) => c.name === 'ControlLibrary Components');
+		assert.ok(group.library);
+		const gauge = group.items.find((i) => i.name === 'Gauge');
+		assert.equal(gauge.type, 'ControlLibrary.Gauge');
+		assert.ok(gauge.icon && !gauge.unavailable);
+		assert.ok(group.items.find((i) => i.name === 'Ticker').tray);
+
+		await call('open', { path: designer });
+		const added = await call('apply', { ops: [{ op: 'add', type: 'ControlLibrary.Gauge', parent: '', x: 10, y: 150 }] });
+		assert.ok(added.result.items.some((i) => i.id === 'gauge1'), JSON.stringify(added.error));
+		assert.match(fs.readFileSync(designer, 'utf8'), /gauge1 = new ControlLibrary\.Gauge\(\);/);
+		const value = (await call('properties', { id: 'gauge1' })).result.find((r) => r.name === 'Value');
+		assert.equal(value.category, 'Behavior');
+
+		// Unloaded (a restricted window): the form still opens, the gauge is a placeholder that keeps its code.
+		const unloaded = await call('libraries', { assemblies: [] });
+		assert.ok(unloaded.result.view.items.some((i) => i.id === 'gauge1'));
+		const listed = (await call('toolbox', { libraries: groups })).result.find((c) => c.name === 'ControlLibrary Components');
+		assert.ok(listed.items.find((i) => i.name === 'Gauge').unavailable);
+		await call('close');
+	} finally {
+		proc.kill();
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+});

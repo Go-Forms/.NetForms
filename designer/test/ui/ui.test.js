@@ -420,3 +420,52 @@ test('controls are copied, pasted and duplicated, by keys and from the context m
 	assert.match(text, /button2 = new Button\(\);/);
 	assert.deepEqual(errors, []);
 });
+
+// Decision 157: the project's controls in the toolbox. The fixture library stands for the project; its
+// group comes after NetForms's, with the [ToolboxBitmap] icon, and a click puts a Gauge on the form.
+test('the project\'s own controls are in the toolbox and go on the form', { skip, timeout: 120000 }, async (t) => {
+	const fixture = path.join(repo, 'tests', 'Fixtures', 'ControlLibrary');
+	const output = ['Debug', 'Release'].map((c) => path.join(fixture, 'bin', c, 'net10.0', 'ControlLibrary.dll')).find(fs.existsSync);
+	if (!output) { t.skip('build tests/Fixtures/ControlLibrary first'); return; }
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-lib-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	fs.mkdirSync(out, { recursive: true });
+
+	const groups = [{ id: 'project', name: 'ControlLibrary Components', assemblies: [output], excludeNamespaces: ['ControlLibrary.Extras'] }];
+	const harness = await start(designer, { libraries: { load: [output], groups } });
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1100, height: 700 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-head.library');
+
+	const group = await page.evaluate(() => {
+		const head = [...document.querySelectorAll('.tb-head.library')].find((h) => h.textContent === 'ControlLibrary Components');
+		return head && [...head.parentElement.querySelectorAll('.tb-item')].map((r) => ({ name: r.textContent.replace(/\s+\(tray\)$/, '').replace(/^⚙/, ''), icon: !!r.querySelector('img.tb-icon') }));
+	});
+	assert.ok(group, 'the library group is shown');
+	assert.deepEqual(group.map((i) => i.name), ['AddressBox', 'FaultyConstructor', 'FaultyPainter', 'Gauge', 'Ticker']);
+	assert.ok(group.find((i) => i.name === 'Gauge').icon, 'Gauge has its [ToolboxBitmap] icon');
+	assert.ok(await page.$('.tb-actions .tb-action'), 'Add Control Library and Rescan are in the toolbox');
+	await page.screenshot({ path: path.join(out, '10-library-toolbox.png') });
+
+	const before = await page.evaluate(() => window.__settled || 0);
+	await page.evaluate(() => [...document.querySelectorAll('.tb-item')].find((r) => r.textContent === 'Gauge').click());
+	await page.waitForFunction((n) => (window.__settled || 0) > n, { timeout: 20000 }, before);
+	await page.waitForSelector('.hit.primary[data-id="gauge1"]');
+	assert.match(fs.readFileSync(designer, 'utf8'), /gauge1 = new ControlLibrary\.Gauge\(\);/);
+	await page.screenshot({ path: path.join(out, '11-library-gauge.png') });
+
+	// Rescan and Add Control Library are the extension's commands: the webview only asks for them.
+	await page.evaluate(() => document.querySelectorAll('.tb-actions .tb-action')[1].click());
+	await page.evaluate(() => document.querySelectorAll('.tb-actions .tb-action')[0].click());
+	await new Promise((r) => setTimeout(r, 300));
+	const posted = await page.evaluate(() => window.__posted.map((m) => m.type));
+	assert.ok(posted.includes('rescan') && posted.includes('addLibrary'));
+	assert.deepEqual(errors, []);
+});
