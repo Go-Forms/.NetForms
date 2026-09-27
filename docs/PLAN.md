@@ -1098,7 +1098,7 @@ DPI-масштабирование, темы (классическая + сов�
     формы кликом и Escape, группа Ctrl/Shift, привязка с линией, свои undo/redo, Format по последнему
     выделенному, масштаб, блокировка, порядок обхода, пунктир докнутых, F7/Shift+F7, лоток компонентов,
     русский интерфейс, ничего из сети (CSP `default-src 'none'`). Не перенесено осознанно: редактор темы
-    (темы — Ф6), сборка под WebAssembly/Android (у NetForms таких целей нет), отладка F5 (её даёт C#-расширение
+    (темы — Ф6), сборка под WebAssembly/Android (у NetForms таких целей нет; анализ — «Открытый вопрос: WebAssembly и Android»), отладка F5 (её даёт C#-расширение
     VS Code по обычному `launch.json`; своя команда — только `Run Project`, `dotnet run` в терминале).
 98. **Ворота Ф5.7 закрыты в малом**, корпус — открыт. `ConvertTests`: проект ровно как его создаёт VS
     (`net8.0-windows`, `UseWindowsForms`, HelloForms) анализируется без изменений, переводится и собирается
@@ -2152,6 +2152,67 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
 
 Предыдущее (решение 146, 2026-09-24, Linux): .NET — **415/415** (+13: `ApiUsageTests`,
 `ImageKeysAreACopyInTheBclStringCollection`); оракулы WinForms — в CI на Windows.
+
+### Открытый вопрос: WebAssembly и Android (2026-09-27)
+
+Заказчик: «есть возможность подделать это под wasm и андроид? пока просто продумай». Это **только анализ**, решения нет;
+цели противоречат решению 97 («у NetForms таких целей нет») — брать их в работу можно только новым решением в журнале.
+
+**Вывод: реально; Skia и Avalonia не мешают.** У Avalonia 12 есть `Avalonia.Browser` и `Avalonia.Android`, у SkiaSharp —
+нативы WebAssembly и Android. Ядро видит Avalonia в двух местах (`Application.Platform` создаёт `AvaloniaPlatform`,
+`Application.IsInteractive` проверяет его тип), остальное идёт через `IPlatform`/`IWindowHost`. Мешает модель WinForms —
+два блокера, остальное — объём работы.
+
+**Блокер 1 — вложенные циклы сообщений.** Вся модальность — вложенный `IPlatform.RunMessageLoop` →
+`Dispatcher.UIThread.PushFrame`: `Form.ShowDialog` (и через него `MessageBox`, `TaskDialog`, все диалоги),
+`DoDragDrop` (`DragDropManager`), `AvaloniaPlatform.WaitOnUIThread` (буфер обмена, файловые диалоги), `DoEvents`.
+Проверено по исходникам Avalonia (`Dispatcher.MainLoop.cs`): `PushFrame` бросает `PlatformNotSupportedException`, если
+реализация диспетчера не `IControlledDispatcherImpl`; `AndroidDispatcherImpl` — не она, в браузере цикл событий у JS.
+То есть `ShowDialog()` в нынешнем виде падает на обеих целях. Варианты:
+- **A. Async API** — `ShowDialogAsync`, `MessageBox.ShowAsync`; `NetForms.Convert` переписывает вызовы на `await`.
+  Ломает drop-in: пользовательский код меняется.
+- **B. Свой UI-поток NetForms (предпочтительно).** Код WinForms живёт на отдельном потоке со своей очередью (как
+  `GetMessage` Win32) — вложенный цикл там обычный цикл; поток Avalonia только передаёт ввод и показывает кадры. Что
+  меняется в контракте платформы: `IWindowHost.Paint(SKCanvas)` сейчас вызывается рендером Avalonia синхронно — вместо
+  этого поток NetForms пишет кадр в `SKPicture`, поток Avalonia его проигрывает; `KeyDown`/`KeyUp` возвращают «клавиша
+  съедена», а ждать ответа другого потока нельзя (в браузере `preventDefault` решается синхронно) — решать по таблице;
+  синхронные запросы (буфер обмена, диалоги файлов) проще: поток NetForms ждёт `Task`, `PushFrame` не нужен. На Android
+  работает полностью. На WASM нужен `WasmEnableThreads` (SharedArrayBuffer, заголовки COOP/COEP у хостинга); состояние
+  многопоточного WASM в net10 и совместимость с ним `Avalonia.Browser` **не проверены**. Без потоков для WASM остаётся A.
+- C. JSPI (переключение стеков WebAssembly) — прозрачно, но в рантайме .NET его нет; на будущее.
+
+**Блокер 2 — одно окно.** В браузере и на Android у Avalonia только `ISingleViewApplicationLifetime`, `Window` нет; у нас
+Avalonia `Window` на каждую `Form`, попапы (`PopupForm`: выпадающий `ComboBox`, меню, подсказки) — тоже окна. Решение —
+платформа «виртуальный рабочий стол»: `IPlatform`, сводящая все `IPlatformWindow` на одну поверхность и сама рисующая
+рамки, заголовки, z-order, перемещение и размер. От ОС не зависит — проверяется headless golden-тестами; пригодится опыт
+`MdiClient`. На Android главная форма развёрнута на весь экран, диалоги — оверлеем по центру.
+
+**Остальное:**
+- **Пакеты.** `NetForms.Platform.Avalonia` тянет `Avalonia.Desktop`, `NetForms.Drawing` без условий —
+  `SkiaSharp.NativeAssets.Linux`, `Application.Platform` жёстко создаёт `AvaloniaPlatform`. Нужно ядро + «головы»
+  (`NetForms.Desktop`, `NetForms.Browser`, `NetForms.Android` на `net10.0-android`) и регистрация платформы из головы.
+- **Точка входа.** В браузере `Main` не должен блокироваться, на Android `Main` нет. Голова запускает пользовательский
+  `Program.Main` на потоке NetForms — `Application.Run(new MainForm())` остаётся как есть.
+- **Шрифты.** В WASM системных шрифтов нет: встроить шрифт (Selawik — метрики Segoe UI, OFL), CJK и эмодзи — по
+  требованию. Android — `/system/fonts` Skia находит сама.
+- **Файлы.** Пикер браузера и Android SAF (`content://`) дают дескрипторы, не пути. `OpenFileDialog` — копия в
+  виртуальную ФС и её путь; `SaveFileDialog` надёжен только через `OpenFile()`, запись по пути
+  (`File.WriteAllText(dlg.FileName, …)`) — задокументированная разница.
+- **Ввод.** `FormSurface` принимает только `OnTextInput`; экранной клавиатуре Android и IME браузера нужен клиент метода
+  ввода (текст и каретка фокусного `TextBox`). Touch → мышь: тап — клик, долгое нажатие — правая кнопка, свайп —
+  прокрутка.
+- **Размер и trimming.** Много рефлексии (ComponentModel, resx, привязка) — начать с `TrimMode=partial` и корней на наши
+  сборки; размер загрузки мерить.
+- **Мелочи.** `IPlatform.OpenUri` для `Process.Start(url)` (`Help`, `LinkLabel`); печать в браузере — PDF и
+  `window.print`, на Android — `PrintManager`; настройки в браузере — IndexedDB; трея нет (`CreateTrayIcon` уже
+  необязателен). В однопоточном WASM `Task.Wait`/`BackgroundWorker` без потоков не работают — ещё довод за B.
+- **UX.** Формы WinForms свёрстаны в пикселях под 800×600 — на телефоне неудобно. Реалистичные цели: браузер
+  («старое WinForms-приложение в браузере»), планшеты, киоски, внутренние инструменты. Браузер ценнее Android.
+
+**Если брать в работу — порядок:** (1) спайк 1–2 дня: hello-form на текущем коде под `Avalonia.Browser` и Android, без
+диалогов, плюс проверка многопоточного WASM в net10; (2) разделение пакетов и регистрация платформы; (3) виртуальный
+рабочий стол с headless-тестами; (4) поток NetForms и кадры через `SKPicture`; (5) шрифты, файлы, буфер обмена, IME;
+(6) CI: smoke в браузере через Playwright, Android — только сборка.
 
 ---
 
