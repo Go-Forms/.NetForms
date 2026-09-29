@@ -94,7 +94,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.8" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -133,14 +133,14 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 
   <section id="status">
     <div class="section-head">
-      <span class="eyebrow">Превью 0.1.0-preview.8 · измерено, а не на глаз</span>
+      <span class="eyebrow">Выпуск 0.1.0 · измерено, а не на глаз</span>
       <h2>Насколько это WinForms?</h2>
       <p>Каждое число — результат теста в CI: API сверяется с эталонными сборками настоящего WinForms, поведение
         сравнивается с ним на Windows, реальные проекты переводятся и собираются.</p>
     </div>
     <div class="stats">
       <div class="stat"><span class="n">761<small> / 1254</small></span><span class="l">типов WinForms и System.Drawing с полным API; ещё 141 — частично</span></div>
-      <div class="stat"><span class="n">543<small> / 543</small></span><span class="l">тестов проходят; раскладка, порядок событий и метрики текста сверяются с настоящим WinForms</span></div>
+      <div class="stat"><span class="n">551<small> / 551</small></span><span class="l">тестов проходят; раскладка, порядок событий и метрики текста сверяются с настоящим WinForms</span></div>
       <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">рабочих приложений на .NET Framework 4.8 переводятся и собираются без ручных правок</span></div>
       <div class="stat"><span class="n">31<small> / 45</small></span><span class="l">открытых WinForms-проектов переводятся и собираются без ручных правок</span></div>
     </div>
@@ -190,7 +190,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>Новое приложение</h3>
 <pre class="term" id="new-app"><span class="p"># шаблоны проекта и форм</span>
-dotnet new install NetForms.Templates::0.1.0-preview.8
+dotnet new install NetForms.Templates::0.1.0
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>
@@ -199,7 +199,7 @@ dotnet run</pre>
       <div class="codebox">
         <h3>Готовое WinForms-приложение</h3>
 <pre class="term" id="convert"><span class="p"># сначала отчёт, потом --apply</span>
-dotnet tool install -g NetForms.Convert --prerelease
+dotnet tool install -g NetForms.Convert
 netforms-convert MyApp.csproj
 netforms-convert MyApp.csproj --apply
 dotnet run</pre>

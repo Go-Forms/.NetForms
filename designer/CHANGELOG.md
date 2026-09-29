@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- **Fixed: changes made in the code were undone by the designer.** With the designer and the form's code open side by
+  side, moving a control wrote back the copy of `MainForm.cs` and `MainForm.Designer.cs` the designer had read when it
+  opened, and so did the reload after each build. The designer now reads both files again before every change and
+  writes only what the change touched.
+- **NetForms: Run** saves the unsaved files before `dotnet run`; a change in the designer saves the form's open code
+  first.
+- No longer a preview: new projects reference NetForms 0.1.0, the first stable release.
+
 ## 0.1.7
 
 - **BindingNavigator** in the toolbox (*Data*): dropped on a form it comes with its standard items — move first, previous,

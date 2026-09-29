@@ -10,11 +10,11 @@
 1. Поднимите `<Version>` в `Directory.Build.props` (и там, где её повторяют, — см. [чек-лист](#чек-лист-смены-версии)),
    допишите раздел в `CHANGELOG.md`, влейте в `main`.
 2. CI прогоняет тесты на обеих ОС; задача `release-status` пишет в сводку запуска, что версия готова к выпуску
-   («`0.1.0-preview.8` is ready to release»), если тега `v<Version>` ещё нет.
+   («`0.1.0` is ready to release»), если тега `v<Version>` ещё нет.
 3. **Команда на выпуск** — один из двух способов:
    - *Actions → Release → Run workflow*, ветка `main`, галочка **publish**, в поле **version** — ровно версия из
      `Directory.Build.props` (защита от выпуска не того коммита: при несовпадении workflow останавливается до публикации);
-   - тег: `git tag v0.1.0-preview.8 && git push origin v0.1.0-preview.8` (тег обязан совпадать с версией).
+   - тег: `git tag v0.1.0 && git push origin v0.1.0` (тег обязан совпадать с версией).
 4. `release.yml` собирает все пакеты, прогоняет тесты, публикует NuGet-пакеты в nuget.org, расширение — в VS Code
    Marketplace и Open VSX, и создаёт GitHub Release с файлами пакетов и разделом этой версии из `CHANGELOG.md` — вместе
    с ним появляется тег `v<Version>`.
@@ -180,7 +180,7 @@ dotnet new install artifacts/pkg/NetForms.Templates.0.1.0-preview.1.nupkg
 dotnet new netforms -n Hello && cd Hello && dotnet build
 
 # конвертер как tool
-dotnet tool install -g NetForms.Convert --prerelease --add-source artifacts/pkg
+dotnet tool install -g NetForms.Convert --add-source artifacts/pkg
 netforms-convert path/to/WinFormsApp.csproj --apply
 
 # расширение: пакет под платформу и его хост против protocol-теста

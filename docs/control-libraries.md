@@ -163,7 +163,7 @@ package come into the toolbox:
 5. The property grid shows their own categories and descriptions (*Checked*, *OnColor*, *Duration*…), the Events tab
    their events (*CheckedChanged*, *Finished*…).
 
-From the command line: `dotnet add package NetForms.ExtraControls --prerelease`. Its source, `src/NetForms.ExtraControls`
+From the command line: `dotnet add package NetForms.ExtraControls`. Its source, `src/NetForms.ExtraControls`
 in the repository, is a complete example of the next section: attributes, icons, a container, a tray component.
 
 ## Writing a control library for NetForms
@@ -177,7 +177,7 @@ A control library is a class library that references NetForms:
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
+    <PackageReference Include="NetForms" Version="0.1.0" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>

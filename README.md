@@ -22,7 +22,7 @@ platform layer.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
++    <PackageReference Include="NetForms" Version="0.1.0" />
 ```
 
 That is the whole migration for most projects — the code does not change. `netforms-convert` does it for
@@ -38,11 +38,11 @@ Everything comes from NuGet.
 
 ```sh
 # a new app
-dotnet new install NetForms.Templates::0.1.0-preview.8
+dotnet new install NetForms.Templates::0.1.0
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # an existing WinForms app
-dotnet tool install -g NetForms.Convert --prerelease
+dotnet tool install -g NetForms.Convert
 netforms-convert MyApp.csproj --apply
 ```
 
@@ -73,7 +73,7 @@ Preview. Measured, not guessed:
 
 - **API:** 761 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
   141 partial, 352 missing ([coverage](docs/api/README.md)).
-- **Behaviour:** 543/543 tests; layout, event order, text metrics and designer output diffed against the real
+- **Behaviour:** 551/551 tests; layout, event order, text metrics and designer output diffed against the real
   WinForms on Windows and rendered offscreen on both OSes.
 - **Real projects:** 7/7 customer .NET Framework projects and 31/45 open-source WinForms projects convert
   and build without manual edits.

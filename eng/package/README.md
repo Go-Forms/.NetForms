@@ -20,7 +20,7 @@ Replace `UseWindowsForms` in your project file with a package reference:
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
+    <PackageReference Include="NetForms" Version="0.1.0" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>
@@ -30,7 +30,7 @@ Replace `UseWindowsForms` in your project file with a package reference:
 Or let the converter do it and tell you what will not carry over:
 
 ```sh
-dotnet tool install -g NetForms.Convert --prerelease
+dotnet tool install -g NetForms.Convert
 netforms-convert MyApp.csproj            # report only
 netforms-convert MyApp.csproj --apply    # rewrite the project (the original is kept as .winforms.bak)
 ```
@@ -38,7 +38,7 @@ netforms-convert MyApp.csproj --apply    # rewrite the project (the original is 
 New project from a template:
 
 ```sh
-dotnet new install NetForms.Templates::0.1.0-preview.8
+dotnet new install NetForms.Templates::0.1.0
 dotnet new netforms -n MyApp
 ```
 

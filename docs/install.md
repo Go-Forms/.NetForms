@@ -88,13 +88,13 @@ that were cut to the pixel on Windows may need a little more room.
 
 ```sh
 # project and item templates: dotnet new netforms, netforms-form, netforms-usercontrol
-dotnet new install NetForms.Templates::0.1.0-preview.8
+dotnet new install NetForms.Templates::0.1.0
 
 # the converter for existing WinForms projects
-dotnet tool install -g NetForms.Convert --prerelease
+dotnet tool install -g NetForms.Convert
 ```
 
-Update them later with `dotnet new update` and `dotnet tool update -g NetForms.Convert --prerelease`;
+Update them later with `dotnet new update` and `dotnet tool update -g NetForms.Convert`;
 remove with `dotnet new uninstall NetForms.Templates` and `dotnet tool uninstall -g NetForms.Convert`.
 Global tools live in `~/.dotnet/tools` (Linux) or `%USERPROFILE%\.dotnet\tools` (Windows), which must be on
 `PATH`.
@@ -129,8 +129,8 @@ internal feed (Nexus, Artifactory, ProGet, BaGet) and point NuGet at it:
 
 ```sh
 dotnet nuget add source /srv/nuget -n internal          # a folder with the .nupkg files
-dotnet new install /srv/nuget/NetForms.Templates.0.1.0-preview.8.nupkg
-dotnet tool install -g NetForms.Convert --prerelease --add-source /srv/nuget
+dotnet new install /srv/nuget/NetForms.Templates.0.1.0.nupkg
+dotnet tool install -g NetForms.Convert --add-source /srv/nuget
 ```
 
 The folder needs the NetForms packages and their dependencies (Avalonia, SkiaSharp, HarfBuzzSharp,

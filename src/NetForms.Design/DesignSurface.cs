@@ -40,7 +40,18 @@ public sealed class DesignerEditException : Exception
 /// </remarks>
 public sealed partial class DesignSurface : IDisposable
 {
-    private sealed record Snapshot(string Source, string? Companion);
+    /// <summary>The two files at one step; <paramref name="Epoch"/> is the <see cref="_companionEpoch"/> the code-behind was taken at.</summary>
+    private sealed record Snapshot(string Source, string? Companion, int Epoch);
+
+    /// <summary>
+    /// The two files as they were on disk when last read or written. Anything else found there was written by
+    /// someone else - a text editor, git, a formatter - and is taken in before the next edit, never overwritten.
+    /// </summary>
+    private string? _diskSource;
+    private string? _diskCompanion;
+
+    /// <summary>Bumped each time the code-behind is found edited outside: older history must not put it back.</summary>
+    private int _companionEpoch;
 
     private readonly DesignerCodeReader _reader;
     private readonly DesignerCodeWriter _writer;
@@ -60,6 +71,11 @@ public sealed partial class DesignSurface : IDisposable
         CompanionSource = companion;
         FilePath = path;
         CompanionPath = companionPath;
+        if (path != null)
+        {
+            _diskSource = source;
+            _diskCompanion = companion;
+        }
         Reload();
     }
 
@@ -109,7 +125,8 @@ public sealed partial class DesignSurface : IDisposable
     public void Apply(IEnumerable<DesignerOp> ops)
     {
         ArgumentNullException.ThrowIfNull(ops);
-        var before = new Snapshot(Source, CompanionSource);
+        SyncWithDisk();
+        var before = new Snapshot(Source, CompanionSource, _companionEpoch);
         try
         {
             foreach (var op in ops) ApplyOne(op);
@@ -139,12 +156,14 @@ public sealed partial class DesignSurface : IDisposable
 
     private bool Step(List<Snapshot> from, List<Snapshot> to)
     {
+        SyncWithDisk();
         if (from.Count == 0) return false;
-        to.Add(new Snapshot(Source, CompanionSource));
+        to.Add(new Snapshot(Source, CompanionSource, _companionEpoch));
         var target = from[^1];
         from.RemoveAt(from.Count - 1);
         Source = target.Source;
-        CompanionSource = target.Companion;
+        // The code-behind is the user's: history only puts back a version of it no one has edited since.
+        if (target.Epoch == _companionEpoch) CompanionSource = target.Companion;
         Reload();
         Changed();
         return true;
@@ -156,12 +175,70 @@ public sealed partial class DesignSurface : IDisposable
         if (AutoSave) Save();
     }
 
-    /// <summary>Writes the designer file and the code-behind, keeping a byte-order mark where there was one.</summary>
+    /// <summary>
+    /// Takes in what was written to the two files since they were last read or written here: the designer file
+    /// edited as text (the undo history, made of the old text, starts over) or the code-behind edited in its
+    /// editor (kept as it is from now on). Called before every edit, undo and redo, so the designer's write
+    /// never puts an old copy back over someone else's. A designer file that no longer reads throws
+    /// <see cref="DesignerCodeException"/> and leaves everything as it was - nothing is written over it.
+    /// </summary>
+    /// <returns>Whether anything was taken in.</returns>
+    public bool SyncWithDisk()
+    {
+        if (FilePath == null) return false;
+        var source = ReadIfExists(FilePath);
+        var companion = CompanionPath != null ? ReadIfExists(CompanionPath) : null;
+        bool sourceChanged = source != null && source != _diskSource;
+        bool companionChanged = companion != null && companion != _diskCompanion;
+        if (!sourceChanged && !companionChanged) return false;
+
+        var (oldSource, oldCompanion) = (Source, CompanionSource);
+        if (sourceChanged) Source = source!;
+        if (companionChanged) CompanionSource = companion;
+        try { Reload(); }
+        catch
+        {
+            (Source, CompanionSource) = (oldSource, oldCompanion);
+            throw;
+        }
+        if (sourceChanged)
+        {
+            _diskSource = source;
+            _undo.Clear();
+            _redo.Clear();
+        }
+        if (companionChanged)
+        {
+            _diskCompanion = companion;
+            _companionEpoch++;
+        }
+        return true;
+    }
+
+    private static string? ReadIfExists(string path)
+    {
+        try { return File.Exists(path) ? File.ReadAllText(path) : null; }
+        catch (IOException) { return null; }
+    }
+
+    /// <summary>
+    /// Writes what this designer changed - the designer file, and the code-behind when a handler stub was added
+    /// or renamed - keeping a byte-order mark where there was one. A file this designer did not change is not
+    /// touched, so an edit made to it elsewhere since is never put back.
+    /// </summary>
     public void Save()
     {
         if (FilePath == null) { IsDirty = false; return; }
-        WriteKeepingBom(FilePath, Source);
-        if (CompanionPath != null && CompanionSource != null) WriteKeepingBom(CompanionPath, CompanionSource);
+        if (Source != _diskSource)
+        {
+            WriteKeepingBom(FilePath, Source);
+            _diskSource = Source;
+        }
+        if (CompanionPath != null && CompanionSource != null && CompanionSource != _diskCompanion)
+        {
+            WriteKeepingBom(CompanionPath, CompanionSource);
+            _diskCompanion = CompanionSource;
+        }
         IsDirty = false;
     }
 

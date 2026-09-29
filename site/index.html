@@ -98,7 +98,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.8" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -137,14 +137,14 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 
   <section id="status">
     <div class="section-head">
-      <span class="eyebrow">Preview 0.1.0-preview.8 · measured, not guessed</span>
+      <span class="eyebrow">Release 0.1.0 · measured, not guessed</span>
       <h2>How close to WinForms is it?</h2>
       <p>Every number comes from a test that runs in CI: the API is compared with the reference assemblies of
         the real WinForms, behaviour is diffed against it on Windows, real projects are converted and built.</p>
     </div>
     <div class="stats">
       <div class="stat"><span class="n">761<small> / 1254</small></span><span class="l">WinForms and System.Drawing types with the complete API; 141 more partial</span></div>
-      <div class="stat"><span class="n">543<small> / 543</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
+      <div class="stat"><span class="n">551<small> / 551</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
       <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">.NET Framework 4.8 business apps convert and build with no manual edit</span></div>
       <div class="stat"><span class="n">31<small> / 45</small></span><span class="l">open-source WinForms projects convert and build with no manual edit</span></div>
     </div>
@@ -194,7 +194,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>New app</h3>
 <pre class="term" id="new-app"><span class="p"># project and item templates</span>
-dotnet new install NetForms.Templates::0.1.0-preview.8
+dotnet new install NetForms.Templates::0.1.0
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>
@@ -203,7 +203,7 @@ dotnet run</pre>
       <div class="codebox">
         <h3>Existing WinForms app</h3>
 <pre class="term" id="convert"><span class="p"># report first, then --apply</span>
-dotnet tool install -g NetForms.Convert --prerelease
+dotnet tool install -g NetForms.Convert
 netforms-convert MyApp.csproj
 netforms-convert MyApp.csproj --apply
 dotnet run</pre>

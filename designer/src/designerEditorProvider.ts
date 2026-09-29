@@ -226,9 +226,24 @@ export class DesignerSession implements vscode.Disposable {
 		}
 	}
 
+	/**
+	 * The form's two files may be open as text with unsaved changes. The host reads them from disk before
+	 * each edit and writes what the edit changes, so the changes are saved first: the edit then builds on
+	 * them, and nothing on disk is newer than an open editor.
+	 */
+	private async saveOpenEdits() {
+		const files = [this.file, companionOf(this.file)].map((f) => path.resolve(f).toLowerCase());
+		for (const doc of vscode.workspace.textDocuments) {
+			if (doc.isDirty && doc.uri.scheme === 'file' && files.includes(path.resolve(doc.uri.fsPath).toLowerCase())) await doc.save();
+		}
+	}
+
 	private async write(action: () => Promise<DesignerView>): Promise<DesignerView> {
 		this.writing++;
-		try { return await action(); } finally {
+		try {
+			await this.saveOpenEdits();
+			return await action();
+		} finally {
 			this.writing--;
 			this.rememberOwnText();
 			if (this.writing === 0 && this.recheck) {

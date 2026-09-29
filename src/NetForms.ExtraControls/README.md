@@ -16,7 +16,7 @@ application and show up in the **NetForms Designer** toolbox with their icons, p
 ## Install
 
 ```sh
-dotnet add package NetForms.ExtraControls --prerelease
+dotnet add package NetForms.ExtraControls
 ```
 
 or, in VS Code with the NetForms Designer: **NetForms: Add Control Library… → NuGet package…**, type

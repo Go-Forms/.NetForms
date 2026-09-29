@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.1.0 — the first stable release
+
+The first release without a preview suffix: `dotnet add package NetForms` (and `NetForms.ExtraControls`,
+`NetForms.Templates`, `NetForms.Convert`) no longer needs `--prerelease`. The API is 0.x — it still grows, and may
+change where it differs from WinForms by mistake.
+
+- **Designer bug fix — edits made in the code were lost.** With the designer and `MainForm.cs` (or
+  `MainForm.Designer.cs` as text) open side by side, the next change in the designer wrote back the copy of both files it
+  had read when the form was opened, undoing everything written in the code since. A build did the same: after
+  `dotnet run` the designer reloaded the project's controls and wrote the form back. Now the designer reads both files
+  again before every change, undo and redo, and writes only what the change itself touched (the designer file, and the
+  code-behind when it adds a handler); undo never puts back a version of the code edited since. A designer file that no
+  longer compiles is reported, not overwritten.
+- **Run saves first:** *NetForms: Run* (and ▶ in the designer) saves the unsaved files before `dotnet run`, as Visual
+  Studio does before F5; a change in the designer saves the form's open, unsaved code first.
+
 ## 0.1.0-preview.8 — print dialogs finished, new controls, NetForms.ExtraControls
 
 - **Printing:** `PrintDialog` has the **Properties…** button of the Win32 dialog — the printer's document properties

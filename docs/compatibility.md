@@ -18,7 +18,7 @@ This guide covers only what that documentation cannot tell you:
 The member-by-member list — what exists and what is missing for each of the 1254 public types of
 `System.Windows.Forms` and `System.Drawing.Common` — is generated: **[API coverage](api/README.md)**.
 
-State as of version **0.1.0-preview.8** (September 2026).
+State as of version **0.1.0** (September 2026).
 
 ---
 
@@ -248,7 +248,7 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **543/543**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **551/551**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
   regenerates [the tables](api/README.md). Today: **761** of 1254 types complete, **141** partial,

@@ -164,7 +164,7 @@ public class StarRating : Control
 5. В окне свойств — их собственные категории и описания (*Checked*, *OnColor*, *Duration*…), на вкладке событий — их
    события (*CheckedChanged*, *Finished*…).
 
-Из командной строки: `dotnet add package NetForms.ExtraControls --prerelease`. Её исходники — `src/NetForms.ExtraControls`
+Из командной строки: `dotnet add package NetForms.ExtraControls`. Её исходники — `src/NetForms.ExtraControls`
 в репозитории — полный пример для следующего раздела: атрибуты, значки, контейнер, компонент для лотка.
 
 ## Как написать библиотеку контролов для NetForms
@@ -178,7 +178,7 @@ public class StarRating : Control
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
+    <PackageReference Include="NetForms" Version="0.1.0" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>

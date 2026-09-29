@@ -89,13 +89,13 @@ source ~/.bashrc
 
 ```sh
 # шаблоны проекта и элементов: dotnet new netforms, netforms-form, netforms-usercontrol
-dotnet new install NetForms.Templates::0.1.0-preview.8
+dotnet new install NetForms.Templates::0.1.0
 
 # конвертер готовых WinForms-проектов
-dotnet tool install -g NetForms.Convert --prerelease
+dotnet tool install -g NetForms.Convert
 ```
 
-Обновить позже — `dotnet new update` и `dotnet tool update -g NetForms.Convert --prerelease`;
+Обновить позже — `dotnet new update` и `dotnet tool update -g NetForms.Convert`;
 удалить — `dotnet new uninstall NetForms.Templates` и `dotnet tool uninstall -g NetForms.Convert`.
 Глобальные инструменты лежат в `~/.dotnet/tools` (Linux) или `%USERPROFILE%\.dotnet\tools` (Windows),
 эта папка должна быть в `PATH`.
@@ -130,8 +130,8 @@ NuGet нужен NetForms только для восстановления па�
 
 ```sh
 dotnet nuget add source /srv/nuget -n internal          # папка с файлами .nupkg
-dotnet new install /srv/nuget/NetForms.Templates.0.1.0-preview.8.nupkg
-dotnet tool install -g NetForms.Convert --prerelease --add-source /srv/nuget
+dotnet new install /srv/nuget/NetForms.Templates.0.1.0.nupkg
+dotnet tool install -g NetForms.Convert --add-source /srv/nuget
 ```
 
 В папке должны быть пакеты NetForms и их зависимости (Avalonia, SkiaSharp, HarfBuzzSharp,

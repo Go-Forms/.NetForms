@@ -122,6 +122,8 @@ async function runProject(file: string | undefined) {
 	const project = await projectOf(file);
 	if (!project) throw new Error(vscode.l10n.t('No .csproj in the workspace.'));
 	const dotnet = vscode.workspace.getConfiguration('netforms').get<string>('dotnetPath') || 'dotnet';
+	// dotnet run builds what is on disk: unsaved edits are saved first, as Visual Studio does before F5.
+	await vscode.workspace.saveAll(false);
 	const name = `NetForms: ${path.basename(project, '.csproj')}`;
 	vscode.window.terminals.find((t) => t.name === name)?.dispose();
 	const terminal = vscode.window.createTerminal({ name, cwd: path.dirname(project) });

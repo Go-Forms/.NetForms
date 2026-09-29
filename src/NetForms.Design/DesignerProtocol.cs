@@ -145,7 +145,9 @@ public sealed class DesignerProtocol : IDisposable
         object? error = null;
         if (oldSurface?.FilePath != null)
         {
-            oldSurface.Save();
+            // Only an unsaved edit is written: the files may have been edited elsewhere since (a build follows a
+            // save of the code), and the form is read from them again below.
+            if (oldSurface.IsDirty) oldSurface.Save();
             _surface = null;
             oldSurface.Dispose();
             try
