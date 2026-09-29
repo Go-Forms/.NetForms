@@ -372,6 +372,11 @@ public class ToolStripLabel : ToolStripItem
 
 public class ToolStripSeparator : ToolStripItem
 {
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public new bool RightToLeftAutoMirrorImage { get => base.RightToLeftAutoMirrorImage; set => base.RightToLeftAutoMirrorImage = value; }
+
     public ToolStripSeparator() { }
 
     [Localizable(false)]
@@ -620,6 +625,11 @@ public enum ToolStripStatusLabelBorderSides
 /// <summary>Hosts an ordinary Control inside a strip (ToolStripComboBox, ToolStripTextBox, ToolStripProgressBar).</summary>
 public class ToolStripControlHost : ToolStripItem
 {
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public new bool RightToLeftAutoMirrorImage { get => base.RightToLeftAutoMirrorImage; set => base.RightToLeftAutoMirrorImage = value; }
+
     public ToolStripControlHost(Control c) : this(c, null) { }
 
     public ToolStripControlHost(Control c, string? name)

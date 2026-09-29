@@ -985,6 +985,11 @@ public class ToolStrip : ScrollableControl
 /// <summary>The chevron at the end of a full strip; its drop-down holds the items that did not fit.</summary>
 public class ToolStripOverflowButton : ToolStripDropDownItem
 {
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public new bool RightToLeftAutoMirrorImage { get => base.RightToLeftAutoMirrorImage; set => base.RightToLeftAutoMirrorImage = value; }
+
     private readonly ToolStrip _parentStrip;
 
     internal ToolStripOverflowButton(ToolStrip parentToolStrip)
