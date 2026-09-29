@@ -739,6 +739,16 @@ public sealed partial class DesignSurface : IDisposable
                 // ErrorProvider.Site does this through IDesignerHost.RootComponent in VS.
                 provider.ContainerControl = root;
                 break;
+            case BindingNavigator navigator:
+                // BindingNavigatorDesigner.InitializeNewComponent: the standard items, each a component of the form
+                // under the name AddStandardItems gave it (bindingNavigatorMoveFirstItem, ...).
+                navigator.AddStandardItems();
+                foreach (ToolStripItem item in navigator.Items)
+                {
+                    var itemComponent = Model.AddComponent(item, Model.Find(item.Name) == null ? item.Name : null);
+                    item.Name = itemComponent.Name;
+                }
+                break;
             case MenuStrip menu when Root is Form form && form.MainMenuStrip == null:
                 form.MainMenuStrip = menu;
                 break;
@@ -856,7 +866,8 @@ public sealed partial class DesignSurface : IDisposable
         foreach (var c in Model.Components)
         {
             if (c.Name == null || c.Instance is not IComponent) continue;
-            bool onSurface = c.Instance is Control and not ToolStripDropDown || c.Instance is ToolStripItem or ColumnHeader or DataGridViewColumn;
+            // A form among the components (a PrintPreviewDialog) is a tray component, as in VS.
+            bool onSurface = c.Instance is Control and not ToolStripDropDown and not Form || c.Instance is ToolStripItem or ColumnHeader or DataGridViewColumn;
             if (!onSurface) view.Tray.Add(new DesignerTrayItem { Id = c.Name, Type = c.Type.FullName ?? c.Type.Name });
         }
         return view;

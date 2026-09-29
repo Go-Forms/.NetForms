@@ -16,5 +16,6 @@
   <ItemGroup>
     <InternalsVisibleTo Include="NetForms" />
     <InternalsVisibleTo Include="NetForms.Tests" />
+    <InternalsVisibleTo Include="NetForms.ExtraControls.Tests" />
   </ItemGroup>
 </Project>

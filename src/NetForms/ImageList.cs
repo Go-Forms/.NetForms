@@ -215,17 +215,38 @@ public sealed class ImageList : Component
             _keys.Add(key ?? string.Empty);
         }
 
-        public void Add(Image value, Color transparentColor)
+        /// <summary>Adds the image and returns its index. The transparent colour is a source-bitmap convention; our images already carry alpha.</summary>
+        public int Add(Image value, Color transparentColor)
         {
-            // The transparent colour is a source-bitmap convention; our images already carry alpha.
             Add(value);
+            return _images.Count - 1;
         }
 
-        public int Add(Icon value)
+        public void Add(Icon value)
         {
             ArgumentNullException.ThrowIfNull(value);
             Add(value.ToBitmap());
-            return _images.Count - 1;
+        }
+
+        public void Add(string key, Icon icon)
+        {
+            ArgumentNullException.ThrowIfNull(icon);
+            Add(key, icon.ToBitmap());
+        }
+
+        /// <summary>Removes <paramref name="image"/> (WinForms: an image of the list, by reference).</summary>
+        public void Remove(Image image)
+        {
+            int index = _images.IndexOf(image);
+            if (index >= 0) RemoveAt(index);
+        }
+
+        bool ICollection<Image>.Remove(Image image)
+        {
+            int index = _images.IndexOf(image);
+            if (index < 0) return false;
+            RemoveAt(index);
+            return true;
         }
 
         public void AddRange(Image[] images)
@@ -235,7 +256,8 @@ public sealed class ImageList : Component
         }
 
         /// <summary>Slices a horizontal strip into <paramref name="count"/> images of <see cref="ImageSize"/>.</summary>
-        public void AddStrip(Image value)
+        /// <returns>The index of the first image added.</returns>
+        public int AddStrip(Image value)
         {
             ArgumentNullException.ThrowIfNull(value);
             var size = _owner.ImageSize;
@@ -250,6 +272,7 @@ public sealed class ImageList : Component
                 }
                 Add(frame);
             }
+            return _images.Count - count;
         }
 
         public void Clear()
@@ -279,14 +302,6 @@ public sealed class ImageList : Component
         {
             if (index < 0 || index >= _keys.Count) throw new IndexOutOfRangeException();
             _keys[index] = name ?? string.Empty;
-        }
-
-        public bool Remove(Image image)
-        {
-            int i = IndexOf(image);
-            if (i < 0) return false;
-            RemoveAt(i);
-            return true;
         }
 
         public void RemoveAt(int index)

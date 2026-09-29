@@ -98,7 +98,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.7" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0-preview.8" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -137,16 +137,16 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 
   <section id="status">
     <div class="section-head">
-      <span class="eyebrow">Preview 0.1 · measured, not guessed</span>
+      <span class="eyebrow">Preview 0.1.0-preview.8 · measured, not guessed</span>
       <h2>How close to WinForms is it?</h2>
       <p>Every number comes from a test that runs in CI: the API is compared with the reference assemblies of
         the real WinForms, behaviour is diffed against it on Windows, real projects are converted and built.</p>
     </div>
     <div class="stats">
-      <div class="stat"><span class="n">664<small> / 1254</small></span><span class="l">WinForms and System.Drawing types with the complete API; 163 more partial</span></div>
-      <div class="stat"><span class="n">415<small> / 415</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
+      <div class="stat"><span class="n">761<small> / 1254</small></span><span class="l">WinForms and System.Drawing types with the complete API; 141 more partial</span></div>
+      <div class="stat"><span class="n">543<small> / 543</small></span><span class="l">tests pass; layout, event order and text metrics are diffed against the real WinForms</span></div>
       <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">.NET Framework 4.8 business apps convert and build with no manual edit</span></div>
-      <div class="stat"><span class="n">28<small> / 45</small></span><span class="l">open-source WinForms projects convert and build with no manual edit</span></div>
+      <div class="stat"><span class="n">31<small> / 45</small></span><span class="l">open-source WinForms projects convert and build with no manual edit</span></div>
     </div>
 
     <div class="two" style="margin-top:28px">
@@ -160,6 +160,9 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
             <tr><td>Menus</td><td>MenuStrip, ToolStrip, StatusStrip, ContextMenuStrip, NotifyIcon</td></tr>
             <tr><td>Drawing</td><td>System.Drawing on Skia, TextRenderer metrics, custom OnPaint</td></tr>
             <tr><td>Resources</td><td>.resx images and icons, Properties.Settings, app.config</td></tr>
+            <tr><td>Printing</td><td>PrintDocument, print, page setup and preview dialogs; CUPS on Linux, winspool on Windows, PDF</td></tr>
+            <tr><td>Drag and drop</td><td>DoDragDrop, DragEnter/Over/Drop, files and text from other applications</td></tr>
+            <tr><td>Designer</td><td>your own controls and NuGet control libraries in the toolbox, live on the canvas</td></tr>
           </tbody>
         </table>
       </div>
@@ -167,9 +170,9 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
         <table class="propgrid">
           <tbody>
             <tr><th colspan="2">Not yet</th></tr>
-            <tr><td>Printing</td><td><span class="status no">missing</span> PrintDocument, PrintPreviewDialog</td></tr>
-            <tr><td>Accessibility</td><td><span class="status no">missing</span> screen readers do not see controls</td></tr>
-            <tr><td>Drag and drop</td><td><span class="status part">declared</span> events compile, no drags yet</td></tr>
+            <tr><td>Accessibility</td><td><span class="status part">model only</span> AccessibleObject is there; screen readers do not see controls yet</td></tr>
+            <tr><td>Drag out</td><td><span class="status part">partial</span> drops from other apps arrive; a drag cannot leave the application yet</td></tr>
+            <tr><td>WebBrowser</td><td><span class="status no">missing</span> the Internet Explorer control; WebView2 is Windows-only</td></tr>
             <tr><td>Dark theme, DPI</td><td><span class="status part">partial</span> one light theme; scaled, but DeviceDpi is 96</td></tr>
             <tr><td>Win32</td><td><span class="status no">by design</span> Handle is zero, WndProc is never called</td></tr>
           </tbody>
@@ -191,7 +194,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>New app</h3>
 <pre class="term" id="new-app"><span class="p"># project and item templates</span>
-dotnet new install NetForms.Templates::0.1.0-preview.7
+dotnet new install NetForms.Templates::0.1.0-preview.8
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>

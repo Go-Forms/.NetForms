@@ -53,9 +53,7 @@
     "commit": "c454faa2beeab2199fd6e87e49438747978c9136",
     "group": "open",
     "license": "MIT",
-    "knownFailures": {
-      "src/MDBEditor.csproj": "printing (System.Drawing.Printing) not in NetForms yet"
-    }
+    "knownFailures": {}
   },
   {
     "name": "Life",
@@ -143,7 +141,6 @@
     "license": "MIT",
     "knownFailures": {
       ".NET 05/WebView2Sample/WebView2Sample/WebView2Sample.csproj": "WebView2: Windows-only control",
-      ".NET 08/GetStockIcon/GetStockIconTest/GetStockIconTest.csproj": "ImageList.Images.Add(string, Icon) not in NetForms yet",
       "Debugging/Logging/MultipleNLogTargets/MultipleNLogTargets/MultipleNLogTargets.csproj": "a package with a FrameworkReference to WindowsDesktop (NLog.Windows.Forms)",
       "Debugging/Logging/NLogUtility/NLogUtility/NLogUtility.csproj": "NLog package reference not carried over",
       "Web/CEFSharp/BasicCefSharp/BasicCefSharp/BasicCefSharp.csproj": "CefSharp: native Chromium for Windows only",
@@ -205,8 +202,7 @@
     "group": "open",
     "license": "MIT",
     "knownFailures": {
-      "src/Core/XRails-LoginUI.csproj": "LinkLabel.OverrideCursor (protected, set by a derived link label) not in NetForms yet",
-      "src/Demo/XRails-LoginUI.Demo.csproj": "LinkLabel.OverrideCursor (protected, set by a derived link label) not in NetForms yet"
+      "src/Demo/XRails-LoginUI.Demo.csproj": "references assets/library/Animator.dll, a binary built for the .NET Framework System.Windows.Forms (CS0012)"
     }
   },
   {

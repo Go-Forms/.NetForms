@@ -39,6 +39,13 @@ Studio designer attributes naming `System.Design` types are left out. Each file 
 message handling, and the edit/commit/validation sequence of `DataGridView` and the editing members of the cells
 follow the same sources.
 
+`src/NetForms/DomainUpDown.cs`, `HelpProvider.cs`, `Splitter.cs` and `BindingNavigator.cs` are adapted from
+`src/System.Windows.Forms/System/Windows/Forms/Controls/UpDown`, `.../Components/HelpProvider.cs`,
+`.../Controls/Splitter` and `.../DataBinding/BindingNavigator.cs` (commit 1176de2): the logic is WinForms', the Win32 parts are
+replaced - the splitter's XOR drag bar is painted above the parent's children, the navigator's icons are drawn by
+NetForms, the resource strings are English with their Russian translation in `SystemStrings.cs`. Each file keeps the
+.NET Foundation header.
+
 `src/NetForms.Drawing/Printing/*.cs` - `System.Drawing.Printing`: `Margins`, `MarginsConverter`, `PaperSize`,
 `PaperSource`, `PrinterResolution`, `PrinterUnitConvert`, the print event arguments, `PrintDocument` and the page loop of
 `PrintController`, `PreviewPrintController` - are copied from `src/System.Drawing.Common/src/System/Drawing/Printing`

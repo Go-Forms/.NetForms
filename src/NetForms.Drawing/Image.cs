@@ -43,6 +43,7 @@ public abstract partial class Image : ICloneable, IDisposable
             ".jpg" or ".jpeg" => Imaging.ImageFormat.Jpeg,
             ".bmp" => Imaging.ImageFormat.Bmp,
             ".gif" => Imaging.ImageFormat.Gif,
+            ".tif" or ".tiff" => Imaging.ImageFormat.Tiff,
             ".webp" => Imaging.ImageFormat.Webp,
             _ => Imaging.ImageFormat.Png,
         };
@@ -59,6 +60,11 @@ public abstract partial class Image : ICloneable, IDisposable
     {
         ArgumentNullException.ThrowIfNull(stream);
         if (SkBitmap == null) throw new ObjectDisposedException(nameof(Image));
+        if (format.OwnEncoder)
+        {
+            Imaging.ImageEncoders.Encode(SkBitmap, format, stream);
+            return;
+        }
         using var image = SKImage.FromBitmap(SkBitmap);
         using var data = image.Encode(format.SkFormat, format.Quality)
             ?? throw new NotSupportedException($"Cannot encode {format}.");

@@ -22,7 +22,7 @@ platform layer.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
 ```
 
 That is the whole migration for most projects — the code does not change. `netforms-convert` does it for
@@ -38,7 +38,7 @@ Everything comes from NuGet.
 
 ```sh
 # a new app
-dotnet new install NetForms.Templates::0.1.0-preview.7
+dotnet new install NetForms.Templates::0.1.0-preview.8
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # an existing WinForms app
@@ -71,14 +71,18 @@ own pages (the same Markdown is in [docs/](docs/README.md)):
 
 Preview. Measured, not guessed:
 
-- **API:** 747 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
-  144 partial, 363 missing ([coverage](docs/api/README.md)).
-- **Behaviour:** 504/504 tests; layout, event order, text metrics and designer output diffed against the real
+- **API:** 761 of the 1254 public types of `System.Windows.Forms` + `System.Drawing.Common` complete,
+  141 partial, 352 missing ([coverage](docs/api/README.md)).
+- **Behaviour:** 543/543 tests; layout, event order, text metrics and designer output diffed against the real
   WinForms on Windows and rendered offscreen on both OSes.
-- **Real projects:** 7/7 customer .NET Framework projects and 28/45 open-source WinForms projects convert
+- **Real projects:** 7/7 customer .NET Framework projects and 31/45 open-source WinForms projects convert
   and build without manual edits.
 - **Designer:** your project's own controls and control libraries built for NetForms (NuGet, `.dll`, other
   projects) in the toolbox and live on the canvas ([control libraries](docs/control-libraries.md)).
+- **Printing:** `PrintDocument`, the print, page setup and preview dialogs, printers from CUPS on Linux and winspool on
+  Windows; print to PDF. Sample: `samples/Printing`.
+- **Extra controls:** the `NetForms.ExtraControls` package — toggle switch, rating stars, round progress, gradient panel,
+  colour picker, countdown timer — ready for the designer's toolbox.
 - Not yet: screen readers (the accessibility model is there), `WebBrowser`, dark theme, third-party control
   packages built for the real WinForms.
 
@@ -89,6 +93,7 @@ src/NetForms                  System.Windows.Forms: Control, Form, Application, 
 src/NetForms.Drawing          System.Drawing on SkiaSharp
 src/NetForms.Platform*        platform layer (Avalonia 12)
 src/NetForms.Design*          designer host: reads/writes InitializeComponent with Roslyn
+src/NetForms.ExtraControls    extra controls (NuGet package NetForms.ExtraControls)
 designer/                     VS Code extension
 templates/                    dotnet new templates (NuGet package NetForms.Templates)
 tools/NetForms.Convert        WinForms → NetForms converter (netforms-convert)

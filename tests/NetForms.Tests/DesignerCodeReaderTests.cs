@@ -38,6 +38,7 @@ public class DesignerCodeReaderTests
         { "Strips/MainForm.Designer.cs", typeof(Strips.MainForm) },
         { "MdiDemo/MainForm.Designer.cs", typeof(MdiDemo.MainForm) },
         { "MdiDemo/DocumentForm.Designer.cs", typeof(MdiDemo.DocumentForm) },
+        { "Printing/MainForm.Designer.cs", typeof(Printing.MainForm) },
         { "GenLabs/MainForm.Designer.cs", typeof(Form1) },
     };
 

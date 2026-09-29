@@ -3,11 +3,11 @@ name: Release
 # Builds every package and publishes it: the NuGet packages to nuget.org, the VS Code extension to the
 # Marketplace and Open VSX, and a GitHub release (which creates the tag v<Version>).
 #
-# How it starts (docs/RELEASING.md):
-#   - from CI (workflow_call): a push to main whose <Version> in Directory.Build.props has no tag yet,
-#     after the tests passed - bumping the version is the release;
+# It starts only by command (docs/RELEASING.md) - a push to main publishes nothing:
+#   - by hand (workflow_dispatch): a dry run that only builds the packages, or a real one with "publish" ticked and
+#     the version typed in (it must be the <Version> of Directory.Build.props: a check that the right commit goes out);
 #   - a tag v<Version> pushed by hand;
-#   - by hand (workflow_dispatch): a dry run that only builds the packages, or a real one with "publish".
+#   - workflow_call, from another workflow that has already tested the commit.
 
 on:
   workflow_call:
@@ -25,6 +25,10 @@ on:
         description: Publish to nuget.org, the Marketplace and GitHub (otherwise a dry run that only builds the packages)
         type: boolean
         default: false
+      version:
+        description: The version being released, as in Directory.Build.props (required with publish)
+        type: string
+        default: ""
   push:
     tags: ['v*']
 
@@ -54,6 +58,12 @@ jobs:
           if [[ "$GITHUB_REF" == refs/tags/v* && "v$version" != "$GITHUB_REF_NAME" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME, but Directory.Build.props says $version"; exit 1
           fi
+          # A release by hand names its version: publishing the wrong commit takes a typo in two places.
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$PUBLISH" == "true" && "$CONFIRM" != "$version" ]]; then
+            echo "::error::Publishing $version: type exactly '$version' in the 'version' field of Run workflow (it was '$CONFIRM')."; exit 1
+          fi
+        env:
+          CONFIRM: ${{ inputs.version }}
 
       - run: dotnet build NetForms.slnx -c Release
       - if: ${{ !inputs.tested }}
@@ -199,6 +209,9 @@ jobs:
           VERSION: ${{ needs.nuget.outputs.version }}
         run: |
           if gh release view "v$VERSION" >/dev/null 2>&1; then echo "v$VERSION is already released."; exit 0; fi
+          # The notes are this version's section of CHANGELOG.md (the whole file when the section is not found).
+          awk -v v="$VERSION" '/^## /{ if (found) exit; if (index($0, "## " v " ") == 1 || $0 == "## " v) found=1 } found' CHANGELOG.md > notes.md
+          [ -s notes.md ] || cp CHANGELOG.md notes.md
           gh release create "v$VERSION" dist/nuget/* dist/vscode/* --target "$GITHUB_SHA" \
-            --title "NetForms $VERSION" --notes-file CHANGELOG.md \
+            --title "NetForms $VERSION" --notes-file notes.md \
             $([[ "$VERSION" == *-* ]] && echo --prerelease)

@@ -47,6 +47,12 @@ public sealed class Font : ICloneable, IDisposable
     public Font(FontFamily family, float emSize, FontStyle style, GraphicsUnit unit)
         : this((family ?? throw new ArgumentNullException(nameof(family))).Name, emSize, style, unit) { }
 
+    public Font(FontFamily family, float emSize, FontStyle style, GraphicsUnit unit, byte gdiCharSet)
+        : this((family ?? throw new ArgumentNullException(nameof(family))).Name, emSize, style, unit, gdiCharSet, false) { }
+
+    public Font(FontFamily family, float emSize, FontStyle style, GraphicsUnit unit, byte gdiCharSet, bool gdiVerticalFont)
+        : this((family ?? throw new ArgumentNullException(nameof(family))).Name, emSize, style, unit, gdiCharSet, gdiVerticalFont) { }
+
     public Font(Font prototype, FontStyle newStyle)
         : this((prototype ?? throw new ArgumentNullException(nameof(prototype))).Name, prototype.Size, newStyle, prototype.Unit, prototype.GdiCharSet, prototype.GdiVerticalFont) { }
 

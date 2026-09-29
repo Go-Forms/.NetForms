@@ -40,7 +40,13 @@ public class Button : ButtonBase, IButtonControl
         var form = FindForm();
         if (form != null && _dialogResult != DialogResult.None)
         {
-            form.DialogResult = _dialogResult;
+            // The form closes after the Click handlers, which may set its DialogResult back to None (WinForms).
+            form.RunWithDeferredDialogClose(() =>
+            {
+                form.DialogResult = _dialogResult;
+                base.OnClick(e);
+            });
+            return;
         }
         base.OnClick(e);
     }

@@ -92,6 +92,12 @@ A click on a tab header of a TabControl shows that page, so each page is laid ou
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
 down; `-` adds a menu separator.
 
+A **BindingNavigator** dropped on a form comes with its standard items (first, previous, position, count, next, last,
+add, delete), each a component of the form named as in Visual Studio (`bindingNavigatorMoveFirstItem`, …); set its
+`BindingSource` in the property grid. A **HelpProvider** adds *HelpString*, *HelpKeyword*, *HelpNavigator* and *ShowHelp*
+to every control of the form, as the ToolTip adds *ToolTip on toolTip1*. The printing components (*Printing* group:
+PrintDocument, PrintDialog, PageSetupDialog, PrintPreviewDialog) go to the tray; `PrintPreviewControl` goes on the form.
+
 ## Control libraries
 
 Step by step, with the check, `.vscode/netforms.json` and writing a library of your own: **[Control libraries in the

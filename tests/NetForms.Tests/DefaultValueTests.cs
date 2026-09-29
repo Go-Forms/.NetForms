@@ -85,6 +85,7 @@ public class DefaultValueTests
     {
         // --- WinForms is inconsistent here too --------------------------------------------
         "GroupBox.TabStop", "PictureBox.TabStop",        // [DefaultValue(true)] inherited, actually false
+        "Splitter.TabStop",                              // the same (VS writes splitter1.TabStop = false on every splitter)
         "DataGridViewTextBoxEditingControl.TabStop", "DataGridViewComboBoxEditingControl.TabStop", // the same: false in the constructor
         "ImageList.Images",                              // [DefaultValue(null)] on a collection
         "TreeView.LineColor",                            // [DefaultValue(Black)], actually Color.Empty

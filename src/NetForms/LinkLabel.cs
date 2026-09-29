@@ -55,6 +55,28 @@ public class LinkLabel : Label
 
     protected override Cursor DefaultCursor => Cursors.Hand;
 
+    private Cursor? _overrideCursor;
+
+    /// <summary>
+    /// A cursor shown instead of <see cref="Control.Cursor"/> while it is set - what WinForms' LinkLabel sets over a link;
+    /// derived link labels set it too (a busy cursor while a link opens, say).
+    /// </summary>
+    protected Cursor? OverrideCursor
+    {
+        get => _overrideCursor;
+        set
+        {
+            if (ReferenceEquals(_overrideCursor, value)) return;
+            _overrideCursor = value;
+            TopLevelForm?.UpdateCursor();
+        }
+    }
+
+    internal override Cursor EffectiveCursor => _overrideCursor ?? Cursor;
+
+    /// <summary>The link at (<paramref name="x"/>, <paramref name="y"/>) in client coordinates, or null.</summary>
+    protected Link? PointInLink(int x, int y) => LinkAt(new Point(x, y));
+
     [Category("Action")]
     [Description("Occurs when the link is clicked.")]
     public event LinkLabelLinkClickedEventHandler? LinkClicked;

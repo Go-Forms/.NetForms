@@ -94,7 +94,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0-preview.7" /&gt;</span></pre>
+<span class="add">+     Version="0.1.0-preview.8" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -133,16 +133,16 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 
   <section id="status">
     <div class="section-head">
-      <span class="eyebrow">Превью 0.1 · измерено, а не на глаз</span>
+      <span class="eyebrow">Превью 0.1.0-preview.8 · измерено, а не на глаз</span>
       <h2>Насколько это WinForms?</h2>
       <p>Каждое число — результат теста в CI: API сверяется с эталонными сборками настоящего WinForms, поведение
         сравнивается с ним на Windows, реальные проекты переводятся и собираются.</p>
     </div>
     <div class="stats">
-      <div class="stat"><span class="n">664<small> / 1254</small></span><span class="l">типов WinForms и System.Drawing с полным API; ещё 163 — частично</span></div>
-      <div class="stat"><span class="n">415<small> / 415</small></span><span class="l">тестов проходят; раскладка, порядок событий и метрики текста сверяются с настоящим WinForms</span></div>
+      <div class="stat"><span class="n">761<small> / 1254</small></span><span class="l">типов WinForms и System.Drawing с полным API; ещё 141 — частично</span></div>
+      <div class="stat"><span class="n">543<small> / 543</small></span><span class="l">тестов проходят; раскладка, порядок событий и метрики текста сверяются с настоящим WinForms</span></div>
       <div class="stat"><span class="n">7<small> / 7</small></span><span class="l">рабочих приложений на .NET Framework 4.8 переводятся и собираются без ручных правок</span></div>
-      <div class="stat"><span class="n">28<small> / 45</small></span><span class="l">открытых WinForms-проектов переводятся и собираются без ручных правок</span></div>
+      <div class="stat"><span class="n">31<small> / 45</small></span><span class="l">открытых WinForms-проектов переводятся и собираются без ручных правок</span></div>
     </div>
 
     <div class="two" style="margin-top:28px">
@@ -156,6 +156,9 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
             <tr><td>Меню</td><td>MenuStrip, ToolStrip, StatusStrip, ContextMenuStrip, NotifyIcon</td></tr>
             <tr><td>Рисование</td><td>System.Drawing на Skia, метрики TextRenderer, свой OnPaint</td></tr>
             <tr><td>Ресурсы</td><td>картинки и значки в .resx, Properties.Settings, app.config</td></tr>
+            <tr><td>Печать</td><td>PrintDocument, диалоги печати, параметров страницы и предпросмотра; CUPS в Linux, winspool в Windows, PDF</td></tr>
+            <tr><td>Перетаскивание</td><td>DoDragDrop, DragEnter/Over/Drop, файлы и текст из других приложений</td></tr>
+            <tr><td>Дизайнер</td><td>свои контролы и библиотеки контролов из NuGet на панели элементов, живые на холсте</td></tr>
           </tbody>
         </table>
       </div>
@@ -163,9 +166,9 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
         <table class="propgrid">
           <tbody>
             <tr><th colspan="2">Пока нет</th></tr>
-            <tr><td>Печать</td><td><span class="status no">нет</span> PrintDocument, PrintPreviewDialog</td></tr>
-            <tr><td>Доступность</td><td><span class="status no">нет</span> экранные дикторы не видят контролы</td></tr>
-            <tr><td>Drag and drop</td><td><span class="status part">объявлено</span> события компилируются, перетаскивания нет</td></tr>
+            <tr><td>Доступность</td><td><span class="status part">только модель</span> AccessibleObject есть; экранные дикторы контролы пока не видят</td></tr>
+            <tr><td>Перетаскивание наружу</td><td><span class="status part">частично</span> из других приложений принимается; вытащить из приложения пока нельзя</td></tr>
+            <tr><td>WebBrowser</td><td><span class="status no">нет</span> контрол Internet Explorer; WebView2 — только Windows</td></tr>
             <tr><td>Тёмная тема, DPI</td><td><span class="status part">частично</span> одна светлая тема; масштабируется, но DeviceDpi = 96</td></tr>
             <tr><td>Win32</td><td><span class="status no">так задумано</span> Handle равен нулю, WndProc не вызывается</td></tr>
           </tbody>
@@ -187,7 +190,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>Новое приложение</h3>
 <pre class="term" id="new-app"><span class="p"># шаблоны проекта и форм</span>
-dotnet new install NetForms.Templates::0.1.0-preview.7
+dotnet new install NetForms.Templates::0.1.0-preview.8
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>

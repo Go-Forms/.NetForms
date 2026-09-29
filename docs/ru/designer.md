@@ -91,6 +91,13 @@ Ctrl+C / Ctrl+X / Ctrl+V копируют, вырезают и вставляю�
 инструментов, DropDownItems и Columns открывает редактор коллекции: элементы по их заголовкам, добавление,
 удаление (страница — вместе с её контролами), перемещение вверх и вниз; `-` добавляет разделитель меню.
 
+**BindingNavigator**, брошенный на форму, появляется со стандартными кнопками (первая, предыдущая, позиция, счётчик,
+следующая, последняя, добавить, удалить) — каждая становится компонентом формы с именем как в Visual Studio
+(`bindingNavigatorMoveFirstItem`, …); `BindingSource` задаётся в окне свойств. **HelpProvider** добавляет всем
+контролам формы свойства *HelpString*, *HelpKeyword*, *HelpNavigator* и *ShowHelp* — так же, как ToolTip добавляет
+*ToolTip on toolTip1*. Компоненты печати (группа *Printing*: PrintDocument, PrintDialog, PageSetupDialog,
+PrintPreviewDialog) уходят в лоток, `PrintPreviewControl` ставится на форму.
+
 ## Библиотеки элементов управления
 
 По шагам — с проверкой, `.vscode/netforms.json` и тем, как написать свою библиотеку: **[Библиотеки элементов

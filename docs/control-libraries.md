@@ -12,6 +12,7 @@ This page is the how-to. The design behind it (in Russian) is in [designer-contr
 - [What the check says](#what-the-check-says)
 - [Removing a library, rescanning](#removing-a-library-rescanning)
 - [Where it is kept: `.vscode/netforms.json`](#where-it-is-kept-vscodenetformsjson)
+- [Try it: NetForms.ExtraControls](#try-it-netformsextracontrols)
 - [Writing a control library for NetForms](#writing-a-control-library-for-netforms)
 - [Safety: Workspace Trust](#safety-workspace-trust)
 - [Troubleshooting](#troubleshooting)
@@ -148,6 +149,23 @@ workspace folder, per project. **Commit it**: colleagues get the same toolbox.
 A library whose reference has left the `.csproj` (removed by hand, a branch switched) is simply not shown — it does not
 break the designer.
 
+## Try it: NetForms.ExtraControls
+
+`NetForms.ExtraControls` is a control library on nuget.org made by the NetForms project — the quickest way to see a
+package come into the toolbox:
+
+1. Open a form of a NetForms project in the designer.
+2. **NetForms: Add Control Library… → NuGet package…**, type `NetForms.ExtraControls`, pick the newest version.
+3. The check says ✅ *built for NetForms* and lists six items with their icons: `ToggleSwitch`, `RatingStars`,
+   `CircularProgressBar`, `GradientPanel`, `ColorPickerButton` and `CountdownTimer`. Keep them ticked.
+4. The project is built; the toolbox gets a **NetForms.ExtraControls** group. Drag a `GradientPanel` onto the form and a
+   `ToggleSwitch` into it; a `CountdownTimer` goes to the tray and is written as `new CountdownTimer(components)`.
+5. The property grid shows their own categories and descriptions (*Checked*, *OnColor*, *Duration*…), the Events tab
+   their events (*CheckedChanged*, *Finished*…).
+
+From the command line: `dotnet add package NetForms.ExtraControls --prerelease`. Its source, `src/NetForms.ExtraControls`
+in the repository, is a complete example of the next section: attributes, icons, a container, a tray component.
+
 ## Writing a control library for NetForms
 
 A control library is a class library that references NetForms:
@@ -159,7 +177,7 @@ A control library is a class library that references NetForms:
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
+    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>

@@ -68,10 +68,12 @@ public abstract class UpDownBase : Control
         SetStyle(ControlStyles.StandardClick | ControlStyles.StandardDoubleClick, false);
         SetStyle(ControlStyles.ResizeRedraw, true);
         _edit = new TextBox { BorderStyle = BorderStyle.None, TabStop = false, Name = "upDownEdit" };
-        _edit.KeyDown += EditKeyDown;
-        _edit.LostFocus += (_, _) => { ValidateEditText(); Invalidate(); };
+        _edit.KeyDown += (s, e) => OnTextBoxKeyDown(s, e);
+        _edit.KeyPress += (s, e) => OnTextBoxKeyPress(s, e);
+        _edit.LostFocus += (s, e) => { OnTextBoxLostFocus(s, e); Invalidate(); };
         _edit.GotFocus += (_, _) => Invalidate();
-        _edit.TextChanged += (_, _) => { if (!UpdatingText) UserEdit = true; OnTextBoxTextChanged(EventArgs.Empty); };
+        _edit.Resize += (s, e) => OnTextBoxResize(s, e);
+        _edit.TextChanged += (s, e) => OnTextBoxTextChanged(s, e);
         Controls.Add(_edit);
         LayoutEdit();
     }
@@ -181,6 +183,8 @@ public abstract class UpDownBase : Control
         set
         {
             _edit.Text = value;
+            // The text box's TextChanged has run; ChangingText is always false once the text is in (WinForms).
+            ChangingText = false;
             ValidateEditText();
         }
     }
@@ -195,7 +199,36 @@ public abstract class UpDownBase : Control
 
     protected virtual void ValidateEditText() { }
 
-    protected virtual void OnTextBoxTextChanged(EventArgs e) { }
+    /// <summary>The text of the edit box changed: a user edit unless the control set it (<see cref="ChangingText"/>).</summary>
+    protected virtual void OnTextBoxTextChanged(object? source, EventArgs e)
+    {
+        if (ChangingText || UpdatingText) ChangingText = false;
+        else UserEdit = true;
+        OnTextChanged(e);
+        OnChanged(source, EventArgs.Empty);
+    }
+
+    /// <summary>What the edit box's text changing means to a derived control (DomainUpDown raises SelectedItemChanged).</summary>
+    protected virtual void OnChanged(object? source, EventArgs e) { }
+
+    /// <summary>A key in the edit box: the control's KeyDown, then the arrows step the value and Enter validates.</summary>
+    protected virtual void OnTextBoxKeyDown(object? source, KeyEventArgs e)
+    {
+        OnKeyDown(e);
+        if (e.Handled) return;
+        if (_interceptArrowKeys)
+        {
+            if (e.KeyData == Keys.Up) { UpButton(); e.Handled = true; }
+            else if (e.KeyData == Keys.Down) { DownButton(); e.Handled = true; }
+        }
+        if (e.KeyCode == Keys.Return) { ValidateEditText(); e.Handled = true; }
+    }
+
+    protected virtual void OnTextBoxKeyPress(object? source, KeyPressEventArgs e) => OnKeyPress(e);
+
+    protected virtual void OnTextBoxLostFocus(object? source, EventArgs e) => ValidateEditText();
+
+    protected virtual void OnTextBoxResize(object? source, EventArgs e) { }
 
     /// <summary>Set the text box text without marking the change as a user edit.</summary>
     protected void SetEditText(string text)
@@ -258,14 +291,6 @@ public abstract class UpDownBase : Control
     {
         height = PreferredHeight;
         base.SetBoundsCore(x, y, width, height, specified);
-    }
-
-    private void EditKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (!_interceptArrowKeys) return;
-        if (e.KeyCode == Keys.Up) { UpButton(); e.Handled = true; }
-        else if (e.KeyCode == Keys.Down) { DownButton(); e.Handled = true; }
-        else if (e.KeyCode == Keys.Return) { ValidateEditText(); e.Handled = true; }
     }
 
     protected override void OnGotFocus(EventArgs e)
@@ -665,12 +690,6 @@ public class NumericUpDown : UpDownBase, ISupportInitialize
             OnValueChanged(EventArgs.Empty);
         }
         UpdateEditText();
-    }
-
-    protected override void OnTextBoxTextChanged(EventArgs e)
-    {
-        base.OnTextBoxTextChanged(e);
-        OnTextChanged(e);
     }
 
     public override string ToString() => base.ToString() + $", Minimum = {_minimum}, Maximum = {_maximum}";

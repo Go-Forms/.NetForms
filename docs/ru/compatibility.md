@@ -19,7 +19,7 @@ NetForms — копия Windows Forms. **Справочник по API — от 
 `System.Windows.Forms` и `System.Drawing.Common` — генерируется автоматически:
 **[покрытие API](../api/README.md)** (на английском).
 
-Состояние на версию **0.1.0-preview.7** (сентябрь 2026).
+Состояние на версию **0.1.0-preview.8** (сентябрь 2026).
 
 ---
 
@@ -81,12 +81,12 @@ self-contained, со средой внутри).
 `*.csproj.winforms.bak`. Подробнее — [Перевод WinForms-проекта](migrating.md).
 
 Измерено на корпусе реальных проектов (`tests/corpus/corpus.json`): **7 из 7** проектов заказчика на
-.NET Framework 4.8/4.8.1 и **28 из 45** открытых WinForms-проектов переводятся и собираются без ручных
-правок. Из 17 непрошедших 6 используют `BinaryFormatter` и 4 — компоненты только для Windows (WebView2, CefSharp,
-пакет, требующий среду Windows Desktop), это последние строки таблицы; 5 ждут API, которого в NetForms пока нет
-(печать для MDBEditor уже есть, ему ещё нужны `ImageFormat.Icon`/`Tiff`/`Wmf` и несколько членов;
-`ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, `Microsoft.VisualBasic.Devices` из Visual Basic); 2 останавливаются на пакете (его задача сборки падает на .NET 10; ссылку на пакет конвертер не
-переносит). Что добавляется дальше — [§ 8](#8-что-дальше).
+.NET Framework 4.8/4.8.1 и **31 из 45** открытого WinForms-проекта переводятся и собираются без ручных
+правок. Из 14 непрошедших 6 используют `BinaryFormatter` и 4 — компоненты только для Windows (WebView2, CefSharp,
+пакет, требующий среду Windows Desktop), это последние строки таблицы; 1 ссылается на готовую `.dll`, собранную под
+WinForms из .NET Framework, 1 — на `Microsoft.VisualBasic.Devices` из Visual Basic; 2 останавливаются на пакете (его
+задача сборки падает на .NET 10; ссылку на пакет конвертер не переносит). API WinForms, которого им не хватало бы,
+в корпусе больше нет: см. [§ 8](#8-что-дальше).
 
 ---
 
@@ -106,13 +106,13 @@ self-contained, со средой внутри).
 | `ComboBox` | ✅ Работает · нет 4 | `DropDown`, `DropDownList`, `Simple`; список открывается за пределами формы. `DataSource` с `DisplayMember`/`ValueMember` (списки, `DataTable`, пути в `DataSet`), выбор следует за позицией источника данных. `AutoCompleteMode` сохраняется, подсказки пока не показываются. |
 | `DateTimePicker` | ✅ Работает · нет 1 | Свои форматы, правка полей стрелками, выпадающий календарь, `ShowUpDown`, `ShowCheckBox`. |
 | `Label` | ✅ Работает · нет 12 | Нет: `Image`/`ImageList` у надписи, `PreferredWidth/Height`. |
-| `LinkLabel` | ✅ Работает · нет 3 | |
+| `LinkLabel` | ✅ Работает · API полный | Ссылки, цвета посещённых, `LinkClicked`; `OverrideCursor` и `PointInLink` для наследников. |
 | `ListBox` | ✅ Работает · нет 7 | Owner draw, множественный выбор, `DataSource`/`DisplayMember`/`ValueMember`, как у `ComboBox`. Нет: `CustomTabOffsets`, переопределяемого `Sort()`. |
 | `ListView` | ✅ Работает · нет 38 | Все виды (Details, List, SmallIcon, LargeIcon, Tile), группы, флажки, правка подписей, сортировка, `ItemDrag` (нажатие на один из нескольких выделенных элементов сохраняет выделение для перетаскивания), `ItemMouseHover`. Нет: `VirtualMode`, перестановки столбцов мышью, `HotTracking`, метки вставки. |
 | `MaskedTextBox` | ✅ Работает · нет 1 | Маски через тот же `MaskedTextProvider`, что и в WinForms. |
 | `MonthCalendar` | ✅ Работает · нет 8 | Показывается один месяц (`CalendarDimensions` сохраняется). |
 | `NotifyIcon` | ✅ Работает · API полный | Значок в трее через ОС (StatusNotifierItem на Linux); контекстное меню рисует оболочка. См. §6. |
-| `NumericUpDown` | ✅ Работает · нет 3 | |
+| `NumericUpDown` | ✅ Работает · нет 2 | У `UpDownBase` защищённые хуки WinForms (`OnChanged`, `OnTextBoxTextChanged(object, EventArgs)`, `OnTextBoxKeyDown`, …) для своих счётчиков. |
 | `PictureBox` | ✅ Работает · нет 9 | Все `SizeMode`. `Load()`/`Load(path)` читают файл; одно присваивание `ImageLocation` его не загружает, URL не скачиваются. Нет `LoadAsync`. |
 | `ProgressBar` | ✅ Работает · нет 5 | Включая `Marquee`. |
 | `RadioButton` | ✅ Работает · нет 1 | |
@@ -121,19 +121,19 @@ self-contained, со средой внутри).
 | `ToolTip` | ✅ Работает · нет 2 | |
 | `TreeView` | ✅ Работает · API полный | Флажки, картинки по индексу и по ключу, картинки состояния (`StateImageList`, `StateImageKey`), правка подписей, owner draw, `ItemDrag` (левой и правой кнопкой), `NodeMouseHover`, `HotTracking`, подсказки узлов (`ShowNodeToolTips`), свой `ContextMenuStrip` у узла, `GetItemRenderStyles`, `TreeNode.Handle`/`FromHandle`, сериализация `TreeNode`. Как в системном дереве, узел выделяется при отпускании кнопки: перетаскивание узла его не выделяет, правая кнопка не выделяет. `RightToLeftLayout` хранится, зеркалирования нет (см. §4, Текст). |
 | `WebBrowser` | ❌ Нет | Контрол Internet Explorer; не появится (см. §5). |
-| `DomainUpDown` | ❌ Нет | |
+| `DomainUpDown` | ✅ Работает · API полный | Реализация WinForms: `Items`, `Sorted`, `Wrap`, `SelectedItemChanged`; ввод выбирает элемент, начинающийся с набранного, в режиме «только чтение» — переход по первой букве. |
 | `HScrollBar`, `VScrollBar`, `TrackBar` | ✅ Работают | |
 
 ### Контейнеры
 
 | Контрол | Состояние | Примечания |
 |---|---|---|
-| `Panel`, `GroupBox` | ✅ Работают · API полный | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, состояние прокрутки (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (переопределите, чтобы панель не прыгала к контролу с фокусом), `SetAutoScrollMargin`, специальные возможности (`Client`, `Grouping`). `GroupBoxRenderer` рисует рамку группы для owner-drawn контролов. |
+| `Panel`, `GroupBox` | ✅ Работают · API полный | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, состояние прокрутки (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (переопределите, чтобы панель не прыгала к контролу с фокусом), `SetAutoScrollMargin`, специальные возможности (`Client`, `Grouping`). `GroupBoxRenderer` рисует рамку группы для owner-drawn контролов; `ButtonRenderer`, `CheckBoxRenderer`, `RadioButtonRenderer`, `ComboBoxRenderer`, `ProgressBarRenderer` и `ScrollBarRenderer` рисуют части остальных контролов в теме NetForms. |
 | `FlowLayoutPanel` | ✅ Работает · API полный | Движок раскладки перенесён из dotnet/winforms, вместе с особенностью `SetFlowBreak`. |
 | `TableLayoutPanel` | ✅ Работает · нет 1 | Строки и столбцы в процентах, пикселях и по содержимому, объединение ячеек. |
 | `SplitContainer` | ✅ Работает · нет 2 | |
-| `TabControl` | ✅ Работает · нет 13 | Нет: `ImageList` у вкладок, `DeselectTab`, `RightToLeftLayout`. |
-| `Splitter` | ❌ Нет | Используйте `SplitContainer`. |
+| `TabControl` | ✅ Работает · нет 12 | `TabPages.Add`/`Insert` по ключу, тексту и картинке. Нет: `ImageList` у вкладок, `DeselectTab`, `RightToLeftLayout`. |
+| `Splitter` | ✅ Работает · API полный | Пристыкованный разделитель WinForms 1.0: `MinSize`, `MinExtra`, `SplitPosition`, `SplitterMoving`/`SplitterMoved`, Escape отменяет. Полоса при перетаскивании — штриховка поверх соседей (Win32 инвертирует пиксели). |
 | `UserControl` | ✅ Работает · API полный | |
 | `Form` | ✅ Работает · нет 34 | Модальные и немодальные, `Owner`, `TopMost`, `StartPosition`, `FormBorderStyle`, `AcceptButton`, `KeyPreview`, MDI, `TopLevel = false`. Нет: `ShowAsync`/`ShowDialogAsync` (.NET 9+), цветов заголовка и скругления углов (только Windows 11), `DpiChanged`. |
 | MDI (`IsMdiContainer`, `MdiParent`, `LayoutMdi`, `MdiWindowListItem`) | ✅ Работает | |
@@ -152,7 +152,7 @@ self-contained, со средой внутри).
 |---|---|---|
 | `DataGridView` | ✅ Работает · нет 236 | Столбцы всех видов (текст, флажок, список, кнопка, ссылка, картинка) и типы отдельных ячеек (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, правка, сортировка, режимы выделения, политики ширин, привязка `DataSource`/`DataMember` через `BindingContext` формы (списки, `DataTable`, таблица `DataSet`, отношение для мастер-детали; текущая строка и `Position` источника следуют друг за другом; отношения не становятся столбцами), закреплённые столбцы, виртуальная прокрутка. Свои ячейки (наследник `DataGridViewCell` с переопределённым `Paint`) работают и получают унаследованный стиль вместе со шрифтом; стили по умолчанию несут шрифт сетки и следуют за ним, как в WinForms. Правка — по модели WinForms: контрол `EditType` ячейки (`DataGridViewTextBoxEditingControl`, `DataGridViewComboBoxEditingControl` или свой `IDataGridViewEditingControl` — столбец-календарь из документации Microsoft работает как опубликован) в `EditingPanel`, `EditingControlShowing`, «грязная» ячейка и `CurrentCellDirtyStateChanged`, `CellValidating`/`CellParsing`/`CellValidated` и `DataError` при фиксации, `CellEnter`/`CellLeave`/`RowEnter`/`RowLeave`/`RowValidating`, `BeginEdit`/`EndEdit`/`CommitEdit`/`CancelEdit`/`RefreshEdit`, `EditMode`, ввод/F2/Enter/Escape/Tab; ячейка-флажок правит себя сама (`IDataGridViewEditingCell`) и фиксируется при уходе, как в WinForms. `VirtualMode` с `RowCount`, `CellValueNeeded`/`CellValuePushed`, `RowDirtyStateNeeded`, `CancelRowEdit`. **Строка для новых записей** у непривязанной сетки — настоящая строка, как в WinForms: `Rows.Count` её считает, `IsNewRow`, `Rows.Add` вставляет выше неё, `Rows.Clear()` оставляет новую, ввод в неё добавляет строку (`UserAddedRow`), вход в неё — `DefaultValuesNeeded` (в `VirtualMode` ещё `NewRowNeeded`); показанная сетка делает текущей первую ячейку. Свойства источника типа `Image` и `byte[]` получают столбцы-картинки. Нет: новой строки у *привязанной* сетки (добавления записей из сетки), копирования в буфер, изменения ширины и порядка столбцов мышью, остальных защищённых `Process*Key`/`On*Changed` и методов `AutoResize*`. |
 | `BindingSource` | ✅ Работает · API: полный | Сама реализация WinForms (взята из dotnet/winforms): списки, `DataTable`, `DataSet` с таблицей в `DataMember`, мастер-деталь — второй `BindingSource` с `DataRelation` в `DataMember`, `Position`, `Filter`, `Sort`, `AddNew`, `CurrencyManager`. |
-| `BindingNavigator` | ❌ Нет | |
+| `BindingNavigator` | ✅ Работает · API полный | Реализация WinForms над `BindingSource`: первая/предыдущая/следующая/последняя, поле позиции (номер и Enter), счётчик (`CountItemFormat`), добавить и удалить, `RefreshItems`. В дизайнере появляется со стандартными кнопками, как в VS. Про их картинки — §6. |
 | Сам ADO.NET (`DataSet`, `DataTable`, `DataAdapter`, провайдеры) | Часть .NET, а не WinForms: на Linux работает как есть. Правка в привязанной сетке выставляет `RowState`, поэтому `adapter.Update(table)` её сохраняет. Платформу определяет провайдер: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle работают на Linux; **Access через `System.Data.OleDb` — только Windows** (на Linux — `PlatformNotSupportedException`, конвертер предупреждает). |
 | `Control.DataBindings`, `Binding`, `BindingContext`, `CurrencyManager` | ✅ Работает · API: полный | Сама реализация WinForms (взята из dotnet/winforms) с её правилами: контрол привязывается, когда он создан и у него есть `BindingContext` (форма даёт и то и другое); по умолчанию `DataSourceUpdateMode.OnValidation` — значение уходит в источник при проверке контрола; `Format`/`Parse`, `FormatString`, `NullValue`, `BindingComplete` (при включённом форматировании), `ErrorProvider` над `IDataErrorInfo`. Дизайнер читает и пишет `DataBindings.Add(new Binding(...))` так же, как Visual Studio. |
 | `PropertyGrid` | ✅ Работает · нет 31 | Категории, редакторы типов, раскрываемые объекты. Нет: панели команд и её цветов. |
@@ -161,11 +161,11 @@ self-contained, со средой внутри).
 
 | Компонент | Состояние |
 |---|---|
-| `Timer`, `ImageList`, `ErrorProvider`, `HelpProvider`, `BackgroundWorker` | ✅ (`HelpProvider` ❌ нет; `BackgroundWorker` — часть самого .NET и работает как есть) |
+| `Timer`, `ImageList`, `ErrorProvider`, `HelpProvider`, `BackgroundWorker` | ✅ (`HelpProvider`: F1 показывает `HelpString` контрола во всплывающем окне или открывает `HelpNamespace` на `HelpKeyword`; в дизайнере добавляет эти свойства всем контролам формы. `BackgroundWorker` — часть самого .NET и работает как есть) |
 | `MessageBox`, `TaskDialog` | ✅ Свои диалоги в теме NetForms; надписи на кнопках — на языке интерфейса (английский, русский). |
 | `OpenFileDialog`, `SaveFileDialog`, `FolderBrowserDialog` | ✅ Системные диалоги ОС (портал / GTK на Linux). Нет нескольких свойств (`ClientGuid`, свои места). |
 | `ColorDialog`, `FontDialog` | ✅ Свои диалоги. |
-| `PrintDocument`, `PrintDialog`, `PageSetupDialog`, `PrintPreviewControl`, `PrintPreviewDialog`, `PrintControllerWithStatusDialog` | ✅ Работают · API полный — см. «Печать» в §4. Диалоги — свои формы NetForms (одинаковые в Windows и Linux) и записывают в `PrinterSettings`/`PageSettings` то же, что диалоги Win32. |
+| `PrintDocument`, `PrintDialog`, `PageSetupDialog`, `PrintPreviewControl`, `PrintPreviewDialog`, `PrintControllerWithStatusDialog` | ✅ Работают · API полный — см. «Печать» в §4. Диалоги — свои формы NetForms (одинаковые в Windows и Linux) с кнопками диалогов Win32 — «Свойства…» (бумага, лоток, ориентация, цвет, двусторонняя печать, качество), «Принтер…» в параметрах страницы, «Справка» — и записывают в `PrinterSettings`/`PageSettings` то же, что диалоги Win32. По-английски или по-русски, как интерфейс. |
 | `NotifyIcon` | ✅ См. выше. |
 
 ---
@@ -236,6 +236,11 @@ self-contained, со средой внутри).
 - **Отрицательные размеры** докнутого контрола без родителя сразу обрезаются до 0 (WinForms делает это
   при создании окна).
 - **Печать**: `PreviewPageInfo.Image` — `Bitmap` (в WinForms — EMF `Metafile`, которого в NetForms нет); предпросмотру не нужен принтер (WinForms без него бросает `InvalidPrinterException`); печать в файл пишет PDF (WinForms — то, что выдаёт драйвер); `IsDirectPrintingSupported` всегда `false`; в Windows страницы уходят драйверу картинками (не больше 300 dpi), а не командами GDI.
+- **`BindingNavigator`** в дизайнере NetForms: картинки стандартных кнопок не пишутся в код формы (Visual Studio кладёт
+  их в `.resx`, который дизайнер пока не пишет); навигатор возвращает их сам, если у стандартной кнопки, показывающей
+  только картинку, её нет. Форма из Visual Studio сохраняет свои картинки из `.resx`.
+- **Сохранение картинок**: `Image.Save` пишет BMP, GIF, TIFF, PNG, JPEG и WEBP; GIF — с постоянной палитрой из 252 цветов
+  (GDI+ — со своей полутоновой); Icon, EMF, WMF, Exif и HEIF сохраняются как PNG — как в GDI+, где для них нет кодировщика.
 - **Перетаскивание** внутри приложения идёт мимо ОС (протокол ведёт NetForms), поэтому вытащить что-то наружу из приложения пока нельзя, а картинка перетаскивания из `DoDragDrop` не рисуется.
 - **Системные цвета**: `SystemColors.*` на Linux — собственная таблица .NET (классическая палитра Windows),
   в Windows — палитра ОС. Тема NetForms всегда рисует светлой палитрой Windows 10/11.
@@ -246,10 +251,10 @@ self-contained, со средой внутри).
 
 - **Дифф-тесты против настоящего WinForms** (`tests/NetForms.Compat`, CI на Windows): одни и те же сценарии
   выполняются в `System.Windows.Forms` и в NetForms; сравниваются положения, размеры, порядок событий,
-  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **504/504**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
+  метрики текста, атрибуты времени разработки и то, что записывает дизайнер. Набор — **543/543**; в CI на Windows он идёт со всеми тремя оракулами настоящего WinForms.
 - **Golden-тесты отрисовки** (без окна, одинаковые картинки на Windows и Linux).
 - **Покрытие API** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api` заново строит
-  [таблицы](../api/README.md). Сейчас: **747** из 1254 типов полные, **144** частично, **363** нет
+  [таблицы](../api/README.md). Сейчас: **761** из 1254 типов полные, **141** частично, **352** нет
   (в основном `EventArgs`, accessible-объекты отдельных контролов и удалённые контролы 1.x).
 - **Корпус реальных проектов** (`NETFORMS_CORPUS=1`, задача CI `corpus`): проекты переводятся и
   собираются без ручных правок, причина каждого провала записана в `tests/corpus/corpus.json`.
@@ -261,15 +266,11 @@ self-contained, со средой внутри).
 Что добавлять первым, решает код, который пишут люди, а не длина списка: `NetForms.ApiDiff --usage` компилирует
 каждый проект корпуса против настоящего WinForms и считает каждое обращение к типу или члену, которого в NetForms
 нет, — [недостающий API по использованию](../api/usage.md) (на английском). Из 25 887 обращений к API WinForms в
-63 проектах (24 репозитория) недостающих типов и членов при последнем подсчёте было 11, и каждый из них останавливал
-сборку; печать с тех пор добавлена (решение 153):
+63 проектах (24 репозитория) недостающих **не осталось**: последние (`ImageFormat.Icon`/`Tiff`/`Wmf`,
+`ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, `OpenFileDialog.SafeFileName`,
+`TabPages.Remove`, конструктор `Font` с набором символов) добавлены в 0.1.0-preview.8 (решение 166), и MDBEditor,
+GetStockIcon и библиотека xrails-login-ui теперь собираются.
 
-| Дальше | Какому коду нужно |
-|---|---|
-| `ImageList.Images.Add(string, Icon)` | Surviving-WinForms (пример GetStockIcon) |
-| `LinkLabel.OverrideCursor` — защищённое свойство, которое задаёт наследник `LinkLabel` | xrails-login-ui (оба проекта) |
-| `ImageFormat.Icon`/`Tiff`/`Wmf`, `OpenFileDialog.SafeFileName`, `TabControl.TabPages.Remove`, `new Font(FontFamily, float, FontStyle, GraphicsUnit, byte)` | MDBEditor, xrails-login-ui |
-
-Корпус уже собирается почти целиком, поэтому список короткий. Чтобы упорядочить остальные недостающие типы, нужна
-более широкая выборка открытого кода на WinForms — ему достаточно компилироваться против настоящего WinForms, а не
-собираться с NetForms.
+Дальше порядок задаёт более широкая выборка открытого кода на WinForms — ему достаточно компилироваться против
+настоящего WinForms, а не собираться с NetForms. Из известного заранее: экранные дикторы (модель доступности уже
+есть), перетаскивание за пределы приложения, тёмная тема, `.resx` в дизайнере (картинки, локализуемые формы).

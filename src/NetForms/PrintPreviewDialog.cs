@@ -43,15 +43,15 @@ public class PrintPreviewDialog : Form
         _previewControl.StartPageChanged += (_, _) => _pageCounter!.Value = Math.Min(_pageCounter.Maximum, _previewControl.StartPage + 1);
 
         _toolStrip = new ToolStrip { GripStyle = ToolStripGripStyle.Hidden, TabIndex = 1, Name = "toolStrip1" };
-        _printButton = new ToolStripButton { DisplayStyle = ToolStripItemDisplayStyle.Image, Image = ToolIcon(0), ToolTipText = "Print", Name = "printToolStripButton" };
+        _printButton = new ToolStripButton { DisplayStyle = ToolStripItemDisplayStyle.Image, Image = ToolIcon(0), ToolTipText = SystemStrings.Get("Print"), Name = "printToolStripButton" };
         _printButton.Click += OnPrintToolStripButtonClick;
 
-        _zoomButton = new ToolStripSplitButton { DisplayStyle = ToolStripItemDisplayStyle.Image, Image = ToolIcon(1), ToolTipText = "Zoom", Name = "zoomToolStripSplitButton" };
+        _zoomButton = new ToolStripSplitButton { DisplayStyle = ToolStripItemDisplayStyle.Image, Image = ToolIcon(1), ToolTipText = SystemStrings.Get("Zoom"), Name = "zoomToolStripSplitButton" };
         _zoomItems = new ToolStripMenuItem[s_zooms.Length];
         for (int i = 0; i < s_zooms.Length; i++)
         {
             var (text, zoom) = s_zooms[i];
-            var item = new ToolStripMenuItem(text) { CheckOnClick = true, Checked = i == 0 };
+            var item = new ToolStripMenuItem(SystemStrings.Get(text)) { CheckOnClick = true, Checked = i == 0 };
             item.Click += (_, _) =>
             {
                 CheckZoomMenu(item);
@@ -73,12 +73,12 @@ public class PrintPreviewDialog : Form
         for (int i = 0; i < s_layouts.Length; i++)
         {
             var (text, rows, columns) = s_layouts[i];
-            var button = new ToolStripButton { DisplayStyle = ToolStripItemDisplayStyle.Image, Image = ToolIcon(2 + i), ToolTipText = text, Checked = i == 0 };
+            var button = new ToolStripButton { DisplayStyle = ToolStripItemDisplayStyle.Image, Image = ToolIcon(2 + i), ToolTipText = SystemStrings.Get(text), Checked = i == 0 };
             button.Click += (_, _) => ShowPages(button, rows, columns);
             _pagesButtons[i] = button;
         }
 
-        _closeButton = new ToolStripButton { DisplayStyle = ToolStripItemDisplayStyle.Text, Text = "&Close", Name = "closeToolStripButton" };
+        _closeButton = new ToolStripButton { DisplayStyle = ToolStripItemDisplayStyle.Text, Text = SystemStrings.Get("&Close"), Name = "closeToolStripButton" };
         _closeButton.Click += (_, _) => Close();
 
         _pageCounter = new NumericUpDown { TextAlign = HorizontalAlignment.Right, DecimalPlaces = 0, Minimum = 0, Maximum = 1000, Value = 1, Width = 50, Name = "pageCounter" };
@@ -89,7 +89,7 @@ public class PrintPreviewDialog : Form
             else _pageCounter.Value = _previewControl.StartPage + 1;
         };
         _pageCounterItem = new ToolStripControlHost(_pageCounter) { Alignment = ToolStripItemAlignment.Right };
-        _pageLabel = new ToolStripLabel("Page") { Alignment = ToolStripItemAlignment.Right, Name = "pageToolStripLabel" };
+        _pageLabel = new ToolStripLabel(SystemStrings.Get("Page")) { Alignment = ToolStripItemAlignment.Right, Name = "pageToolStripLabel" };
 
         _toolStrip.Items.Add(_printButton);
         _toolStrip.Items.Add(_zoomButton);
@@ -103,7 +103,7 @@ public class PrintPreviewDialog : Form
         Controls.Add(_previewControl);
         Controls.Add(_toolStrip);
 
-        Text = "Print preview";
+        Text = SystemStrings.Get("Print preview");
         ClientSize = new Size(400, 300);
         base.MinimizeBox = false;
         base.ShowInTaskbar = false;
@@ -177,7 +177,7 @@ public class PrintPreviewDialog : Form
         return false;
     }
 
-    internal override bool ShouldSerializeText() => !Text.Equals("Print preview");
+    internal override bool ShouldSerializeText() => !Text.Equals(SystemStrings.Get("Print preview"));
 
     // These are redeclared without a default in WinForms, so a fresh dialog asks the designer for them: VS writes
     // AutoScrollMargin, AutoScrollMinSize, Enabled and Icon for every PrintPreviewDialog (checked by AttributeDiffTests).

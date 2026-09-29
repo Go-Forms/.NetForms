@@ -18,7 +18,7 @@ This guide covers only what that documentation cannot tell you:
 The member-by-member list — what exists and what is missing for each of the 1254 public types of
 `System.Windows.Forms` and `System.Drawing.Common` — is generated: **[API coverage](api/README.md)**.
 
-State as of version **0.1.0-preview.7** (September 2026).
+State as of version **0.1.0-preview.8** (September 2026).
 
 ---
 
@@ -79,12 +79,12 @@ not work on Linux (with file and line), and after it the original project is kep
 as `*.csproj.winforms.bak`. See [Migrating](migrating.md).
 
 Measured on a corpus of real projects (`tests/corpus/corpus.json`): **7 of 7** of the customer's
-.NET Framework 4.8/4.8.1 projects and **28 of 45** open-source WinForms projects convert and build with no
-manual edit. Of the 17 that do not, 6 use `BinaryFormatter` and 4 Windows-only components (WebView2, CefSharp, a
-package that demands the Windows Desktop runtime) — the last rows of the table; 5 need API NetForms does not have
-yet (MDBEditor's printing is in now, it still needs `ImageFormat.Icon`/`Tiff`/`Wmf` and a few members;
-`ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, Visual Basic's `Microsoft.VisualBasic.Devices`); 2 stop on a package (a build task that fails on .NET 10, a package reference the
-converter does not carry over). What gets added next: [§ 8](#8-what-comes-next).
+.NET Framework 4.8/4.8.1 projects and **31 of 45** open-source WinForms projects convert and build with no
+manual edit. Of the 14 that do not, 6 use `BinaryFormatter` and 4 Windows-only components (WebView2, CefSharp, a
+package that demands the Windows Desktop runtime) — the last rows of the table; 1 references a prebuilt `.dll` built
+for the .NET Framework WinForms, 1 Visual Basic's `Microsoft.VisualBasic.Devices`; 2 stop on a package (a build task
+that fails on .NET 10, a package reference the converter does not carry over). No WinForms API they use is missing
+any more: see [§ 8](#8-what-comes-next).
 
 ---
 
@@ -104,13 +104,13 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `ComboBox` | ✅ Works · 4 missing | `DropDown`, `DropDownList`, `Simple`; the list opens outside the form. `DataSource` with `DisplayMember`/`ValueMember` (lists, `DataTable`, `DataSet` paths), the selection following the data source's position. `AutoCompleteMode` is stored, suggestions are not shown yet. |
 | `DateTimePicker` | ✅ Works · 1 missing | Custom formats, field editing with arrows, drop-down calendar, `ShowUpDown`, `ShowCheckBox`. |
 | `Label` | ✅ Works · 12 missing | Missing: `Image`/`ImageList` on a label, `PreferredWidth/Height`. |
-| `LinkLabel` | ✅ Works · 3 missing | |
+| `LinkLabel` | ✅ Works · API complete | Links, visited colours, `LinkClicked`; `OverrideCursor` and `PointInLink` for derived link labels. |
 | `ListBox` | ✅ Works · 7 missing | Owner draw, multi-select, `DataSource`/`DisplayMember`/`ValueMember` as in `ComboBox`. Missing: `CustomTabOffsets`, `Sort()` override hook. |
 | `ListView` | ✅ Works · 38 missing | All views (Details, List, SmallIcon, LargeIcon, Tile), groups, check boxes, label edit, sorting, `ItemDrag` (a press on one of several selected items keeps them all for the drag), `ItemMouseHover`. Missing: `VirtualMode`, column reordering by drag, `HotTracking`, insertion mark. |
 | `MaskedTextBox` | ✅ Works · 1 missing | Masks via the same `MaskedTextProvider` WinForms uses. |
 | `MonthCalendar` | ✅ Works · 8 missing | One month is shown (`CalendarDimensions` is stored). |
 | `NotifyIcon` | ✅ Works · API complete | System tray via the OS (StatusNotifierItem on Linux); the context menu is drawn by the shell. See §6. |
-| `NumericUpDown` | ✅ Works · 3 missing | |
+| `NumericUpDown` | ✅ Works · 2 missing | `UpDownBase` has WinForms' protected hooks (`OnChanged`, `OnTextBoxTextChanged(object, EventArgs)`, `OnTextBoxKeyDown`, …) for derived spin boxes. |
 | `PictureBox` | ✅ Works · 9 missing | All `SizeMode`s. `Load()`/`Load(path)` read a file; setting `ImageLocation` alone does not load it, and URLs are not fetched. Missing: `LoadAsync`. |
 | `ProgressBar` | ✅ Works · 5 missing | `Marquee` included. |
 | `RadioButton` | ✅ Works · 1 missing | |
@@ -119,19 +119,19 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `ToolTip` | ✅ Works · 2 missing | |
 | `TreeView` | ✅ Works · API complete | Check boxes, images by index or key, state images (`StateImageList`, `StateImageKey`), label edit, owner draw, `ItemDrag` (left and right button), `NodeMouseHover`, `HotTracking`, node tool tips (`ShowNodeToolTips`), a node's own `ContextMenuStrip`, `GetItemRenderStyles`, `TreeNode.Handle`/`FromHandle`, `TreeNode` serialization. As the native tree, a press on a node selects it on release, so dragging a node does not select it, and the right button does not select. `RightToLeftLayout` is stored, not mirrored (see §4, Text). |
 | `WebBrowser` | ❌ Missing | Internet Explorer control; will not come (see §5). |
-| `DomainUpDown` | ❌ Missing | |
+| `DomainUpDown` | ✅ Works · API complete | WinForms' implementation: `Items`, `Sorted`, `Wrap`, `SelectedItemChanged`; typing picks the item that starts with the text, a read-only box jumps to the next item by its first letter. |
 | `HScrollBar`, `VScrollBar`, `TrackBar` | ✅ Works | |
 
 ### Containers
 
 | Control | Status | Notes |
 |---|---|---|
-| `Panel`, `GroupBox` | ✅ Works · API complete | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, the scroll state (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (override it to stop a panel jumping to the focused control), `SetAutoScrollMargin`, accessibility (`Client`, `Grouping`). `GroupBoxRenderer` draws the group box frame for owner-drawn controls. |
+| `Panel`, `GroupBox` | ✅ Works · API complete | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, the scroll state (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (override it to stop a panel jumping to the focused control), `SetAutoScrollMargin`, accessibility (`Client`, `Grouping`). `GroupBoxRenderer` draws the group box frame for owner-drawn controls; `ButtonRenderer`, `CheckBoxRenderer`, `RadioButtonRenderer`, `ComboBoxRenderer`, `ProgressBarRenderer` and `ScrollBarRenderer` draw the other controls' parts in the NetForms theme. |
 | `FlowLayoutPanel` | ✅ Works · API complete | Layout engine ported from dotnet/winforms, including the `SetFlowBreak` quirk. |
 | `TableLayoutPanel` | ✅ Works · 1 missing | Percent/absolute/auto-size rows and columns, spans. |
 | `SplitContainer` | ✅ Works · 2 missing | |
-| `TabControl` | ✅ Works · 13 missing | Missing: `ImageList` on tabs, `DeselectTab`, `RightToLeftLayout`. |
-| `Splitter` | ❌ Missing | Use `SplitContainer`. |
+| `TabControl` | ✅ Works · 12 missing | `TabPages.Add`/`Insert` by key, text and image. Missing: `ImageList` on tabs, `DeselectTab`, `RightToLeftLayout`. |
+| `Splitter` | ✅ Works · API complete | The docked splitter of WinForms 1.0: `MinSize`, `MinExtra`, `SplitPosition`, `SplitterMoving`/`SplitterMoved`, Escape cancels. The drag bar is a hatched bar above the other controls (Win32 inverts the pixels). |
 | `UserControl` | ✅ Works · API complete | |
 | `Form` | ✅ Works · 34 missing | Modal/modeless, `Owner`, `TopMost`, `StartPosition`, `FormBorderStyle`, `AcceptButton`, `KeyPreview`, MDI, `TopLevel = false`. Missing: `ShowAsync`/`ShowDialogAsync` (.NET 9+), caption colours and corner preference (Windows 11 only), `DpiChanged`. |
 | MDI (`IsMdiContainer`, `MdiParent`, `LayoutMdi`, `MdiWindowListItem`) | ✅ Works | |
@@ -150,7 +150,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 |---|---|---|
 | `DataGridView` | ✅ Works · 236 missing | Columns of every kind (text, check box, combo box, button, link, image) and per-cell types (`row.Cells[i] = new DataGridViewButtonCell()`), `CellContentClick`, editing, sorting, selection modes, auto-size policies, `DataSource`/`DataMember` binding through the form's `BindingContext` (lists, `DataTable`, a `DataSet` table, a relation for master-detail; the current row and the source's `Position` follow each other; relations are not columns), frozen columns, virtual scrolling. Custom cells (a `DataGridViewCell` subclass overriding `Paint`) work and get the inherited style, font included; the default styles carry the grid's font and follow it, as in WinForms. Editing is the WinForms model: the cell's `EditType` control (`DataGridViewTextBoxEditingControl`, `DataGridViewComboBoxEditingControl`, or your own `IDataGridViewEditingControl` — Microsoft's calendar column works as published) in `EditingPanel`, `EditingControlShowing`, the dirty cell and `CurrentCellDirtyStateChanged`, `CellValidating`/`CellParsing`/`CellValidated` and `DataError` on commit, `CellEnter`/`CellLeave`/`RowEnter`/`RowLeave`/`RowValidating`, `BeginEdit`/`EndEdit`/`CommitEdit`/`CancelEdit`/`RefreshEdit`, `EditMode`, typing/F2/Enter/Escape/Tab; the check box cell edits itself (`IDataGridViewEditingCell`) and commits on leave, as in WinForms. `VirtualMode` with `RowCount`, `CellValueNeeded`/`CellValuePushed`, `RowDirtyStateNeeded`, `CancelRowEdit`. The **row for new records** of an unbound grid is a real row, as in WinForms: `Rows.Count` counts it, `IsNewRow`, `Rows.Add` goes above it, `Rows.Clear()` keeps one, typing into it adds a row (`UserAddedRow`), entering it raises `DefaultValuesNeeded` (and `NewRowNeeded` in `VirtualMode`); a shown grid makes its first cell current. A data source's `Image` and `byte[]` properties get image columns. Missing: the new row of a *bound* grid (adding records from the grid), clipboard copy, resizing and reordering columns with the mouse, the rest of the protected `Process*Key`/`On*Changed` hooks and `AutoResize*` methods. |
 | `BindingSource` | ✅ Works · API: complete | The WinForms implementation itself (vendored from dotnet/winforms): lists, `DataTable`, a `DataSet` with a table as `DataMember`, master-detail with a `DataRelation` as the `DataMember` of a second `BindingSource`, `Position`, `Filter`, `Sort`, `AddNew`, `CurrencyManager`. |
-| `BindingNavigator` | ❌ Missing | |
+| `BindingNavigator` | ✅ Works · API complete | WinForms' implementation over a `BindingSource`: first/previous/next/last, the position box (a number and Enter moves there), the count (`CountItemFormat`), add and delete, `RefreshItems`. In the designer it comes with its standard items, as in VS. See §6 for their pictures. |
 | ADO.NET itself (`DataSet`, `DataTable`, `DataAdapter`, providers) | Part of .NET, not of WinForms: works on Linux as it is. Edits made in a bound grid set `RowState`, so `adapter.Update(table)` saves them. The provider decides the platform: SQL Server (`Microsoft.Data.SqlClient`), PostgreSQL, MySQL, SQLite, Firebird, Oracle run on Linux; **Access through `System.Data.OleDb` is Windows-only** (`PlatformNotSupportedException` on Linux, the converter warns). |
 | `Control.DataBindings`, `Binding`, `BindingContext`, `CurrencyManager` | ✅ Works · API: complete | The WinForms implementation itself (vendored from dotnet/winforms), with its rules: a control binds once it is created and has a `BindingContext` (a form gives both); the default `DataSourceUpdateMode.OnValidation` writes the value when the control validates; `Format`/`Parse`, `FormatString`, `NullValue`, `BindingComplete` (with formatting enabled), `ErrorProvider` over `IDataErrorInfo`. The designer reads and writes `DataBindings.Add(new Binding(...))` as Visual Studio does. |
 | `PropertyGrid` | ✅ Works · 31 missing | Categories, type editors, expandable objects. Missing: the command pane and its colours. |
@@ -159,11 +159,11 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 
 | Component | Status |
 |---|---|
-| `Timer`, `ImageList`, `ErrorProvider`, `HelpProvider`* , `BackgroundWorker` | ✅ (`HelpProvider` ❌ missing; `BackgroundWorker` is part of .NET itself and works as-is) |
+| `Timer`, `ImageList`, `ErrorProvider`, `HelpProvider`, `BackgroundWorker` | ✅ (`HelpProvider`: F1 shows the control's `HelpString` in a pop-up or opens `HelpNamespace` at its `HelpKeyword`; in the designer it adds those properties to every control. `BackgroundWorker` is part of .NET itself and works as-is) |
 | `MessageBox`, `TaskDialog` | ✅ Own dialogs in the NetForms theme; button captions follow the UI language (English, Russian). |
 | `OpenFileDialog`, `SaveFileDialog`, `FolderBrowserDialog` | ✅ Native dialogs of the OS (portal / GTK on Linux). A few properties missing (`ClientGuid`, custom places). |
 | `ColorDialog`, `FontDialog` | ✅ Own dialogs. |
-| `PrintDocument`, `PrintDialog`, `PageSetupDialog`, `PrintPreviewControl`, `PrintPreviewDialog`, `PrintControllerWithStatusDialog` | ✅ Works · API complete — see Printing in §4. The dialogs are NetForms' own forms (the same on Windows and Linux) and write back to `PrinterSettings`/`PageSettings` what the Win32 dialogs write. |
+| `PrintDocument`, `PrintDialog`, `PageSetupDialog`, `PrintPreviewControl`, `PrintPreviewDialog`, `PrintControllerWithStatusDialog` | ✅ Works · API complete — see Printing in §4. The dialogs are NetForms' own forms (the same on Windows and Linux) with the buttons of the Win32 ones — *Properties…* (paper, tray, orientation, colour, duplex, quality), *Printer…* in page setup, *Help* — and write back to `PrinterSettings`/`PageSettings` what the Win32 dialogs write. English or Russian, as the UI. |
 | `NotifyIcon` | ✅ See above. |
 
 ---
@@ -233,6 +233,11 @@ is a bug — please report it.
 - **`RichTextBox.Rtf`** writes non-ASCII characters as `\uN?` (RichEdit uses `\'hh` in the font's code page); both are read.
 - **Negative sizes** of an unparented docked control are clamped to 0 immediately (WinForms does it when the window is created).
 - **Printing**: `PreviewPageInfo.Image` is a `Bitmap` (WinForms: an EMF `Metafile`, which NetForms does not have); print preview does not need a printer (WinForms throws `InvalidPrinterException` without one); print to file writes PDF (WinForms: what the driver produces); `IsDirectPrintingSupported` is always `false`; on Windows pages are sent to the driver as bitmaps (at most 300 dpi), not as GDI drawing commands.
+- **`BindingNavigator`** in NetForms' designer: the pictures of the standard items are not written to the form's code
+  (Visual Studio puts them in the `.resx`, which the designer does not write yet); the navigator puts them back itself
+  when a standard item shows only its image and has none. A form made in Visual Studio keeps its `.resx` pictures.
+- **Saving images**: `Image.Save` writes BMP, GIF, TIFF, PNG, JPEG and WEBP; GIF uses a fixed 252-colour palette (GDI+
+  uses its halftone palette); Icon, EMF, WMF, Exif and HEIF are written as PNG — as GDI+ does, which has no encoder for them.
 - **Drag and drop** within the application does not go through the OS (NetForms runs the protocol), so a drag cannot yet leave the application, and `DoDragDrop`'s drag image is not drawn.
 - **System colours**: `SystemColors.*` are .NET's own table on Linux (the classic Windows palette),
   the OS palette on Windows. The NetForms theme always paints with the Windows 10/11 light palette.
@@ -243,11 +248,11 @@ is a bug — please report it.
 
 - **Diff tests against the real WinForms** (`tests/NetForms.Compat`, Windows CI): the same scenarios
   run on `System.Windows.Forms` and on NetForms; positions, sizes, event order, text metrics, design-time
-  attributes and what the designer serializes are compared. The suite: **504/504**; on Windows CI it runs with all three oracles of the real WinForms.
+  attributes and what the designer serializes are compared. The suite: **543/543**; on Windows CI it runs with all three oracles of the real WinForms.
 - **Golden rendering tests** (offscreen, identical images on Windows and Linux).
 - **API coverage** — `dotnet run --project tools/NetForms.ApiDiff -- --markdown docs/api`
-  regenerates [the tables](api/README.md). Today: **747** of 1254 types complete, **144** partial,
-  **363** missing (most of them `EventArgs`, the accessible objects of individual controls and the removed 1.x controls).
+  regenerates [the tables](api/README.md). Today: **761** of 1254 types complete, **141** partial,
+  **352** missing (most of them `EventArgs`, the accessible objects of individual controls and the removed 1.x controls).
 - **Corpus of real projects** (`NETFORMS_CORPUS=1`, CI job `corpus`): converted and built without
   manual edits, with the reason for every failure recorded in `tests/corpus/corpus.json`.
 
@@ -258,14 +263,11 @@ is a bug — please report it.
 What to add first is decided by the code people write, not by the length of the list:
 `NetForms.ApiDiff --usage` compiles every project of the corpus against the real WinForms and counts each reference
 to a type or member NetForms lacks — [Missing API by use](api/usage.md). Of 25,887 references to the WinForms API in
-63 projects (24 repositories), 11 types and members were missing at the last count, and each of them stopped a build;
-printing has been added since (decision 153):
+63 projects (24 repositories), **none is missing now**: the last ones (`ImageFormat.Icon`/`Tiff`/`Wmf`,
+`ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, `OpenFileDialog.SafeFileName`, `TabPages.Remove`,
+the `Font` constructor with a character set) came in 0.1.0-preview.8 (decision 166), and MDBEditor, GetStockIcon and
+the xrails-login-ui library build now.
 
-| Next | Code that needs it |
-|---|---|
-| `ImageList.Images.Add(string, Icon)` | Surviving-WinForms (GetStockIcon sample) |
-| `LinkLabel.OverrideCursor` — the protected property a derived link label sets | xrails-login-ui (both projects) |
-| `ImageFormat.Icon`/`Tiff`/`Wmf`, `OpenFileDialog.SafeFileName`, `TabControl.TabPages.Remove`, `new Font(FontFamily, float, FontStyle, GraphicsUnit, byte)` | MDBEditor, xrails-login-ui |
-
-The corpus already builds almost entirely, so this list is short. Ranking the other missing types takes a wider
-sample of open-source WinForms code — it only has to compile against the real WinForms, not build with NetForms.
+The next ranking takes a wider sample of open-source WinForms code — it only has to compile against the real WinForms,
+not build with NetForms. Known ahead: screen readers (the accessibility model is there), dragging out of the
+application, the dark theme, `.resx` in the designer (images, localizable forms).

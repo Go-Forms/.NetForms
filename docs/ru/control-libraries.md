@@ -12,6 +12,7 @@
 - [Что говорит проверка](#что-говорит-проверка)
 - [Как убрать библиотеку и пересканировать](#как-убрать-библиотеку-и-пересканировать)
 - [Где это хранится: `.vscode/netforms.json`](#где-это-хранится-vscodenetformsjson)
+- [Попробовать: NetForms.ExtraControls](#попробовать-netformsextracontrols)
 - [Как написать библиотеку контролов для NetForms](#как-написать-библиотеку-контролов-для-netforms)
 - [Безопасность: доверие к рабочей области](#безопасность-доверие-к-рабочей-области)
 - [Неполадки](#неполадки)
@@ -148,6 +149,24 @@ public class StarRating : Control
 Библиотека, ссылка на которую пропала из `.csproj` (удалена руками, переключена ветка), просто не показывается — дизайнер
 от этого не ломается.
 
+## Попробовать: NetForms.ExtraControls
+
+`NetForms.ExtraControls` — библиотека контролов на nuget.org от самого проекта NetForms; на ней быстрее всего увидеть, как
+пакет попадает на панель элементов:
+
+1. Откройте форму проекта NetForms в дизайнере.
+2. **NetForms: Add Control Library… → NuGet package…**, введите `NetForms.ExtraControls`, выберите последнюю версию.
+3. Проверка скажет ✅ *собрана под NetForms* и покажет шесть элементов со значками: `ToggleSwitch`, `RatingStars`,
+   `CircularProgressBar`, `GradientPanel`, `ColorPickerButton` и `CountdownTimer`. Оставьте галочки.
+4. Проект собирается, на панели элементов появляется группа **NetForms.ExtraControls**. Перетащите на форму
+   `GradientPanel`, в неё — `ToggleSwitch`; `CountdownTimer` уйдёт в лоток компонентов и запишется как
+   `new CountdownTimer(components)`.
+5. В окне свойств — их собственные категории и описания (*Checked*, *OnColor*, *Duration*…), на вкладке событий — их
+   события (*CheckedChanged*, *Finished*…).
+
+Из командной строки: `dotnet add package NetForms.ExtraControls --prerelease`. Её исходники — `src/NetForms.ExtraControls`
+в репозитории — полный пример для следующего раздела: атрибуты, значки, контейнер, компонент для лотка.
+
 ## Как написать библиотеку контролов для NetForms
 
 Библиотека контролов — это библиотека классов со ссылкой на NetForms:
@@ -159,7 +178,7 @@ public class StarRating : Control
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
+    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>

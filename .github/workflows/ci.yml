@@ -1,7 +1,7 @@
 name: CI
 
-# Tests on both OSes; on main, a <Version> (Directory.Build.props) that has no tag yet is released right after
-# the tests pass: release.yml publishes to nuget.org, the VS Code Marketplace and GitHub (docs/RELEASING.md).
+# Tests on both OSes. Nothing is published from here: a release is started by hand (release.yml, docs/RELEASING.md);
+# on main CI only reports whether the <Version> of Directory.Build.props is still unreleased.
 
 on:
   push:
@@ -46,6 +46,7 @@ jobs:
           name: render-out-${{ matrix.os }}
           path: |
             tests/NetForms.Tests/bin/Release/net10.0/render-out/
+            tests/NetForms.ExtraControls.Tests/bin/Release/net10.0/render-out/
             ${{ runner.temp }}/winforms-*.json
 
   # Ф6.К: real WinForms projects (tests/corpus/corpus.json, pinned commits) converted and built -
@@ -107,42 +108,21 @@ jobs:
           name: designer-ui-${{ matrix.os }}
           path: designer/test/ui/out/
 
-  # Is the version on main new? Then it is released now. Without NuGet credentials nothing is released (and no
-  # tag is made), so adding them later and pushing again still publishes this version.
-  release-check:
+  # Releasing is a command, not a side effect of a push (docs/RELEASING.md): CI only says whether the version on main
+  # is still unreleased. To release it: Actions -> Release -> Run workflow on main, "publish" ticked and the version typed
+  # in (or push the tag v<Version>).
+  release-status:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [build-test, designer]
     runs-on: ubuntu-latest
-    outputs:
-      release: ${{ steps.check.outputs.release }}
     steps:
       - uses: actions/checkout@v7
-      - id: check
-        env:
-          HAS_NUGET_API_KEY: ${{ secrets.NUGET_API_KEY != '' }}
-          NUGET_USER: ${{ vars.NUGET_USER }}
-        run: |
+      - run: |
           version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | head -1)
           if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
             echo "v$version is already released."
-            echo "release=false" >> "$GITHUB_OUTPUT"
-          elif [ "$HAS_NUGET_API_KEY" != "true" ] && [ -z "$NUGET_USER" ]; then
-            echo "::warning::$version is not released: no NuGet credentials (the variable NUGET_USER or the secret NUGET_API_KEY, docs/RELEASING.md)."
-            echo "release=false" >> "$GITHUB_OUTPUT"
           else
-            echo "Releasing $version."
-            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::$version is tested and ready to release: Actions -> Release -> Run workflow (publish, version $version)."
+            echo "### $version is ready to release" >> "$GITHUB_STEP_SUMMARY"
+            echo "Actions → Release → Run workflow on \`main\`, tick *publish*, type \`$version\`." >> "$GITHUB_STEP_SUMMARY"
           fi
-
-  release:
-    needs: release-check
-    if: needs.release-check.outputs.release == 'true'
-    concurrency: release
-    permissions:
-      contents: write
-      id-token: write
-    uses: ./.github/workflows/release.yml
-    with:
-      publish: true
-      tested: true
-    secrets: inherit

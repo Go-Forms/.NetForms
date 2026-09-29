@@ -2133,6 +2133,47 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     504/504). Документация: руководство `docs/control-libraries.md` (и `docs/ru/`) — по шагам для каждого источника,
     проверка, `.vscode/netforms.json`, как написать библиотеку контролов для NetForms, доверие, неполадки; в навигации
     сайта, в оглавлениях, в `designer.md` и строкой в таблице совместимости.
+163. **Печать доделана, новые контролы.** Аудит печати после 162: API полный, но в диалогах не было кнопок Win32 —
+    `PrintDialog` получил **Свойства…** (документные свойства принтера: бумага, лоток, ориентация, цвет, двусторонняя
+    печать, качество — `PrinterPropertiesForm`; на OK в `DefaultPageSettings` документа и `PrinterSettings.Duplex`, как
+    `SetHdevmode` в WinForms), **Справка** (`ShowHelp` → `HelpRequest`), выбор «Страницы» при вводе номера, отказ закрыться
+    на обратном диапазоне; `PageSetupDialog` — **Принтер…** (`AllowPrinter`). Найден баг: `PrintBackend.PrintFilePrompt`
+    нигде не подключался — печать в файл без `PrintFileName` молча ничего не делала; теперь `ModuleInitializer` NetForms
+    подключает `SaveFileDialog` («Сохранение результатов печати»). Строки диалогов печати, предпросмотра и окна печати —
+    по-русски на русском UI (решение 118, `SystemStrings`). `Control.OnPrint`: `DrawToBitmap` рисует через него (флаг
+    потока), плюс защищённые члены Control для наследников. Найден и исправлен баг поведения: `DialogResult` кнопки
+    закрывал модальную форму **до** её `Click` — обработчик не мог оставить форму открытой (`DialogResult = None`);
+    теперь закрытие — после обработчиков (`Form.RunWithDeferredDialogClose`), как модальный цикл WinForms. Новые типы
+    (адаптированы из dotnet/winforms): `DomainUpDown` (и защищённые хуки `UpDownBase` с сигнатурами WinForms),
+    `HelpProvider`, `Splitter` (полоса перетаскивания — украшение родителя), `BindingNavigator` (дизайнер при добавлении
+    вызывает `AddStandardItems` и регистрирует элементы компонентами, как `BindingNavigatorDesigner`; картинки
+    стандартных элементов в код не пишутся — VS кладёт их в `.resx`, которого дизайнер не пишет, — навигатор
+    возвращает их сам в `EndInit`), рендереры `Button/CheckBox/RadioButton/ComboBox/ProgressBar/ScrollBarRenderer` в
+    теме NetForms. Атрибуты сверены с исходником WinForms член за членом (оракул атрибутов работает только на Windows
+    CI). Дизайнер: `PrintPreviewDialog` формы теперь в трее (раньше не был ни на холсте, ни в трее). Пример
+    `samples/Printing`.
+164. **Пакет `NetForms.ExtraControls`.** Библиотека готовых контролов на nuget.org — и эталон «чужой» библиотеки для
+    проверки Add Control Library → NuGet: `ToggleSwitch`, `RatingStars`, `CircularProgressBar`, `GradientPanel`
+    (контейнер), `ColorPickerButton`, компонент `CountdownTimer` (трей, конструктор с `IContainer`); иконки — PNG через
+    `[ToolboxBitmap]`. Только публичный API WinForms. Зависимость от NetForms — `PrivateAssets=none` (проект, взявший
+    только этот пакет, получает и `buildTransitive` NetForms). Поведение — в отдельном тестовом проекте
+    `tests/NetForms.ExtraControls.Tests`: `NetForms.Tests` загружает сборку пакета так, как дизайнер (теневая копия в
+    собираемом контексте), а сборку, которую процесс уже держит, дизайнер считает «своей» и не копирует. Проверено:
+    `ControlLibraryScanner.ScanPackage` на собранном `.nupkg` — `ok`, шесть типов с иконками.
+165. **Выпуск — только по команде.** По просьбе заказчика пуш в `main` больше ничего не публикует: CI (`release-status`)
+    лишь сообщает, что версия готова; выпуск — *Actions → Release → Run workflow* с галочкой publish и **введённой
+    версией** (сверяется с `Directory.Build.props`) или тег. Заметки GitHub Release — раздел версии из `CHANGELOG.md`.
+    Версия `0.1.0-preview.8`, расширение 0.1.7.
+166. **Корпус больше не просит API.** Последние 11 членов из `docs/api/usage.md` (`ImageFormat.Icon`/`Tiff`/`Wmf`,
+    `ImageList.Images.Add(string, Icon)`, `LinkLabel.OverrideCursor`, `OpenFileDialog.SafeFileName`, `TabPages.Remove`,
+    `new Font(FontFamily, …, byte)` и др.) добавлены; `ApiDiff --usage` по 24 репозиториям — 0 недостающих. Корпус:
+    MDBEditor, GetStockIcon, xrails-login-ui Core собираются (31 из 45); xrails Demo теперь падает на готовой
+    `Animator.dll` под WinForms из .NET Framework (CS0012) — причина в `corpus.json` обновлена. `CorpusTests`
+    требуют снять починенные проекты с `knownFailures`, иначе CI `corpus` красный, — поэтому корпус прогоняется
+    локально перед пушем. Попутно найден баг: `Image.Save` в BMP/GIF бросал `NotSupportedException` (у Skia нет этих
+    кодировщиков) — свои кодировщики BMP (24/32 бит), GIF (палитра 6×7×6, LZW) и TIFF (без сжатия, RGBA), форматы без
+    кодировщика в GDI+ (Icon, EMF, WMF, Exif, HEIF) пишутся PNG, как в GDI+; `ImageFormat` сравнивается по `Guid`
+    GDI+. Сигнатуры приведены к WinForms (`TabPages.Remove`, `Images.Remove`, `Images.Add(Icon)` — `void`).
 
 **Состояние тестов на конец сессии (решения 158–161, 2026-09-26, Linux):** .NET — **504/504** (было 484; +20
 `ControlLibraryTests`). Расширение — **40/40** (было 32: +8 `libraries.test.js`, +1 протокол с библиотекой, +1 UI —
@@ -2386,9 +2427,11 @@ Windows и Linux CI; процент собравшихся без ручной �
 > в `docs/compatibility.md` § 8 (он же `docs/api/usage.md`).
 > Каждое изменение — тест, сценарий оракула, `docs/compatibility.md` (англ. и рус.), `NetForms.ApiDiff --markdown
 > docs/api` и `--usage <клоны корпуса> --out docs/api/usage.md`; пуш — после зелёных `dotnet test NetForms.slnx` и
-> `designer: npm test`. Решения, которых нет в плане, записывай в журнал (со 163).
+> `designer: npm test`. Решения, которых нет в плане, записывай в журнал (со 167).
 
-**Состояние на 2026-09-26.** Выпущен `0.1.0-preview.7` (решение 162): библиотеки контролов в дизайнере (решения
+**Состояние на 2026-09-29.** Выпуск `0.1.0-preview.8` (решения 163–165): диалоги печати доделаны, `DomainUpDown`,
+`HelpProvider`, `Splitter`, `BindingNavigator`, рендереры контролов, пакет `NetForms.ExtraControls`; выпуск — только
+по команде; расширение 0.1.7. До него — `0.1.0-preview.7` (решение 162): библиотеки контролов в дизайнере (решения
 157–161), печать, drag-and-drop, TreeView, модель доступности (решения 153–156); расширение 0.1.6. До него — `0.1.0-preview.6` (решение 152): копирование и вставка в дизайнере, контекстное
 меню, шаблоны форм, стартовая форма, публикация, проверка обновлений (решение 151). До него — `0.1.0-preview.5`
 (решение 150): редактор коллекций TabPages и пунктов меню, переключение вкладок на холсте дизайнера (решение 149). До него — `0.1.0-preview.4` (решение 148): строка для новых записей `DataGridView` —

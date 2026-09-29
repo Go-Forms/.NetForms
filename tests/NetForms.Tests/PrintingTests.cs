@@ -698,6 +698,248 @@ public class PrintingTests
         }
     }
 
+    /// <summary>A snapshot of a dialog form for render-out (the CI artifact), as it is drawn.</summary>
+    private static void Snapshot(Form form, string name)
+    {
+        using var bmp = new Bitmap(form.Width, form.Height);
+        form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
+        var outDir = Path.Combine(AppContext.BaseDirectory, "render-out");
+        Directory.CreateDirectory(outDir);
+        bmp.Save(Path.Combine(outDir, name + ".png"));
+    }
+
+    [Fact]
+    public void PrintDialogPropertiesGoToThePageSettingsAndThePrinter()
+    {
+        var platform = TestPlatform.Install();
+        Install(out var previous);
+        try
+        {
+            var doc = new PrintDocument();
+            using var dialog = new PrintDialog { Document = doc, ShowHelp = true };
+            int help = 0;
+            dialog.HelpRequest += (_, _) => help++;
+
+            platform.OnMessageLoop = () =>
+            {
+                var form = (PrintDialog.PrintForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                Snapshot(form, "print-dialog");
+                Assert.NotNull(form.Help);
+                form.Help!.PerformClick();
+                Assert.True(form.Properties.Enabled);
+                platform.OnMessageLoop = () =>
+                {
+                    var props = (PrinterPropertiesForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                    Snapshot(props, "print-dialog-properties");
+                    Assert.Equal(new[] { "A4", "Letter" }, props.PaperBox.Items.Cast<string>().ToArray());
+                    Assert.True(props.DuplexBox.Enabled);
+                    props.PaperBox.SelectedIndex = 1;
+                    props.Landscape.Checked = true;
+                    props.DuplexBox.SelectedIndex = 1;
+                    props.Ok.PerformClick();
+                };
+                form.Properties.PerformClick();
+                form.Ok.PerformClick();
+            };
+            Assert.Equal(DialogResult.OK, dialog.ShowDialog());
+
+            Assert.Equal(1, help);
+            Assert.Equal(PaperKind.Letter, doc.DefaultPageSettings.PaperSize.Kind);
+            Assert.True(doc.DefaultPageSettings.Landscape);
+            Assert.Equal(Duplex.Vertical, doc.PrinterSettings.Duplex);
+
+            // A printer without colour or duplex: the choices are off.
+            platform.OnMessageLoop = () =>
+            {
+                var form = (PrintDialog.PrintForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                form.Printer.SelectedIndex = 1;
+                platform.OnMessageLoop = () =>
+                {
+                    var props = (PrinterPropertiesForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                    Assert.False(props.ColorBox.Enabled);
+                    Assert.False(props.DuplexBox.Enabled);
+                    props.Cancel.PerformClick();
+                };
+                form.Properties.PerformClick();
+                form.Cancel.PerformClick();
+            };
+            Assert.Equal(DialogResult.Cancel, dialog.ShowDialog());
+            Assert.True(doc.DefaultPageSettings.Landscape);
+        }
+        finally
+        {
+            PrintBackend.Current = previous;
+        }
+    }
+
+    [Fact]
+    public void PrintDialogKeepsABackwardsPageRangeOpen()
+    {
+        var platform = TestPlatform.Install();
+        Install(out var previous);
+        var errors = new List<string>();
+        PrintDialog.PrintForm.ShowError = errors.Add;
+        try
+        {
+            var doc = new PrintDocument();
+            doc.PrinterSettings.MinimumPage = 1;
+            doc.PrinterSettings.MaximumPage = 9;
+            doc.PrinterSettings.FromPage = 1;
+            doc.PrinterSettings.ToPage = 9;
+            using var dialog = new PrintDialog { Document = doc, AllowSomePages = true };
+            platform.OnMessageLoop = () =>
+            {
+                var form = (PrintDialog.PrintForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                Assert.True(form.AllPages.Checked);
+                form.FromPage.Value = 5;
+                Assert.True(form.SomePages.Checked); // typing a page number picks "Pages"
+                form.ToPage.Value = 3;
+                form.Ok.PerformClick();
+                Assert.Single(errors);
+                Assert.Equal(DialogResult.None, form.DialogResult);
+                form.ToPage.Value = 7;
+                form.Ok.PerformClick();
+            };
+            Assert.Equal(DialogResult.OK, dialog.ShowDialog());
+            Assert.Equal((5, 7), (doc.PrinterSettings.FromPage, doc.PrinterSettings.ToPage));
+            Assert.Equal(PrintRange.SomePages, doc.PrinterSettings.PrintRange);
+        }
+        finally
+        {
+            PrintDialog.PrintForm.ShowError = null;
+            PrintBackend.Current = previous;
+        }
+    }
+
+    [Fact]
+    public void PageSetupDialogPrinterButtonSwitchesThePrinterAndItsPapers()
+    {
+        var platform = TestPlatform.Install();
+        var fake = Install(out var previous);
+        try
+        {
+            fake.Printers["Plotter"] = new PrinterInfo
+            {
+                Name = "Plotter",
+                PaperSizes = [new PaperSize(PaperKind.A3, "A3", 1169, 1654), new PaperSize(PaperKind.A4, "A4", 827, 1169)],
+                SupportsColor = false,
+            };
+            var doc = new PrintDocument();
+            using var dialog = new PageSetupDialog { Document = doc };
+            platform.OnMessageLoop = () =>
+            {
+                var form = (PageSetupDialog.PageSetupForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                Snapshot(form, "page-setup-dialog");
+                Assert.NotNull(form.PrinterButton);
+                Assert.Null(form.Help);
+                Assert.Equal("A4", form.PaperBox.SelectedItem);
+                form.UsePrinter("Plotter");
+                Assert.Equal(new[] { "A3", "A4" }, form.PaperBox.Items.Cast<string>().ToArray());
+                Assert.Equal("A4", form.PaperBox.SelectedItem); // the paper is kept where the new printer has it
+                form.PaperBox.SelectedIndex = 0;
+                form.Ok.PerformClick();
+            };
+            Assert.Equal(DialogResult.OK, dialog.ShowDialog());
+            Assert.Equal("Plotter", doc.PrinterSettings.PrinterName);
+            Assert.Equal(PaperKind.A3, doc.DefaultPageSettings.PaperSize.Kind);
+        }
+        finally
+        {
+            PrintBackend.Current = previous;
+        }
+    }
+
+    [Fact]
+    public void PrintToFileWithoutAFileNameAsksWhereToSave()
+    {
+        var platform = TestPlatform.Install();
+        Install(out var previous);
+        var path = Path.Combine(Path.GetTempPath(), $"netforms-prompt-{Guid.NewGuid():N}.pdf");
+        try
+        {
+            // The WinForms layer plugs its SaveFileDialog in (the spooler's "Save Print Output As").
+            Assert.NotNull(PrintBackend.PrintFilePrompt);
+            var doc = Document(2);
+            doc.DocumentName = "Q3: sales/north";
+            doc.PrinterSettings.PrintToFile = true;
+            doc.PrinterSettings.PrinterName = "Nowhere"; // not a printer: NetForms writes the PDF itself
+            doc.PrintController = new StandardPrintController();
+            platform.FileDialogCalls.Clear();
+            platform.SaveFileResult = path;
+            doc.Print();
+            Assert.Equal("Q3_ sales_north.pdf", platform.FileDialogCalls.Single().FileName);
+            Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(File.ReadAllBytes(path), 0, 4));
+
+            // Cancelled: nothing is printed.
+            platform.SaveFileResult = null;
+            var log = new List<string>();
+            doc = Document(1, log);
+            doc.PrinterSettings.PrintToFile = true;
+            doc.PrinterSettings.PrinterName = "Nowhere";
+            doc.PrintController = new StandardPrintController();
+            doc.Print();
+            Assert.DoesNotContain("PrintPage 1", log);
+        }
+        finally
+        {
+            platform.SaveFileResult = null;
+            File.Delete(path);
+            PrintBackend.Current = previous;
+        }
+    }
+
+    [Fact]
+    public void ThePrintDialogsSpeakRussianOnARussianUI()
+    {
+        var platform = TestPlatform.Install();
+        Install(out var previous);
+        var culture = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("ru-RU");
+        try
+        {
+            using var dialog = new PrintDialog();
+            platform.OnMessageLoop = () =>
+            {
+                var form = (PrintDialog.PrintForm)Application.OpenForms[Application.OpenForms.Count - 1];
+                Snapshot(form, "print-dialog-ru");
+                Assert.Equal("Печать", form.Text);
+                Assert.Equal("&Печать", form.Ok.Text);
+                Assert.Equal("Отмена", form.Cancel.Text);
+                form.Cancel.PerformClick();
+            };
+            dialog.ShowDialog();
+
+            using var preview = new PrintPreviewDialog();
+            Assert.Equal("Предварительный просмотр", preview.Text);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = culture;
+            PrintBackend.Current = previous;
+        }
+    }
+
+    [Fact]
+    public void DrawToBitmapPaintsThroughOnPrint()
+    {
+        var control = new PrintingControl { Size = new Size(20, 20) };
+        using var bmp = new Bitmap(20, 20);
+        control.DrawToBitmap(bmp, new Rectangle(0, 0, 20, 20));
+        Assert.Equal(1, control.Prints);
+        Assert.Equal(Color.Red.ToArgb(), bmp.GetPixel(10, 10).ToArgb());
+    }
+
+    private sealed class PrintingControl : Control
+    {
+        public int Prints;
+
+        protected override void OnPrint(PaintEventArgs e)
+        {
+            Prints++;
+            e.Graphics.Clear(Color.Red);
+        }
+    }
+
     [Fact]
     public void PageSetupDialogChangesPaperOrientationAndMargins()
     {

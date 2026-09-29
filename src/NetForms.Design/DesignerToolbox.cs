@@ -23,14 +23,14 @@ public static class DesignerToolbox
         }),
         ("Containers", new[] { "FlowLayoutPanel", "GroupBox", "Panel", "SplitContainer", "TabControl", "TableLayoutPanel" }),
         ("Menus & Toolbars", new[] { "ContextMenuStrip", "MenuStrip", "StatusStrip", "ToolStrip", "ToolStripContainer" }),
-        ("Data", new[] { "BindingSource", "DataGridView" }),
+        ("Data", new[] { "BindingNavigator", "BindingSource", "DataGridView" }),
         ("Components", new[] { "ErrorProvider", "HelpProvider", "ImageList", "Timer" }),
         ("Printing", new[] { "PageSetupDialog", "PrintDialog", "System.Drawing.Printing.PrintDocument", "PrintPreviewControl", "PrintPreviewDialog" }),
         ("Dialogs", new[] { "ColorDialog", "FolderBrowserDialog", "FontDialog", "OpenFileDialog", "SaveFileDialog" }),
     };
 
     /// <summary>Designable, but only in "All Windows Forms" (as in VS).</summary>
-    private static readonly string[] s_allOnly = { "DomainUpDown", "HScrollBar", "PropertyGrid", "TrackBar", "VScrollBar" };
+    private static readonly string[] s_allOnly = { "DomainUpDown", "HScrollBar", "PropertyGrid", "Splitter", "TrackBar", "VScrollBar" };
 
     public static List<DesignerToolboxCategory> Categories() => Categories(null, null);
 

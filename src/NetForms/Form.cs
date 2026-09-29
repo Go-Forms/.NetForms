@@ -282,8 +282,28 @@ public partial class Form : ContainerControl
         set
         {
             _dialogResult = value;
-            if (_modal && value != DialogResult.None && !_closing) Close();
+            if (_modal && value != DialogResult.None && !_closing && _deferDialogClose == 0) Close();
         }
+    }
+
+    /// <summary>
+    /// While a button's click runs (see <see cref="Button.OnClick"/>): WinForms' modal loop looks at DialogResult
+    /// only after the click message, so a Click handler can still set it back to None and keep the form open.
+    /// </summary>
+    private int _deferDialogClose;
+
+    internal void RunWithDeferredDialogClose(Action action)
+    {
+        _deferDialogClose++;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _deferDialogClose--;
+        }
+        if (_deferDialogClose == 0 && _modal && _dialogResult != DialogResult.None && !_closing && !IsDisposed) Close();
     }
 
     [Category("Window Style")]
@@ -726,7 +746,7 @@ public partial class Form : ContainerControl
     internal void UpdateCursor()
     {
         var target = _capture ?? _mouseOver ?? this;
-        var cursor = Application.UseWaitCursor || target.UseWaitCursor ? Cursors.WaitCursor : target.Cursor;
+        var cursor = Application.UseWaitCursor || target.UseWaitCursor ? Cursors.WaitCursor : target.EffectiveCursor;
         if (ReferenceEquals(cursor, _appliedCursor)) return;
         _appliedCursor = cursor;
         _window?.SetCursor(cursor.Name);

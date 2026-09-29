@@ -22,7 +22,7 @@ Avalonia в роли платформенного слоя.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.0-preview.7" />
++    <PackageReference Include="NetForms" Version="0.1.0-preview.8" />
 ```
 
 Для большинства проектов это и есть весь перенос — код не меняется. `netforms-convert` сделает это за вас,
@@ -38,7 +38,7 @@ Avalonia в роли платформенного слоя.
 
 ```sh
 # новое приложение
-dotnet new install NetForms.Templates::0.1.0-preview.7
+dotnet new install NetForms.Templates::0.1.0-preview.8
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # готовое WinForms-приложение
@@ -71,14 +71,18 @@ NetForms (тот же Markdown лежит в [docs/ru/](docs/ru/README.md)):
 
 Предварительная версия. Измерено, а не на глаз:
 
-- **API:** из 1254 публичных типов `System.Windows.Forms` + `System.Drawing.Common` 747 — полные,
-  144 — частично, 363 — нет ([покрытие](docs/api/README.md)).
-- **Поведение:** 504/504 теста; раскладка, порядок событий, метрики текста и то, что пишет дизайнер,
+- **API:** из 1254 публичных типов `System.Windows.Forms` + `System.Drawing.Common` 761 — полные,
+  141 — частично, 352 — нет ([покрытие](docs/api/README.md)).
+- **Поведение:** 543/543 тестов; раскладка, порядок событий, метрики текста и то, что пишет дизайнер,
   сверяются с настоящим WinForms на Windows, отрисовка проверяется без окна на обеих ОС.
-- **Реальные проекты:** 7 из 7 проектов заказчика на .NET Framework и 28 из 45 открытых WinForms-проектов
+- **Реальные проекты:** 7 из 7 проектов заказчика на .NET Framework и 31 из 45 открытых WinForms-проектов
   переводятся и собираются без ручных правок.
 - **Дизайнер:** собственные контролы проекта и библиотеки контролов, собранные под NetForms (NuGet, `.dll`,
   другие проекты), — на панели элементов и живые на холсте ([библиотеки элементов управления](docs/ru/control-libraries.md)).
+- **Печать:** `PrintDocument`, диалоги печати, параметров страницы и предпросмотра, принтеры из CUPS в Linux и winspool
+  в Windows; печать в PDF. Пример: `samples/Printing`.
+- **Дополнительные контролы:** пакет `NetForms.ExtraControls` — переключатель, звёзды рейтинга, круглый прогресс,
+  градиентная панель, выбор цвета, таймер обратного отсчёта — готовы для панели элементов дизайнера.
 - Пока нет: экранных дикторов (модель доступности есть), `WebBrowser`, тёмной темы, сторонних пакетов
   контролов, собранных под настоящий WinForms.
 
@@ -89,6 +93,7 @@ src/NetForms                  System.Windows.Forms: Control, Form, Application, 
 src/NetForms.Drawing          System.Drawing на SkiaSharp
 src/NetForms.Platform*        платформенный слой (Avalonia 12)
 src/NetForms.Design*          хост дизайнера: чтение и запись InitializeComponent через Roslyn
+src/NetForms.ExtraControls    дополнительные контролы (NuGet-пакет NetForms.ExtraControls)
 designer/                     расширение VS Code
 templates/                    шаблоны dotnet new (пакет NuGet NetForms.Templates)
 tools/NetForms.Convert        конвертер WinForms → NetForms (netforms-convert)

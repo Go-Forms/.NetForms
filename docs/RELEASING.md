@@ -5,27 +5,35 @@
 
 ## Как выходит версия
 
-**Выпуск — это смена версии в `main`.** Поднимите `<Version>` в `Directory.Build.props`, влейте в `main`, и
-после зелёных тестов CI сам:
+**Выпуск — это команда, а не побочный эффект пуша.** Пуш в `main` ничего не публикует, даже с новой версией.
 
-1. видит, что тега `v<Version>` ещё нет (задача `release-check`);
-2. вызывает `release.yml`: собирает все пакеты, публикует NuGet-пакеты в nuget.org, расширение — в VS Code
-   Marketplace и Open VSX;
-3. создаёт GitHub Release с файлами пакетов и текстом `CHANGELOG.md` — вместе с ним появляется тег `v<Version>`.
+1. Поднимите `<Version>` в `Directory.Build.props` (и там, где её повторяют, — см. [чек-лист](#чек-лист-смены-версии)),
+   допишите раздел в `CHANGELOG.md`, влейте в `main`.
+2. CI прогоняет тесты на обеих ОС; задача `release-status` пишет в сводку запуска, что версия готова к выпуску
+   («`0.1.0-preview.8` is ready to release»), если тега `v<Version>` ещё нет.
+3. **Команда на выпуск** — один из двух способов:
+   - *Actions → Release → Run workflow*, ветка `main`, галочка **publish**, в поле **version** — ровно версия из
+     `Directory.Build.props` (защита от выпуска не того коммита: при несовпадении workflow останавливается до публикации);
+   - тег: `git tag v0.1.0-preview.8 && git push origin v0.1.0-preview.8` (тег обязан совпадать с версией).
+4. `release.yml` собирает все пакеты, прогоняет тесты, публикует NuGet-пакеты в nuget.org, расширение — в VS Code
+   Marketplace и Open VSX, и создаёт GitHub Release с файлами пакетов и разделом этой версии из `CHANGELOG.md` — вместе
+   с ним появляется тег `v<Version>`.
 
-Следующие пуши в `main` с той же версией ничего не публикуют: тег уже есть.
-
-Если учётных данных NuGet нет, `release-check` пишет предупреждение и ничего не выпускает (и тег не
-создаётся). Добавьте их — и следующий пуш в `main` (или ручной запуск CI) выпустит эту версию.
-
-Другие способы запустить `release.yml`:
-
-- **вручную**: *Actions → Release → Run workflow*. Без галочки *publish* — сухой прогон: собирает все пакеты
-  как артефакты и ничего не публикует. С галочкой — настоящий выпуск текущей версии;
-- **тегом**: `git tag v0.1.0-preview.1 && git push origin v0.1.0-preview.1` (тег обязан совпадать с версией).
+Без галочки *publish* запуск — сухой прогон: собирает все пакеты как артефакты (их можно скачать и проверить, например
+добавить `.nupkg` в дизайнер через **Add Control Library → .nupkg**) и ничего не публикует.
 
 Повторная публикация безопасна: `dotnet nuget push --skip-duplicate`, `vsce publish --skip-duplicate`,
 `ovsx publish --skip-duplicate`, существующий GitHub Release пропускается.
+
+### Чек-лист смены версии
+
+Версия записана в нескольких местах; тесты (`TemplateTests`, `version.test.js`) ловят расхождение первых трёх:
+
+- `Directory.Build.props` — `<Version>`;
+- `templates/netforms-app/NetFormsApp1.csproj` — версия пакета NetForms в шаблоне;
+- `designer/package.json` — `netformsVersion` (и `version` самого расширения, с `package-lock.json`);
+- `README.md`, `README.ru.md`, `eng/package/README.md`, `docs/*.md`, `docs/ru/*.md`, `site/index.html`, `site/ru/index.html` —
+  команды установки; цифры состояния (API, тесты) на главных страницах сайта — из `docs/compatibility.md`.
 
 ## Что выходит
 
@@ -34,6 +42,7 @@
 | nuget.org | `NetForms`, `NetForms.Drawing`, `NetForms.Drawing.Common`, `NetForms.Platform`, `NetForms.Platform.Avalonia` (+ `.snupkg` с символами и Source Link) | `dotnet pack NetForms.slnx -c Release -o artifacts/pkg` |
 | nuget.org | `NetForms.Templates` — `dotnet new netforms`, `netforms-form`, `netforms-usercontrol` | `dotnet pack templates/NetForms.Templates.csproj -c Release -o artifacts/pkg` |
 | nuget.org | `NetForms.Convert` — .NET tool `netforms-convert` (~42 МБ: натив Skia только для настольных платформ) | входит в `dotnet pack NetForms.slnx` |
+| nuget.org | `NetForms.ExtraControls` — библиотека готовых контролов (`ToggleSwitch`, `RatingStars`, `CircularProgressBar`, `GradientPanel`, `ColorPickerButton`, компонент `CountdownTimer`); на ней проверяется загрузка пакета в дизайнер (**Add Control Library → NuGet package**) | входит в `dotnet pack NetForms.slnx` |
 | VS Code Marketplace, Open VSX | `netforms.netforms-designer`, по пакету на платформу (`win32-x64`, `win32-arm64`, `linux-x64`, `linux-arm64`, `darwin-x64`, `darwin-arm64`, ~13 МБ каждый); версия NetForms с дефисом → pre-release | `cd designer && npm run package:targets` |
 | GitHub Releases | всё перечисленное + универсальный `.vsix` (41 МБ) | задача `github-release` |
 | GitHub Pages | сайт: `site/` + документация из `docs/` | `.github/workflows/pages.yml` при изменении `site/` или `docs/` в `main` |
@@ -49,8 +58,7 @@
 
 1. Войдите на nuget.org под учётной записью, которая будет владельцем пакетов.
 2. *Username → Trusted Publishing → Create*: Repository Owner `Go-Forms`, Repository `.NetForms`,
-   Workflow File `release.yml` (если публикация из CI упадёт с ошибкой политики, добавьте вторую политику с
-   `ci.yml` — CI вызывает `release.yml` как reusable workflow). **Scopes: «Push new packages and package
+   Workflow File `release.yml` (выпуск запускается только им самим — вручную или тегом). **Scopes: «Push new packages and package
    versions»** (не только новых версий: первые публикации — это новые пакеты), **Glob Pattern: `NetForms*`**
    (или `*`). Environment оставьте пустым.
 3. В GitHub: *Settings → Secrets and variables → Actions → Variables* → переменная `NUGET_USER` = имя

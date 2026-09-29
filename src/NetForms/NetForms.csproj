@@ -62,6 +62,7 @@
   </Target>
   <ItemGroup>
     <InternalsVisibleTo Include="NetForms.Tests" />
+    <InternalsVisibleTo Include="NetForms.ExtraControls.Tests" />
     <!-- The designer is a friend of the framework, as the VS designer assemblies are of WinForms:
          it installs a headless platform and reads design-time state (the own Visible flag). -->
     <InternalsVisibleTo Include="NetForms.Design" />

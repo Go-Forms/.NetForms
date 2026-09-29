@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.7
+
+- **BindingNavigator** in the toolbox (*Data*): dropped on a form it comes with its standard items — move first, previous,
+  position, count, next, last, add, delete — each a component of the form, as in Visual Studio.
+- **Splitter**, **DomainUpDown** and **HelpProvider** in the toolbox; a HelpProvider adds *HelpString*, *HelpKeyword*,
+  *HelpNavigator* and *ShowHelp* to every control of the form.
+- A form's **PrintPreviewDialog** is shown in the component tray.
+- The **NetForms.ExtraControls** package (toggle switch, rating stars, round progress, gradient panel, colour picker,
+  countdown timer) can be added with **NetForms: Add Control Library… → NuGet package…**.
+- New projects reference NetForms 0.1.0-preview.8.
+
 ## 0.1.6
 
 - **The project's own controls in the toolbox**: its controls, user controls and components from the last build, in a

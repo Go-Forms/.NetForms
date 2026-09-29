@@ -875,6 +875,9 @@ public partial class Control : Component, IWin32Window
         }
     }
 
+    /// <summary>The cursor shown over the control: its <see cref="Cursor"/>, unless the control overrides it for now (LinkLabel.OverrideCursor).</summary>
+    internal virtual Cursor EffectiveCursor => Cursor;
+
     [Category("Property Changed")]
     [Description("Event raised when the value of the Cursor property is changed on Control.")]
     public event EventHandler? CursorChanged;

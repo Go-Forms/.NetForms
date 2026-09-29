@@ -933,6 +933,10 @@ public class TabControl : Control
 
         public void Add(string? key, string? text) => Add(new TabPage(text) { Name = key ?? string.Empty });
 
+        public void Add(string? key, string? text, int imageIndex) => Add(new TabPage(text) { Name = key ?? string.Empty, ImageIndex = imageIndex });
+
+        public void Add(string? key, string? text, string imageKey) => Add(new TabPage(text) { Name = key ?? string.Empty, ImageKey = imageKey });
+
         public void AddRange(TabPage[] pages)
         {
             ArgumentNullException.ThrowIfNull(pages);
@@ -952,11 +956,18 @@ public class TabControl : Control
 
         public void Insert(int index, string? text) => Insert(index, new TabPage(text));
 
-        public bool Remove(TabPage value)
+        public void Insert(int index, string? key, string? text) => Insert(index, new TabPage(text) { Name = key ?? string.Empty });
+
+        public void Insert(int index, string? key, string? text, int imageIndex) =>
+            Insert(index, new TabPage(text) { Name = key ?? string.Empty, ImageIndex = imageIndex });
+
+        public void Insert(int index, string? key, string? text, string imageKey) =>
+            Insert(index, new TabPage(text) { Name = key ?? string.Empty, ImageKey = imageKey });
+
+        public void Remove(TabPage value)
         {
-            bool had = Contains(value);
+            ArgumentNullException.ThrowIfNull(value);
             Controls.Remove(value);
-            return had;
         }
 
         public void RemoveAt(int index) => Controls.RemoveAt(index);
@@ -977,6 +988,12 @@ public class TabControl : Control
 
         TabPage IList<TabPage>.this[int index] { get => this[index]; set => this[index] = value; }
         void ICollection<TabPage>.Add(TabPage item) => Add(item);
+        bool ICollection<TabPage>.Remove(TabPage item)
+        {
+            bool had = Contains(item);
+            if (had) Remove(item);
+            return had;
+        }
         bool IList.IsFixedSize => false;
         bool ICollection.IsSynchronized => false;
         object ICollection.SyncRoot => this;

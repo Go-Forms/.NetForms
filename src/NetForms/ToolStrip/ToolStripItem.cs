@@ -80,7 +80,7 @@ public class ToolStripItemClickedEventArgs : EventArgs
 /// </summary>
 [DefaultEvent("Click")]
 [DefaultProperty("Text")]
-public abstract class ToolStripItem : Component
+public abstract partial class ToolStripItem : Component
 {
     private string _text = string.Empty;
     private Image? _image;

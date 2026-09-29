@@ -3,12 +3,14 @@
     <Project Path="samples/Gallery/Gallery.csproj" />
     <Project Path="samples/HelloForms/HelloForms.csproj" />
     <Project Path="samples/MdiDemo/MdiDemo.csproj" />
+    <Project Path="samples/Printing/Printing.csproj" />
     <Project Path="samples/Strips/Strips.csproj" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/NetForms.Design/NetForms.Design.csproj" />
     <Project Path="src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
     <Project Path="src/NetForms.Drawing/NetForms.Drawing.csproj" />
+    <Project Path="src/NetForms.ExtraControls/NetForms.ExtraControls.csproj" />
     <Project Path="src/NetForms.Drawing.Common/NetForms.Drawing.Common.csproj" />
     <Project Path="src/NetForms.Platform.Avalonia/NetForms.Platform.Avalonia.csproj" />
     <Project Path="src/NetForms.Platform/NetForms.Platform.csproj" />
@@ -21,6 +23,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Fixtures/ControlLibrary/ControlLibrary.csproj" />
+    <Project Path="tests/NetForms.ExtraControls.Tests/NetForms.ExtraControls.Tests.csproj" />
     <Project Path="tests/NetForms.Tests/NetForms.Tests.csproj" />
   </Folder>
 </Solution>

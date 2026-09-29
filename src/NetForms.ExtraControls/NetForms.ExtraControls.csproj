@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A control library built for NetForms and published to nuget.org as its own package: ready-made controls for
+    applications, and the reference of what a third-party library looks like to the designer (Add Control Library ->
+    NuGet package, docs/control-libraries.md). It uses nothing internal to NetForms - only the public WinForms API -
+    so it is also the example to copy when writing a library of one's own.
+  -->
+  <PropertyGroup>
+    <RootNamespace>NetForms.ExtraControls</RootNamespace>
+    <AssemblyName>NetForms.ExtraControls</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <PackageId>NetForms.ExtraControls</PackageId>
+    <Title>NetForms Extra Controls</Title>
+    <Description>Extra controls for NetForms (Windows Forms for Windows and Linux): ToggleSwitch, RatingStars, CircularProgressBar, GradientPanel, ColorPickerButton and the CountdownTimer component. They show up in the NetForms Designer toolbox with their icons, properties and events.</Description>
+    <PackageTags>$(PackageTags);controls;toggle;rating;progress;gradient;color-picker</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- PrivateAssets none: a project that takes only this package still gets all of NetForms, its buildTransitive props included. -->
+    <ProjectReference Include="../NetForms/NetForms.csproj" PrivateAssets="none" />
+    <InternalsVisibleTo Include="NetForms.ExtraControls.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The package's own README instead of NetForms' (Directory.Build.props). -->
+    <None Remove="$(MSBuildThisFileDirectory)../../eng/package/README.md" />
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The toolbox icons: 16x16 PNG, found by [ToolboxBitmap(typeof(T), "T.png")] as NetForms.ExtraControls.T.png. -->
+    <EmbeddedResource Include="Icons/*.png" LogicalName="NetForms.ExtraControls.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

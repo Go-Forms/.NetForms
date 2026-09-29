@@ -84,8 +84,11 @@ public sealed class DesignerHostTests : IDisposable
         Assert.NotEmpty(Convert.FromBase64String(view.Png));
         // Every named control of the form is on the canvas, with its id.
         // (Inline objects of a hand-written file have no name, hence no id, until the first save.)
-        foreach (var c in surface.Model.Components.Where(c => c.Name != null && c.Instance is Control and not ToolStripDropDown))
+        // Drop-downs and forms (a PrintPreviewDialog) are in the component tray instead, as in VS.
+        foreach (var c in surface.Model.Components.Where(c => c.Name != null && c.Instance is Control and not ToolStripDropDown and not Form))
             Assert.Contains(view.Items, i => i.Id == c.Name);
+        foreach (var c in surface.Model.Components.Where(c => c.Name != null && c.Instance is Form))
+            Assert.Contains(view.Tray, i => i.Id == c.Name);
     }
 
     // --- editing ---------------------------------------------------------------------------------

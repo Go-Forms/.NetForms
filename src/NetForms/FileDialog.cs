@@ -210,6 +210,22 @@ public abstract class FileDialog : CommonDialog
 
 public class OpenFileDialog : FileDialog
 {
+
+    /// <summary>The chosen file's name without its folder (<see cref="FileDialog.FileName"/> less the path).</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string SafeFileName => System.IO.Path.GetFileName(FileName);
+
+    /// <summary>The chosen files' names without their folders.</summary>
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string[] SafeFileNames => Array.ConvertAll(FileNames, f => System.IO.Path.GetFileName(f));
+
+    /// <summary>Whether the Open as read-only choice is offered selected (the system picker has none; kept for code that sets it).</summary>
+    [Category("Behavior")]
+    [DefaultValue(true)]
+    [Description("Indicates whether the read-only check box is selectable.")]
+    public bool SelectReadOnly { get; set; } = true;
     [Category("Behavior")]
     [Description("Controls whether multiple files can be selected in the dialog.")]
     [DefaultValue(false)]

@@ -17,7 +17,7 @@ public class PrintControllerWithStatusDialog : PrintController
     private int _pageNumber;
 
     public PrintControllerWithStatusDialog(PrintController underlyingController)
-        : this(underlyingController, "Printing")
+        : this(underlyingController, SystemStrings.Get("Printing"))
     {
     }
 
@@ -128,12 +128,12 @@ public class PrintControllerWithStatusDialog : PrintController
                 Size = new Size(276, 36),
                 TextAlign = ContentAlignment.MiddleCenter,
             };
-            _cancel = new Button { Text = "Cancel", Size = new Size(80, 26), Location = new Point(110, 60) };
+            _cancel = new Button { Text = SystemStrings.Get("Cancel"), Size = new Size(80, 26), Location = new Point(110, 60) };
             _cancel.Click += (_, _) =>
             {
                 Canceled = true;
                 _cancel.Enabled = false;
-                _label.Text = "Canceling Print...";
+                _label.Text = SystemStrings.Get("Canceling Print...");
             };
             Controls.Add(_label);
             Controls.Add(_cancel);
@@ -144,7 +144,7 @@ public class PrintControllerWithStatusDialog : PrintController
 
         public void UpdateLabel(int page, string documentName)
         {
-            if (!Canceled) _label.Text = $"Page {page} of {documentName}";
+            if (!Canceled) _label.Text = string.Format(SystemStrings.Get("Page {0} of {1}"), page, documentName);
         }
     }
 }

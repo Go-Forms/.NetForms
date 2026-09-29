@@ -15,6 +15,7 @@
     <ProjectReference Include="../../samples/Gallery/Gallery.csproj" />
     <ProjectReference Include="../../samples/Strips/Strips.csproj" />
     <ProjectReference Include="../../samples/MdiDemo/MdiDemo.csproj" />
+    <ProjectReference Include="../../samples/Printing/Printing.csproj" />
     <ProjectReference Include="../../samples/GenLabs/HelloForms.csproj" />
     <ProjectReference Include="../../src/NetForms.Design.Serialization/NetForms.Design.Serialization.csproj" />
     <ProjectReference Include="../../src/NetForms.Design/NetForms.Design.csproj" />
@@ -22,6 +23,8 @@
     <ProjectReference Include="../../tools/NetForms.ApiDiff/NetForms.ApiDiff.csproj" />
     <!-- Built, never referenced: ControlLibraryTests load its output as the designer loads a project's. -->
     <ProjectReference Include="../Fixtures/ControlLibrary/ControlLibrary.csproj" ReferenceOutputAssembly="false" />
+    <!-- The NuGet control library, built, never referenced: ExtraControlsTests load its output as the designer loads a package. -->
+    <ProjectReference Include="../../src/NetForms.ExtraControls/NetForms.ExtraControls.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../Shared/CompatScenarios.cs" />

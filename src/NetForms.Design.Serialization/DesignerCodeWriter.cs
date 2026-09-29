@@ -579,6 +579,9 @@ public sealed class DesignerCodeWriter
                 // A fresh PrintPreviewDialog asks for its Icon (VS puts it in the .resx, which the designer does not
                 // write yet): keep the line a file already has, write none for a new one.
                 if (instance is PrintPreviewDialog && pd.Name == "Icon" && OriginalSource(component, pd.Name, value) == null) continue;
+                // The pictures of a BindingNavigator's standard items: VS puts them in the .resx; the navigator puts
+                // them back itself when the code has none (decision 163).
+                if (instance is ToolStripItem && pd.Name == "Image" && BindingNavigator.IsStandardImage(value) && OriginalSource(component, pd.Name, value) == null) continue;
 
                 var prelude = new List<string>();
                 var expression = Expression(value, pd.PropertyType)

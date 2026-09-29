@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    The behaviour of the NetForms.ExtraControls package. A test project of its own: NetForms.Tests loads the library's
+    build the way the designer loads a package, which it cannot do for an assembly its own process already runs.
+  -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/NetForms/NetForms.csproj" />
+    <ProjectReference Include="../../src/NetForms.ExtraControls/NetForms.ExtraControls.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The window-less platform of NetForms.Tests: show a form, click and type into it, paint it into a bitmap. -->
+    <Compile Include="../NetForms.Tests/TestPlatform.cs" Link="TestPlatform.cs" />
+    <Using Include="System.Drawing" />
+    <Using Include="System.Windows.Forms" />
+  </ItemGroup>
+</Project>

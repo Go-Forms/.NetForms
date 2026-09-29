@@ -9,6 +9,33 @@ namespace NetForms.Tests;
 public class DialogTests
 {
     [Fact]
+    public void AnOkButtonsClickHandlerCanKeepTheDialogOpen()
+    {
+        // WinForms' modal loop reads DialogResult after the click: a handler that sets it back to None keeps the
+        // form open (the usual way to validate on OK).
+        var platform = TestPlatform.Install();
+        using var form = new Form();
+        var ok = new Button { DialogResult = DialogResult.OK };
+        form.Controls.Add(ok);
+        int clicks = 0;
+        ok.Click += (_, _) =>
+        {
+            clicks++;
+            if (clicks == 1) form.DialogResult = DialogResult.None;
+        };
+        platform.OnMessageLoop = () =>
+        {
+            ok.PerformClick();
+            Assert.True(form.Visible);
+            Assert.Equal(DialogResult.None, form.DialogResult);
+            ok.PerformClick();
+            Assert.False(form.Visible);
+        };
+        Assert.Equal(DialogResult.OK, form.ShowDialog());
+        Assert.Equal(2, clicks);
+    }
+
+    [Fact]
     public void OpenFileDialogPassesItsSettingsDownAndKeepsTheChosenPath()
     {
         var platform = TestPlatform.Install();

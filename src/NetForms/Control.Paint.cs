@@ -60,10 +60,18 @@ public partial class Control
             var state = g.Save();
             try
             {
-                OnPaintBackground(e);
-                g.Restore(state);
-                state = g.Save();
-                OnPaint(e);
+                if (t_printing)
+                {
+                    // DrawToBitmap is WM_PRINT: each control paints through OnPrint (WM_PRINTCLIENT).
+                    OnPrint(e);
+                }
+                else
+                {
+                    OnPaintBackground(e);
+                    g.Restore(state);
+                    state = g.Save();
+                    OnPaint(e);
+                }
                 g.Restore(state);
             }
             catch (Exception ex) when (ex is not (OutOfMemoryException or StackOverflowException or AccessViolationException))
@@ -88,6 +96,23 @@ public partial class Control
             foreach (var adornment in _adornments) PaintChild(g, adornment, clip);
         }
         OnPaintOverlay(g);
+    }
+
+    /// <summary>True while <see cref="DrawToBitmap"/> paints: the controls paint through <see cref="OnPrint"/>.</summary>
+    [ThreadStatic]
+    private static bool t_printing;
+
+    /// <summary>
+    /// Paints the control into a device that is not its window (WM_PRINTCLIENT): <see cref="DrawToBitmap"/> goes
+    /// through it. As in WinForms, the background and then <see cref="OnPaint"/>; override it to print differently.
+    /// </summary>
+    protected virtual void OnPrint(PaintEventArgs e)
+    {
+        ArgumentNullException.ThrowIfNull(e);
+        var state = e.Graphics.Save();
+        OnPaintBackground(e);
+        e.Graphics.Restore(state);
+        OnPaint(e);
     }
 
     /// <summary>The exception the control's painting threw; it is drawn as a red cross ever after (WinForms).</summary>
@@ -151,6 +176,15 @@ public partial class Control
         canvas.ClipRect(new SkiaSharp.SKRect(targetBounds.Left, targetBounds.Top, targetBounds.Right, targetBounds.Bottom), SkiaSharp.SKClipOperation.Intersect, false);
         canvas.Translate(targetBounds.X, targetBounds.Y);
         using var g = Graphics.FromCanvas(canvas);
-        PaintTree(g, new Rectangle(0, 0, targetBounds.Width, targetBounds.Height));
+        bool printing = t_printing;
+        t_printing = true;
+        try
+        {
+            PaintTree(g, new Rectangle(0, 0, targetBounds.Width, targetBounds.Height));
+        }
+        finally
+        {
+            t_printing = printing;
+        }
     }
 }

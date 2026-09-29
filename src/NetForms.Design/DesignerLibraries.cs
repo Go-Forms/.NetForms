@@ -197,6 +197,8 @@ public sealed class DesignerLibraries : IDisposable
             File.Copy(file, to, overwrite: true);
             _shadows[file] = to;
         }
+        // Nothing may have been copied (the library is one the host has itself): an empty copy, not a crash.
+        Directory.CreateDirectory(target);
         var main = Path.Combine(target, Path.GetFileName(mainAssembly));
         _shadows[mainAssembly] = main;
         return main;

@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.1.0-preview.8 — print dialogs finished, new controls, NetForms.ExtraControls
+
+- **Printing:** `PrintDialog` has the **Properties…** button of the Win32 dialog — the printer's document properties
+  (paper, tray, orientation, colour, duplex, print quality), written to the document's `DefaultPageSettings` and to
+  `PrinterSettings.Duplex` on OK, as WinForms does with the DEVMODE. **Help** (`ShowHelp`) raises `HelpRequest`; typing a
+  page number picks *Pages*; a backwards page range keeps the dialog open. `PageSetupDialog` has the **Printer…** button
+  (`AllowPrinter`): another printer, with its own papers and trays. **Print to file** without `PrintFileName` asks where
+  to save (the spooler's *Save Print Output As*) — before, it silently printed nothing. The print dialogs, the print
+  preview and the printing status speak Russian on a Russian UI. New sample: `samples/Printing`.
+- **`Control.OnPrint`**: `DrawToBitmap` paints each control through it (WM_PRINTCLIENT), so overriding it works as in
+  WinForms. Also `NotifyInvalidate`, `RaisePaintEvent`/`RaiseKeyEvent`/`RaiseMouseEvent`, `RtlTranslate*`,
+  `DefaultImeMode`, `IsMirrored`, `IsAncestorSiteInDesignMode`.
+- **New controls:** `DomainUpDown` (with `UpDownBase`'s protected hooks as in WinForms: `OnChanged`,
+  `OnTextBoxTextChanged(object, EventArgs)`, `OnTextBoxKeyDown`, …), `HelpProvider` (F1 help: a pop-up or a help file,
+  an extender provider in the designer), `Splitter` (the docked splitter, with its drag bar), `BindingNavigator` (the
+  record navigator of a `BindingSource`; dropped in the designer it comes with its standard items, as in VS), and the
+  renderers `ButtonRenderer`, `CheckBoxRenderer`, `RadioButtonRenderer`, `ComboBoxRenderer`, `ProgressBarRenderer`,
+  `ScrollBarRenderer` — owner-drawn controls paint in the theme of the real ones. `ToolStripItem`: `IsDisposed`,
+  `AccessibleName`/`Description`/`Role`, `RightToLeftAutoMirrorImage`.
+- **The corpus of real projects needs no missing API any more** (25,887 references in 63 projects): `ImageFormat` with
+  its GDI+ `Guid` and `Icon`/`Tiff`/`Wmf`/`Emf`/`Exif`/`Heif`, `ImageList.Images.Add(string, Icon)` and `Remove`,
+  `LinkLabel.OverrideCursor`/`PointInLink`, `OpenFileDialog.SafeFileName(s)`, `TabPages.Add`/`Insert` by key and image,
+  the `Font` constructors with a character set. MDBEditor, GetStockIcon and xrails-login-ui build now: 31 of 45
+  open-source projects (was 28). **Bug fix:** `Image.Save` as BMP or GIF threw `NotSupportedException` (Skia has no
+  encoders for them); NetForms now writes BMP, GIF and TIFF itself, and Icon/EMF/WMF as PNG, as GDI+ does.
+  **Signature fixes** (source-compatible for callers): `TabPages.Remove` and `ImageList.Images.Remove` return `void`,
+  `Images.Add(Icon)` returns `void`, `Images.Add(Image, Color)` and `AddStrip` return the index, as in WinForms.
+- **Behaviour change — dialogs:** a button's `DialogResult` closes a modal form after its `Click` handlers, as in
+  WinForms: a handler that sets `DialogResult = DialogResult.None` (validation on OK) keeps the form open. Before, the form
+  had already closed.
+- **Designer:** a `PrintPreviewDialog` of a form is in the component tray (it was on neither the canvas nor the tray);
+  `BindingNavigator` and `Splitter` are in the toolbox.
+- **NetForms.ExtraControls** — a new package: `ToggleSwitch`, `RatingStars`, `CircularProgressBar`, `GradientPanel`,
+  `ColorPickerButton` and the `CountdownTimer` component, with toolbox icons. Add it in the designer with **Add Control
+  Library → NuGet package** (`NetForms.ExtraControls`); its source is the worked example of a control library.
+- **Releasing** is a command: a push to `main` no longer publishes; *Actions → Release → Run workflow* (publish, version)
+  or a tag does (docs/RELEASING.md).
+
 ## 0.1.0-preview.7 — control libraries in the designer, printing, drag and drop
 
 - **Designer — the project's own controls and control libraries:** the toolbox has the project's controls, user
