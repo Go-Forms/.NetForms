@@ -1,13 +1,17 @@
 # Changelog
 
+## 0.2.1
+
+- **Fixed: PrintPreviewDialog could not be added** from the toolbox; it now goes to the component tray, as in Visual
+  Studio.
+- New projects reference NetForms 0.1.1.
+
 ## 0.2.0
 
 - **Fixed: changes made in the code were undone by the designer.** With the designer and the form's code open side by
   side, moving a control wrote back the copy of `MainForm.cs` and `MainForm.Designer.cs` the designer had read when it
   opened, and so did the reload after each build. The designer now reads both files again before every change and
   writes only what the change touched.
-- **Fixed: PrintPreviewDialog could not be added** from the toolbox; it now goes to the component tray, as in Visual
-  Studio.
 - **NetForms: Run** saves the unsaved files before `dotnet run`; a change in the designer saves the form's open code
   first.
 - No longer a preview: new projects reference NetForms 0.1.0, the first stable release.

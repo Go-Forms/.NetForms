@@ -94,7 +94,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 <span class="del">-  &lt;UseWindowsForms&gt;true&lt;/…&gt;</span>
 <span class="add">+  &lt;TargetFramework&gt;net10.0&lt;/…&gt;</span>
 <span class="add">+  &lt;PackageReference Include="NetForms"</span>
-<span class="add">+     Version="0.1.0" /&gt;</span></pre>
+<span class="add">+     Version="0.1.1" /&gt;</span></pre>
       </div>
     </div>
     <div class="fix">
@@ -133,7 +133,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
 
   <section id="status">
     <div class="section-head">
-      <span class="eyebrow">Выпуск 0.1.0 · измерено, а не на глаз</span>
+      <span class="eyebrow">Выпуск 0.1.1 · измерено, а не на глаз</span>
       <h2>Насколько это WinForms?</h2>
       <p>Каждое число — результат теста в CI: API сверяется с эталонными сборками настоящего WinForms, поведение
         сравнивается с ним на Windows, реальные проекты переводятся и собираются.</p>
@@ -190,7 +190,7 @@ Framework: <span class="err">'Microsoft.WindowsDesktop.App'</span>
       <div class="codebox">
         <h3>Новое приложение</h3>
 <pre class="term" id="new-app"><span class="p"># шаблоны проекта и форм</span>
-dotnet new install NetForms.Templates::0.1.0
+dotnet new install NetForms.Templates::0.1.1
 dotnet new netforms -n MyApp
 cd MyApp
 dotnet run</pre>

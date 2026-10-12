@@ -178,7 +178,7 @@ public class StarRating : Control
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.0" />
+    <PackageReference Include="NetForms" Version="0.1.1" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>
