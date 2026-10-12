@@ -137,6 +137,25 @@ public sealed class DesignerHostTests : IDisposable
     }
 
     [Fact]
+    public void AnAddedPrintPreviewDialogGoesToTheComponentTray()
+    {
+        // A PrintPreviewDialog is a top-level form: it cannot go into the form's Controls, it is a tray component, as in VS.
+        using var surface = DesignSurface.Open(CopySample("HelloForms/MainForm.Designer.cs"));
+        surface.Apply(new[] { new DesignerOp { Op = "add", Type = "System.Windows.Forms.PrintPreviewDialog" } });
+        var dialog = (PrintPreviewDialog)surface.Model.Find("printPreviewDialog1")!.Instance;
+        Assert.Null(dialog.Parent);
+        Assert.Contains(surface.Render().Tray, t => t.Id == "printPreviewDialog1");
+        Assert.Contains("printPreviewDialog1 = new PrintPreviewDialog();", surface.Source);
+        Assert.Contains("printPreviewDialog1.Name = \"printPreviewDialog1\";", surface.Source);
+        Assert.DoesNotContain("Controls.Add(printPreviewDialog1)", surface.Source);
+
+        // Duplicated (and so pasted), the copy goes to the tray too.
+        surface.Apply(new[] { new DesignerOp { Op = "duplicate", Ids = new[] { "printPreviewDialog1" } } });
+        Assert.Null(((Control)surface.Model.Find("printPreviewDialog2")!.Instance).Parent);
+        Assert.Contains(surface.Render().Tray, t => t.Id == "printPreviewDialog2");
+    }
+
+    [Fact]
     public void RemovingAControlTakesItsChildrenAndReferencesWithIt()
     {
         using var surface = DesignSurface.Open(CopySample("Strips/MainForm.Designer.cs"));

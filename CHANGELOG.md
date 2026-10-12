@@ -13,6 +13,9 @@ change where it differs from WinForms by mistake.
   again before every change, undo and redo, and writes only what the change itself touched (the designer file, and the
   code-behind when it adds a handler); undo never puts back a version of the code edited since. A designer file that no
   longer compiles is reported, not overwritten.
+- **Designer bug fix — PrintPreviewDialog could not be added.** A click on it in the toolbox failed: the designer put the
+  dialog, a top-level form, into the form's `Controls`. Now it goes to the component tray, as in Visual Studio, and so
+  does a copy of it pasted or duplicated.
 - **Run saves first:** *NetForms: Run* (and ▶ in the designer) saves the unsaved files before `dotnet run`, as Visual
   Studio does before F5; a change in the designer saves the form's open, unsaved code first.
 

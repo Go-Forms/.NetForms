@@ -737,7 +737,8 @@ public sealed partial class DesignSurface : IDisposable
         try { component = Model.AddComponent(instance, string.IsNullOrEmpty(op.Id) ? null : op.Id); }
         catch (ArgumentException ex) { throw new DesignerEditException(ex.Message, ex); }
 
-        var parent = instance is Control and not ToolStripDropDown || op.Parent != null ? Resolve(op.Parent) : null;
+        // A form among the components (a PrintPreviewDialog) is top-level: it goes to the tray, as a drop-down does.
+        var parent = instance is Control and not ToolStripDropDown and not Form || op.Parent != null ? Resolve(op.Parent) : null;
         Place(instance, parent, op);
         InitializeNew(instance, component, parent);
     }
@@ -753,7 +754,8 @@ public sealed partial class DesignSurface : IDisposable
                 tabs.TabPages.Add(page);
                 break;
             case ToolStripDropDown:
-                break; // the component tray
+            case Form:
+                break; // the component tray (a top-level form cannot go into Controls)
             case Control control:
                 var container = parent as Control ?? throw new DesignerEditException("A control needs a container.");
                 if (container is TabControl) throw new DesignerEditException("Only tab pages go directly into a TabControl; drop the control on a page.");

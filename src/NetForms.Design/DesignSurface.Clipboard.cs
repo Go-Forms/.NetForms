@@ -263,7 +263,7 @@ public sealed partial class DesignSurface
 
         // Where the pasted controls would lie exactly on a control already there, they move down and right
         // together, as far as it takes (a copy pasted into its own container lands beside the original).
-        var controls = created.Select(c => c.Instance).OfType<Control>().Where(c => c.Parent is not TableLayoutPanel and not FlowLayoutPanel && c is not TabPage).ToList();
+        var controls = created.Select(c => c.Instance).OfType<Control>().Where(c => c.Parent is { } and not TableLayoutPanel and not FlowLayoutPanel && c is not TabPage).ToList();
         foreach (var control in controls)
             if (op.X != null || op.Y != null) control.Location = new Point(op.X ?? control.Left, op.Y ?? control.Top);
         for (int step = 0; step < 50 && controls.Any(Overlaps); step++)
@@ -314,7 +314,8 @@ public sealed partial class DesignSurface
                     _ => throw new DesignerEditException("Select a TabControl to paste a tab page into."),
                 };
             case ToolStripDropDown:
-                return null;
+            case Form:
+                return null; // the component tray
             case Control:
                 // The selected container, or the container of the selected control (a strip item's: the form).
                 for (var c = target as Control ?? Root; ; c = c.Parent ?? Root)
