@@ -377,13 +377,14 @@
 		for (const it of v.items) {
 			if (!it.visible) continue;
 			// A docked control sits where its dock puts it: a dashed outline says dragging it does nothing.
-			const hit = el('div', 'hit' + (it.kind === 'item' ? ' item-kind' : '') + (it.dock && it.dock !== 'None' && it.kind === 'control' ? ' docked' : ''));
+			const hit = el('div', 'hit' + (it.kind === 'item' ? ' item-kind' : '') + (it.dock && it.dock !== 'None' && it.kind === 'control' && !it.cell ? ' docked' : ''));
 			hit.dataset.id = it.id;
 			place(hit, it);
 			hit.title = `${it.id} (${shortType(it.type)})`;
 			if (state.selection.includes(it.id)) hit.classList.add(it.id === primaryId() ? 'primary' : 'selected');
 			canvas.append(hit);
 		}
+		for (const it of v.items) if (it.visible && it.table) drawTableGrid(canvas, it);
 		if (!state.drag) drawHandles(canvas);
 		if (state.tabOrder) drawTabBadges(canvas);
 
@@ -397,17 +398,109 @@
 
 		canvas.addEventListener('mousedown', onCanvasDown);
 		canvas.addEventListener('contextmenu', (e) => {
-			const hit = G.hitTest(state.view.items, canvasPoint(e).x, canvasPoint(e).y);
-			onContextMenu(e, hit ? hit.id : '');
+			const p = canvasPoint(e);
+			const hit = G.hitTest(state.view.items, p.x, p.y);
+			onContextMenu(e, hit ? hit.id : '', p);
 		});
 		canvas.addEventListener('dblclick', onCanvasDoubleClick);
-		canvas.addEventListener('dragover', (e) => { if ([...e.dataTransfer.types].includes('text/netforms-type')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } });
-		canvas.addEventListener('drop', (e) => onToolboxDrop(e, canvas));
+		canvas.addEventListener('dragover', (e) => {
+			if (![...e.dataTransfer.types].includes('text/netforms-type')) return;
+			e.preventDefault();
+			e.dataTransfer.dropEffect = 'copy';
+			// Over a table, the cell the control will land in.
+			const p = canvasPoint(e);
+			const target = G.dropTarget(state.view.items, p.x, p.y, new Set());
+			showCellTarget(target && target.table ? G.cellRect(target.table, G.cellAt(target.table, p.x, p.y).column, G.cellAt(target.table, p.x, p.y).row) : null);
+		});
+		canvas.addEventListener('dragleave', (e) => { if (!canvas.contains(e.relatedTarget)) showCellTarget(null); });
+		canvas.addEventListener('drop', (e) => { showCellTarget(null); onToolboxDrop(e, canvas); });
 		frame.append(title, canvas);
 		stage.append(frame);
 		stage.style.minWidth = (v.width + 2) * state.zoom + 48 + 'px';
 		stage.style.minHeight = (v.height + 32) * state.zoom + 48 + 'px';
 		state.canvas = canvas;
+	}
+
+	// --- TableLayoutPanel: the grid, its cells and its boundaries -------------------------------------
+
+	/**
+	 * A table's cells as the VS designer shows them: dashed lines where the table draws no borders of its own,
+	 * and grips on the boundaries between columns and between rows - dragged, they resize the two tracks.
+	 */
+	function drawTableGrid(canvas, it) {
+		const t = G.tableTracks(it.table);
+		const x1 = t.columns.lines[0], x2 = t.columns.end, y1 = t.rows.lines[0], y2 = t.rows.end;
+		if (!it.table.border) {
+			for (const x of t.columns.lines) { const l = el('div', 'tl-line v'); place(l, { x, y: y1, w: 0, h: y2 - y1 }); canvas.append(l); }
+			for (const y of t.rows.lines) { const l = el('div', 'tl-line h'); place(l, { x: x1, y, w: x2 - x1, h: 0 }); canvas.append(l); }
+		}
+		if (state.locked || state.tabOrder) return;
+		const grip = (columns, i) => {
+			const g = el('div', 'tl-grip ' + (columns ? 'v' : 'h'));
+			const at = (columns ? t.columns : t.rows).lines[i + 1] + Math.floor(it.table.border / 2);
+			if (columns) place(g, { x: at - 3, y: y1, w: 7, h: y2 - y1 });
+			else place(g, { x: x1, y: at - 3, w: x2 - x1, h: 7 });
+			g.title = T('Drag to resize the {0}', columns ? T('columns') : T('rows'));
+			g.addEventListener('mousedown', (e) => startTrackResize(e, it, columns, i));
+			canvas.append(g);
+		};
+		for (let i = 0; i + 1 < it.table.columns.length; i++) grip(true, i);
+		for (let i = 0; i + 1 < it.table.rows.length; i++) grip(false, i);
+	}
+
+	/** The highlighted cell under a drop (null removes it). */
+	function showCellTarget(rect) {
+		const canvas = state.canvas;
+		if (!canvas) return;
+		canvas.querySelectorAll('.cell-target').forEach((n) => n.remove());
+		if (!rect) return;
+		const n = el('div', 'cell-target');
+		place(n, rect);
+		canvas.append(n);
+	}
+
+	function startTrackResize(e, it, columns, index) {
+		if (e.button !== 0 || state.busy || state.locked) return;
+		e.stopPropagation();
+		e.preventDefault();
+		const styles = columns ? it.table.columnStyles : it.table.rowStyles;
+		const sizes = columns ? it.table.columns : it.table.rows;
+		const start = canvasPoint(e);
+		const line = (columns ? G.tableTracks(it.table).columns : G.tableTracks(it.table).rows).lines[index + 1];
+		state.drag = { kind: 'tracks', styles };
+		const move = (ev) => {
+			const p = canvasPoint(ev);
+			const delta = Math.max(-sizes[index], Math.min(sizes[index + 1], columns ? p.x - start.x : p.y - start.y));
+			state.drag.styles = G.resizeTracks(styles, sizes, index, delta);
+			const canvas = state.canvas;
+			canvas.querySelectorAll('.ghost').forEach((n) => n.remove());
+			const g = el('div', 'ghost');
+			const t = G.tableTracks(it.table);
+			if (columns) place(g, { x: line + delta, y: t.rows.lines[0], w: 1, h: t.rows.end - t.rows.lines[0] });
+			else place(g, { x: t.columns.lines[0], y: line + delta, w: t.columns.end - t.columns.lines[0], h: 1 });
+			canvas.append(g);
+			renderStatus(`${it.id}: ${columns ? T('columns') : T('rows')} ${index + 1}: ${state.drag.styles[index]}  ·  ${index + 2}: ${state.drag.styles[index + 1]}`);
+		};
+		window.addEventListener('mousemove', move);
+		window.addEventListener('mouseup', () => {
+			window.removeEventListener('mousemove', move);
+			const next = state.drag.styles;
+			state.drag = null;
+			if (next.join('\n') === styles.join('\n')) { renderStage(); renderStatus(); return; }
+			apply([{ op: 'setStyles', id: it.id, prop: columns ? 'ColumnStyles' : 'RowStyles', values: next }], state.selection);
+		}, { once: true });
+	}
+
+	/**
+	 * Columns (rows) of a table with one inserted before `at` (sized as the track it copies) or the one at
+	 * `at` removed: a setStyles op that says which old track each line is, so the controls go along.
+	 */
+	function tracksOp(it, columns, at, insert) {
+		const styles = columns ? it.table.columnStyles : it.table.rowStyles;
+		const values = styles.slice(), ids = styles.map((_, i) => '#' + i);
+		if (insert) { values.splice(at, 0, styles[Math.min(at, styles.length - 1)]); ids.splice(at, 0, ''); }
+		else { values.splice(at, 1); ids.splice(at, 1); }
+		return { op: 'setStyles', id: it.id, prop: columns ? 'ColumnStyles' : 'RowStyles', values, ids };
 	}
 
 	function place(node, r) {
@@ -512,7 +605,7 @@
 
 	function onCanvasDown(e) {
 		if (e.button !== 0 || state.busy || state.tabOrder) return;
-		if (e.target.classList.contains('handle') || e.target.classList.contains('form-grip')) return;
+		if (e.target.classList.contains('handle') || e.target.classList.contains('form-grip') || e.target.classList.contains('tl-grip')) return;
 		const p = canvasPoint(e);
 		const hit = G.hitTest(state.view.items, p.x, p.y);
 		const additive = e.ctrlKey || e.shiftKey;
@@ -526,7 +619,7 @@
 		// A group moves together; they must share a container (as the canvas can only drop into one).
 		const parent = itemById(ids[0]).parent;
 		const moving = ids.filter((id) => itemById(id).parent === parent);
-		state.drag = { kind: 'move', start: p, ids: moving, moved: false, target: null, dx: 0, dy: 0 };
+		state.drag = { kind: 'move', start: p, ids: moving, anchor: moving.includes(hit.id) ? hit.id : moving[0], moved: false, target: null, dx: 0, dy: 0, table: null, cell: null };
 		e.preventDefault();
 		window.addEventListener('mousemove', onDragMove);
 		window.addEventListener('mouseup', onDragUp, { once: true });
@@ -565,6 +658,23 @@
 		const target = G.dropTarget(state.view.items, p.x, p.y, new Set(d.ids));
 		const targetId = target ? target.id : '';
 		const parentId = items[0].parent;
+		if (target && target.table) {
+			// In a table the drop is a cell, not a position: the one under the mouse.
+			const cell = G.cellAt(target.table, p.x, p.y);
+			d.table = target.id;
+			d.cell = cell;
+			d.target = targetId !== parentId ? targetId : null;
+			const shift = cellShift(d, target);
+			const ghosts = shift
+				? items.map((i) => G.cellRect(target.table, i.cell[0] + shift.column, i.cell[1] + shift.row, i.cell[2], i.cell[3]))
+				: [G.cellRect(target.table, cell.column, cell.row)];
+			drawDragFeedback(ghosts, [], d.target !== null ? target : null);
+			showCellTarget(G.cellRect(target.table, cell.column, cell.row));
+			renderStatus(`${items.length > 1 ? T('{0} controls', items.length) : items[0].id}: ${T('column {0}, row {1}', cell.column, cell.row)}`);
+			return;
+		}
+		d.table = null;
+		showCellTarget(null);
 		const others = state.view.items.filter((i) => i.visible && i.kind === 'control' && i.parent === targetId && !d.ids.includes(i.id));
 		const snapOn = !e.altKey && state.snap;
 		const moved = { x: group.x + dx, y: group.y + dy, w: group.w, h: group.h, margin: group.margin };
@@ -590,11 +700,42 @@
 		if (dropTarget) { const n = canvas.querySelector(`.hit[data-id="${CSS.escape(dropTarget.id)}"]`); if (n) n.classList.add('drop-target'); }
 	}
 
+	/**
+	 * How far, in cells, a group moving inside its own table goes: from the cell the grabbed control is in to
+	 * the cell under the mouse (null when the controls come from elsewhere - they go to that one cell).
+	 */
+	function cellShift(d, table) {
+		const anchor = itemById(d.anchor);
+		if (!anchor || !anchor.cell || d.ids.some((id) => itemById(id).parent !== table.id)) return null;
+		return { column: d.cell.column - anchor.cell[0], row: d.cell.row - anchor.cell[1] };
+	}
+
 	function onDragUp() {
 		window.removeEventListener('mousemove', onDragMove);
 		const d = state.drag;
 		state.drag = null;
 		if (!d || !d.moved) return; // a plain click: nothing was drawn, keep the canvas (a double-click needs it)
+		if (d.table) {
+			const table = itemById(d.table);
+			const shift = cellShift(d, table);
+			const ops = [];
+			for (const id of d.ids) {
+				const it = itemById(id);
+				if (shift) {
+					const column = Math.max(0, it.cell[0] + shift.column), row = Math.max(0, it.cell[1] + shift.row);
+					if (column !== it.cell[0] || row !== it.cell[1]) ops.push({ op: 'setCell', id, column, row });
+				} else if (it.parent === d.table) {
+					ops.push({ op: 'setCell', id, column: d.cell.column, row: d.cell.row });
+				} else {
+					ops.push({ op: 'setParent', id, parent: d.table, column: d.cell.column, row: d.cell.row });
+				}
+			}
+			// The grabbed control first: it gets the cell under the mouse, the rest the ones around it.
+			ops.sort((a, b) => (a.id === d.anchor ? -1 : b.id === d.anchor ? 1 : 0));
+			if (!ops.length) { renderStage(); return; }
+			apply(ops, state.selection);
+			return;
+		}
 		if (d.dx === 0 && d.dy === 0 && d.target === null) { renderStage(); return; }
 		const ops = [];
 		for (const id of d.ids) {
@@ -617,6 +758,11 @@
 		const target = G.dropTarget(state.view.items, p.x, p.y, new Set());
 		const c = containerRect(target ? target.id : '');
 		state.selectNew = new Set(allIds());
+		if (target && target.table) {
+			const cell = G.cellAt(target.table, p.x, p.y);
+			apply([{ op: 'add', type, parent: target.id, column: cell.column, row: cell.row }]);
+			return;
+		}
 		apply([{ op: 'add', type, parent: target ? target.id : '', x: Math.max(0, p.x - c.x), y: Math.max(0, p.y - c.y) }]);
 	}
 
@@ -734,7 +880,12 @@
 				const it = itemById(primaryId());
 				if (it && it.resizable) ops.push({ op: 'setBounds', id: it.id, w: Math.max(1, it.w + ax * step), h: Math.max(1, it.h + ay * step) });
 			} else {
-				for (const id of movableSelection()) { const it = itemById(id); ops.push({ op: 'setBounds', id, x: it.left + ax * step, y: it.top + ay * step }); }
+				for (const id of movableSelection()) {
+					const it = itemById(id);
+					// In a table the arrows go from cell to cell.
+					if (it.cell) { if (it.cell[0] + ax >= 0 && it.cell[1] + ay >= 0) ops.push({ op: 'setCell', id, column: it.cell[0] + ax, row: it.cell[1] + ay }); }
+					else ops.push({ op: 'setBounds', id, x: it.left + ax * step, y: it.top + ay * step });
+				}
 			}
 			apply(ops, state.selection);
 			e.preventDefault();
@@ -757,7 +908,7 @@
 	}
 
 	/** The right-click menu of the canvas and the tray, as the Visual Studio designer's. */
-	function showContextMenu(e) {
+	function showContextMenu(e, point) {
 		closeMenu();
 		const ids = clipIds();
 		const movable = movableSelection().length > 0;
@@ -783,6 +934,7 @@
 		item(T('Bring to Front'), '', () => zorder('bringToFront'), movable && !state.locked);
 		item(T('Send to Back'), '', () => zorder('sendToBack'), movable && !state.locked);
 		sep();
+		tableMenu(item, sep, point);
 		item(state.locked ? T('Unlock Controls') : T('Lock Controls'), '', toggleLock);
 		if (state.selection.length === 1 && state.selection[0] !== '')
 			item(T('Select \'{0}\'', parent || (state.view ? state.view.className : '')), 'Esc', () => select(parent, false));
@@ -802,13 +954,40 @@
 		menu.style.top = Math.max(0, Math.min(e.clientY, window.innerHeight - h - 2)) + 'px';
 	}
 
+	/**
+	 * Inside a table (on it, or on a control in it), the commands of VS's TableLayoutPanel designer for the
+	 * column and row under the mouse: insert one before or after, delete it, and the column and row styles.
+	 */
+	function tableMenu(item, sep, point) {
+		const hit = point && G.hitTest(state.view.items, point.x, point.y);
+		if (!hit) return;
+		const table = hit.table ? hit : hit.cell ? itemById(hit.parent) : null;
+		if (!table || !table.table) return;
+		const cell = hit.table ? G.cellAt(table.table, point.x, point.y) : { column: hit.cell[0], row: hit.cell[1] };
+		const can = !state.locked;
+		const run = (op) => apply([op], state.selection);
+		item(T('Insert Column Left'), '', () => run(tracksOp(table, true, cell.column, true)), can);
+		item(T('Insert Column Right'), '', () => run(tracksOp(table, true, cell.column + 1, true)), can);
+		item(T('Delete Column {0}', cell.column + 1), '', () => run(tracksOp(table, true, cell.column, false)), can && table.table.columns.length > 1);
+		item(T('Insert Row Above'), '', () => run(tracksOp(table, false, cell.row, true)), can);
+		item(T('Insert Row Below'), '', () => run(tracksOp(table, false, cell.row + 1, true)), can);
+		item(T('Delete Row {0}', cell.row + 1), '', () => run(tracksOp(table, false, cell.row, false)), can && table.table.rows.length > 1);
+		item(T('Edit Columns and Rows…'), '', () => {
+			state.openStyles = { id: table.id, name: 'Columns' };
+			state.tab = 'properties';
+			remember();
+			select(table.id, false);
+		});
+		sep();
+	}
+
 	/** Right-click selects what is under the mouse (unless it is already part of the selection), then shows the menu. */
-	function onContextMenu(e, id) {
+	function onContextMenu(e, id, point) {
 		e.preventDefault();
 		e.stopPropagation();
 		if (state.busy || state.drag) return;
 		if (!state.selection.includes(id)) select(id, false);
-		showContextMenu(e);
+		showContextMenu(e, point);
 	}
 
 	document.addEventListener('mousedown', (e) => { if (!e.target.closest || !e.target.closest('.ctx-menu')) closeMenu(); });
@@ -1051,6 +1230,20 @@
 				value.append(input, edit);
 				break;
 			}
+			case 'styles': {
+				const input = textInput(r.name === 'Columns' ? T('Columns: {0}', (r.items || []).length) : T('Rows: {0}', (r.items || []).length), () => undefined);
+				input.readOnly = true;
+				const edit = el('button', 'mini', '…');
+				edit.title = T('Edit the columns and rows: size type and size of each');
+				edit.addEventListener('click', () => editStyles(id, r, row));
+				value.append(input, edit);
+				const open = state.openStyles;
+				if (open && open.id === id && open.name === r.name) {
+					state.openStyles = null;
+					setTimeout(() => editStyles(id, r, row), 0);
+				}
+				break;
+			}
 			case 'readonly': {
 				const input = textInput(r.value, () => undefined);
 				input.readOnly = true;
@@ -1060,7 +1253,7 @@
 			default:
 				value.append(textInput(r.value, commit));
 		}
-		if (r.modified && r.name !== 'Name' && r.editor !== 'readonly' && r.editor !== 'collection') {
+		if (r.modified && r.name !== 'Name' && r.editor !== 'readonly' && r.editor !== 'collection' && r.editor !== 'styles') {
 			const reset = el('button', 'mini', '↺');
 			reset.title = T('Reset to the default');
 			reset.addEventListener('click', () => apply([{ op: 'resetProp', id, prop: r.name }], state.selection));
@@ -1183,6 +1376,93 @@
 		draw(0);
 	}
 
+	/**
+	 * A table's columns or rows, as VS's Column and Row Styles dialog: each track's size type (Absolute pixels,
+	 * Percent of what is left, AutoSize to its controls) and size, added, removed and reordered - the controls
+	 * go along with their tracks; those of a removed one move to free cells.
+	 */
+	function editStyles(id, r, row) {
+		const next = row.nextSibling;
+		if (next && next.classList && next.classList.contains('coll-editor')) { next.remove(); return; }
+		const columns = r.name === 'Columns';
+		const table = itemById(id) && itemById(id).table;
+		const pixels = table ? (columns ? table.columns : table.rows) : [];
+		const lines = (r.items || []).map((text, i) => ({ id: '#' + i, ...G.parseStyle(text), px: pixels[i] }));
+		const box = el('div', 'coll-editor styles-editor');
+		const list = el('div', 'coll-list');
+		const total = el('div', 'styles-total');
+		const ok = () => apply([{ op: 'setStyles', id, prop: columns ? 'ColumnStyles' : 'RowStyles', values: lines.map(G.formatStyle), ids: lines.map((l) => l.id) }], state.selection);
+		const sum = () => {
+			const p = lines.filter((l) => l.type === 'Percent').reduce((s, l) => s + l.size, 0);
+			total.textContent = lines.some((l) => l.type === 'Percent') ? T('Percent total: {0}% (shares are relative)', Math.round(p * 100) / 100) : '';
+		};
+		const draw = (focus) => {
+			list.textContent = '';
+			lines.forEach((line, i) => {
+				const n = el('div', 'coll-row style-row');
+				n.append(el('span', 'style-index', String(i + 1)));
+				const type = el('select');
+				for (const t of ['Absolute', 'Percent', 'AutoSize']) { const o = el('option', '', T(t)); o.value = t; type.append(o); }
+				type.value = line.type;
+				const size = el('input');
+				size.type = 'number';
+				size.min = '0';
+				size.step = 'any';
+				size.value = line.type === 'AutoSize' ? '' : String(line.size);
+				size.disabled = line.type === 'AutoSize';
+				size.title = line.type === 'Percent' ? T('Percent') : T('Pixels');
+				type.addEventListener('change', () => {
+					// A sensible size for the new type: the pixels it has now, or an even share.
+					if (type.value === 'Absolute' && line.type !== 'Absolute') line.size = line.px || 100;
+					if (type.value === 'Percent' && line.type !== 'Percent') line.size = Math.round(100 / lines.length * 100) / 100;
+					line.type = type.value;
+					draw(i);
+				});
+				size.addEventListener('input', () => { line.size = Math.max(0, Number(size.value) || 0); sum(); });
+				size.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter') { e.preventDefault(); ok(); }
+					if (e.key === 'Escape') { e.preventDefault(); box.remove(); }
+				});
+				const px = el('span', 'style-px', line.px !== undefined ? line.px + ' px' : T('(new)'));
+				const move = (d) => {
+					const j = i + d;
+					if (j < 0 || j >= lines.length) return;
+					[lines[i], lines[j]] = [lines[j], lines[i]];
+					draw(j);
+				};
+				const up = el('button', 'mini', '↑');
+				up.title = T('Move up');
+				up.disabled = i === 0;
+				up.addEventListener('click', () => move(-1));
+				const down = el('button', 'mini', '↓');
+				down.title = T('Move down');
+				down.disabled = i === lines.length - 1;
+				down.addEventListener('click', () => move(1));
+				const ins = el('button', 'mini', '+');
+				ins.title = T('Insert one before this');
+				ins.addEventListener('click', () => { lines.splice(i, 0, { id: '', type: line.type, size: line.size }); draw(i); });
+				const del = el('button', 'mini', '✕');
+				del.title = T('Remove (its controls move to free cells)');
+				del.disabled = lines.length === 1;
+				del.addEventListener('click', () => { lines.splice(i, 1); draw(Math.min(i, lines.length - 1)); });
+				n.append(type, size, px, up, down, ins, del);
+				list.append(n);
+				if (i === focus) (size.disabled ? type : size).focus();
+			});
+			sum();
+		};
+		const add = button(T('Add'), columns ? T('Add a column at the end') : T('Add a row at the end'), () => {
+			const last = lines[lines.length - 1];
+			lines.push({ id: '', type: last ? last.type : 'Percent', size: last ? last.size : 50 });
+			draw(lines.length - 1);
+		});
+		const bar = el('div', 'coll-bar');
+		bar.append(add, button('OK', T('Apply the changes'), ok), button(T('Cancel'), T('Close without changes'), () => box.remove()));
+		box.append(list, total, bar);
+		row.after(box);
+		draw(0);
+	}
+
 	function cssColor(text) {
 		if (!text) return 'transparent';
 		const parts = text.split(',').map((s) => s.trim());
@@ -1277,7 +1557,7 @@
 		if (!v) { s.textContent = ''; return; }
 		const it = itemById(primaryId());
 		s.textContent = it
-			? `${it.id} (${shortType(it.type)})  ·  ${it.left}, ${it.top}  ·  ${it.w} × ${it.h}${it.dock !== 'None' ? '  ·  Dock ' + it.dock : ''}`
+			? `${it.id} (${shortType(it.type)})  ·  ${it.cell ? T('column {0}, row {1}', it.cell[0], it.cell[1]) : it.left + ', ' + it.top}  ·  ${it.w} × ${it.h}${it.dock !== 'None' ? '  ·  Dock ' + it.dock : ''}`
 			: `${v.className}  ·  ${v.width} × ${v.height}` + (state.selection.length > 1 ? '  ·  ' + T('{0} selected', state.selection.length) : '');
 	}
 

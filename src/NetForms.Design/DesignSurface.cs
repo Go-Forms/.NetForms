@@ -319,11 +319,24 @@ public sealed partial class DesignSurface : IDisposable
             case "add": Add(op); break;
             case "remove": Remove(Resolve(op.Id)); break;
             case "setParent": SetParent(Resolve(op.Id), Resolve(op.Parent), op); break;
+            case "setCell": MoveToCell(AsControl(Resolve(op.Id)), op.Column ?? throw new DesignerEditException("The edit needs 'column'."), op.Row ?? throw new DesignerEditException("The edit needs 'row'.")); break;
+            case "setStyles": SetStyles(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "rename": SetProperty(Resolve(op.Id), "Name", Required(op.Value, "value")); break;
             case "bringToFront": AsControl(Resolve(op.Id)).BringToFront(); break;
             case "sendToBack": AsControl(Resolve(op.Id)).SendToBack(); break;
             default: throw new DesignerEditException($"Unknown edit '{op.Op}'.");
         }
+    }
+
+    private static void SetStyles(object target, string prop, string[] values, string?[]? ids)
+    {
+        bool columns = prop switch
+        {
+            "ColumnStyles" or "Columns" => true,
+            "RowStyles" or "Rows" => false,
+            _ => throw new DesignerEditException($"'{prop}' is not ColumnStyles or RowStyles."),
+        };
+        SetTracks(AsTable(target), columns, values, ids);
     }
 
     private static string Required(string? value, string name) =>
@@ -392,6 +405,13 @@ public sealed partial class DesignSurface : IDisposable
             return;
         }
 
+        if (IsCellProperty(target, name, out var table, out var cellControl))
+        {
+            SetCellProperty(table, cellControl, name, value);
+            return;
+        }
+        if (target is TableLayoutPanel grid && SetTrackCount(grid, name, value)) return;
+
         var pd = TypeDescriptor.GetProperties(target)[name]
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
         if (component != null && IsShadowed(target, pd, component.IsRoot))
@@ -439,6 +459,12 @@ public sealed partial class DesignSurface : IDisposable
     {
         var component = Model.FindByInstance(target);
         if (component != null && component.RemoveShadowProperty(name)) return;
+        if (IsCellProperty(target, name, out var table, out var cellControl))
+        {
+            // The spans go back to 1; a cell has no default to go back to.
+            if (name is "ColumnSpan" or "RowSpan") SetCellProperty(table, cellControl, name, "1");
+            return;
+        }
         var pd = TypeDescriptor.GetProperties(target)[name]
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
         if (pd.CanResetValue(target)) pd.ResetValue(target);
@@ -761,6 +787,12 @@ public sealed partial class DesignSurface : IDisposable
                 if (container is TabControl) throw new DesignerEditException("Only tab pages go directly into a TabControl; drop the control on a page.");
                 if (container is SplitContainer) throw new DesignerEditException("Drop the control into one of the SplitContainer's panels.");
                 control.TabIndex = container.Controls.Count;
+                if (container is TableLayoutPanel table)
+                {
+                    // A table places by cell: the one the drop was on, or the first free one.
+                    PlaceInTable(table, control, op, atTop: true);
+                    break;
+                }
                 container.Controls.Add(control);
                 container.Controls.SetChildIndex(control, 0);
                 control.SetBounds(op.X ?? control.Left, op.Y ?? control.Top, op.W ?? control.Width, op.H ?? control.Height);
@@ -813,6 +845,9 @@ public sealed partial class DesignSurface : IDisposable
                 break;
             case GroupBox group:
                 group.Text = name;
+                break;
+            case TableLayoutPanel table:
+                InitializeTable(table);
                 break;
             case ErrorProvider provider when Root is ContainerControl root:
                 // ErrorProvider.Site does this through IDesignerHost.RootComponent in VS.
@@ -891,7 +926,17 @@ public sealed partial class DesignSurface : IDisposable
         if (ReferenceEquals(control, container) || IsAncestor(control, container))
             throw new DesignerEditException("A control cannot be put inside itself.");
         if (container is TabControl or SplitContainer) throw new DesignerEditException($"A control cannot go directly into a {container.GetType().Name}.");
+        if (ReferenceEquals(control.Parent, container) && container is TableLayoutPanel)
+        {
+            if (op.Column != null || op.Row != null) MoveToCell(control, op.Column ?? ((TableLayoutPanel)container).GetColumn(control), op.Row ?? ((TableLayoutPanel)container).GetRow(control));
+            return;
+        }
         control.Parent?.Controls.Remove(control);
+        if (container is TableLayoutPanel table)
+        {
+            PlaceInTable(table, control, new DesignerOp { Column = op.Column, Row = op.Row }, atTop: true);
+            return;
+        }
         container.Controls.Add(control);
         container.Controls.SetChildIndex(control, 0);
         control.Location = new Point(op.X ?? control.Left, op.Y ?? control.Top);
@@ -998,7 +1043,8 @@ public sealed partial class DesignSurface : IDisposable
                 ClientY = child.PointToForm(Point.Empty).Y,
                 Visible = VisibleOnCanvas(child),
                 Container = child is Panel or GroupBox,
-                Movable = !nested && child is not TabPage && child.Dock == DockStyle.None,
+                // In a table a control moves from cell to cell, docked to fill its cell or not.
+                Movable = !nested && child is not TabPage && (child.Dock == DockStyle.None || parent is TableLayoutPanel),
                 // An auto-sized label or check box follows its text; an AutoSize button only grows (GrowOnly).
                 Resizable = !nested && child is not TabPage && child.Dock != DockStyle.Fill
                     && !(child.LayoutAutoSize && child.AutoSizeModeCore == AutoSizeMode.GrowAndShrink),
@@ -1008,6 +1054,12 @@ public sealed partial class DesignSurface : IDisposable
                 Margin = new[] { child.Margin.Left, child.Margin.Top, child.Margin.Right, child.Margin.Bottom },
                 Padding = new[] { child.Padding.Left, child.Padding.Top, child.Padding.Right, child.Padding.Bottom },
             };
+            if (child is TableLayoutPanel table) item.Table = TableView(table);
+            if (parent is TableLayoutPanel cells && !nested)
+            {
+                var cell = cells.GetPositionFromControl(child);
+                item.Cell = new[] { cell.Column, cell.Row, cells.GetColumnSpan(child), cells.GetRowSpan(child) };
+            }
             if (child is TabControl tabs)
             {
                 // The tab headers, so a click on one can bring its page to the front, as in VS.
@@ -1140,6 +1192,7 @@ public sealed partial class DesignSurface : IDisposable
             }
             rows.Add(row);
         }
+        if (component is { IsRoot: false } || target is TableLayoutPanel) TableRows(target, rows);
         return rows.OrderBy(r => r.Category, StringComparer.Ordinal).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
     }
 

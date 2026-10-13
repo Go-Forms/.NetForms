@@ -90,6 +90,12 @@ public sealed class DesignerViewItem
 
     /// <summary>A TabControl's selected page (-1 for none; 0 for other controls).</summary>
     public int SelectedIndex { get; set; }
+
+    /// <summary>A TableLayoutPanel's grid; null for other controls.</summary>
+    public DesignerTable? Table { get; set; }
+
+    /// <summary>For a control in a TableLayoutPanel: column, row, column span, row span; null elsewhere.</summary>
+    public int[]? Cell { get; set; }
 }
 
 public sealed class DesignerTrayItem
@@ -123,7 +129,7 @@ public sealed class DesignerPropertyRow
     /// <summary>The value as the grid shows it (the converter's invariant text; a component's name).</summary>
     public string? Value { get; set; }
 
-    /// <summary><c>bool</c>, <c>enum</c>, <c>flags</c>, <c>number</c>, <c>text</c>, <c>color</c>, <c>font</c>, <c>component</c>, <c>collection</c>, <c>readonly</c>.</summary>
+    /// <summary><c>bool</c>, <c>enum</c>, <c>flags</c>, <c>number</c>, <c>text</c>, <c>color</c>, <c>font</c>, <c>component</c>, <c>collection</c>, <c>styles</c> (a table's Columns/Rows), <c>readonly</c>.</summary>
     public string Editor { get; set; } = "text";
 
     /// <summary>The values to pick from (enum members, standard values, compatible components).</summary>
@@ -140,7 +146,8 @@ public sealed class DesignerPropertyRow
     /// <summary>
     /// How <see cref="Items"/> spell the elements: <c>lines</c> (one per line), <c>tree</c> (a node per
     /// line, two spaces of indent per level), <c>columns</c> (a ListViewItem's sub-items separated by <c>|</c>),
-    /// <c>components</c> (the captions of tab pages, strip items or columns; <c>-</c> for a separator).
+    /// <c>components</c> (the captions of tab pages, strip items or columns; <c>-</c> for a separator),
+    /// <c>styles</c> (a table's columns or rows: <c>Percent 50</c>, <c>Absolute 120</c>, <c>AutoSize</c>, one per track).
     /// </summary>
     public string? ItemsFormat { get; set; }
 

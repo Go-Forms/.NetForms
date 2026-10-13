@@ -87,6 +87,16 @@ when it is free (else `button2`), and its event handlers when pasted into the sa
 menu, as in Visual Studio: View Code, Cut, Copy, Paste, Duplicate, Delete, Bring to Front / Send to Back, Lock, Select
 the parent, Properties; on the form, Set as Startup Form.
 
+A **TableLayoutPanel** is laid out by cells, as in Visual Studio. Its cells are drawn dashed; a control dropped from the
+toolbox or dragged in goes to the cell under the mouse (highlighted while dragging), onto a taken cell the two controls
+swap, the arrow keys move a control from cell to cell, and a full table grows a row (or a column, by `GrowStyle`).
+Drag the boundary between two columns or rows to resize them. **…** next to *Columns* or *Rows* in the property grid
+edits each one's size type (Absolute — pixels, Percent — a share of the space left, AutoSize — fits its controls) and
+size, and inserts, removes and reorders them: the controls go along with their columns, and those of a removed column
+move to free cells (they are never deleted with it). A right-click in a table inserts or deletes the column or row
+under the mouse. A control in a table has *Column*, *Row*, *ColumnSpan* and *RowSpan* in the property grid; the
+designer writes every control of a table it edits as `Controls.Add(control, column, row)`.
+
 A click on a tab header of a TabControl shows that page, so each page is laid out in turn (written as
 `SelectedIndex`, as Visual Studio does). **…** next to TabPages, a strip's Items, DropDownItems or Columns opens the
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and

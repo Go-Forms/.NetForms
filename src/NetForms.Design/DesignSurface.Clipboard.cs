@@ -247,9 +247,15 @@ public sealed partial class DesignSurface
         {
             var instance = Create(node, renames, out var component);
             var parent = PasteTarget(instance, target);
-            Place((IComponent)instance, parent, new DesignerOp());
-            if (instance is Control control && control.Parent is TableLayoutPanel && node.Cell != null)
-                SetCell((TableLayoutPanel)control.Parent, control, node.Cell);
+            var at = new DesignerOp();
+            if (parent is TableLayoutPanel table && instance is Control cellControl && node.Cell is { Length: >= 4 } cell)
+            {
+                // Its spans, and the cell it had - or the first free one from there (a copy beside its original).
+                table.SetColumnSpan(cellControl, Math.Max(1, cell[2]));
+                table.SetRowSpan(cellControl, Math.Max(1, cell[3]));
+                (at.Column, at.Row) = (cell[0] < 0 ? null : cell[0], cell[1] < 0 ? null : cell[1]);
+            }
+            Place((IComponent)instance, parent, at);
             created.Add((instance, node));
             _pasted.Add(component.Name!);
         }

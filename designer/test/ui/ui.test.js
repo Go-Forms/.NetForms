@@ -469,3 +469,123 @@ test('the project\'s own controls are in the toolbox and go on the form', { skip
 	assert.ok(posted.includes('rescan') && posted.includes('addLibrary'));
 	assert.deepEqual(errors, []);
 });
+
+// Decision 170: a TableLayoutPanel places by cell. Added controls take free cells, a drag puts a control in the
+// cell under the mouse (onto a taken one: they swap), the grips between columns resize them, the context menu
+// inserts columns, and the Columns editor sets each column's size type and size.
+test('a table: controls go to cells, move between them, and its columns are edited', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-table-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.evaluateOnNewDocument(() => window.addEventListener('message', (e) => { if (e.data && e.data.view) window.__view = e.data.view; }));
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const toolbox = (name) => page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name);
+	const view = (id) => page.evaluate((i) => window.__view.items.find((x) => x.id === i), id);
+	const origin = () => page.evaluate(() => { const r = document.querySelector('.canvas').getBoundingClientRect(); return { x: r.left, y: r.top }; });
+	/** The middle of a cell of the table, in page coordinates. */
+	const cellCenter = async (column, row) => {
+		const o = await origin();
+		const table = (await view('tableLayoutPanel1')).table;
+		let x = table.x, y = table.y;
+		for (let i = 0; i < column; i++) x += table.border + table.columns[i];
+		for (let i = 0; i < row; i++) y += table.border + table.rows[i];
+		return { x: o.x + x + table.border + table.columns[column] / 2, y: o.y + y + table.border + table.rows[row] / 2 };
+	};
+	const drag = async (from, to) => {
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		for (let i = 1; i <= 10; i++) await page.mouse.move(from.x + (to.x - from.x) * i / 10, from.y + (to.y - from.y) * i / 10);
+		await page.mouse.up();
+	};
+	const centerOf = async (id) => { const b = await (await page.waitForSelector(`.hit[data-id="${id}"]`)).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
+
+	// A new table: 2 × 2, 50% each, drawn as dashed cells.
+	let before = file();
+	await toolbox('TableLayoutPanel');
+	let text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.ColumnCount = 2;/);
+	await page.waitForSelector('.hit.primary[data-id="tableLayoutPanel1"]');
+	assert.equal(await page.$$eval('.tl-line', (n) => n.length), 6, 'three lines across, three down');
+
+	// With the table selected, a button from the toolbox takes the first free cell.
+	before = file();
+	await toolbox('Button');
+	text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button2, 0, 0\);/);
+
+	// Dragged, it goes to the cell under the mouse.
+	before = file();
+	await drag(await centerOf('button2'), await cellCenter(1, 1));
+	text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button2, 1, 1\);/);
+
+	// button1 from the form into a cell of the table, then onto button2's: they swap.
+	before = file();
+	await drag(await centerOf('button1'), await cellCenter(0, 1));
+	text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button1, 0, 1\);/);
+	before = file();
+	await drag(await centerOf('button1'), await cellCenter(1, 1));
+	text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button1, 1, 1\);/);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button2, 0, 1\);/);
+	await page.screenshot({ path: path.join(out, 'table-1-cells.png') });
+
+	// The grip between the columns: dragged right, the first column gets the larger share.
+	const grip = await (await page.waitForSelector('.tl-grip.v')).boundingBox();
+	before = file();
+	await drag({ x: grip.x + grip.width / 2, y: grip.y + 10 }, { x: grip.x + grip.width / 2 + 40, y: grip.y + 10 });
+	text = await waitFile(before);
+	const shares = [...text.matchAll(/ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Percent, ([\d.]+)F\)\);/g)].map((m) => Number(m[1]));
+	assert.equal(shares.length, 2);
+	assert.ok(shares[0] > 60 && Math.abs(shares[0] + shares[1] - 100) < 0.1, `shares ${shares}`);
+
+	// Right-click in the first column: insert one to its left; the controls move along.
+	const c00 = await cellCenter(0, 0);
+	await page.mouse.click(c00.x, c00.y, { button: 'right' });
+	await page.waitForSelector('.ctx-menu');
+	const labels = await page.$$eval('.ctx-menu .ctx-label', (n) => n.map((x) => x.textContent));
+	for (const l of ['Insert Column Left', 'Insert Column Right', 'Delete Column 1', 'Insert Row Above', 'Insert Row Below', 'Delete Row 1', 'Edit Columns and Rows…']) assert.ok(labels.includes(l), l);
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.ctx-item')].find((n) => n.textContent.startsWith('Insert Column Left')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+	text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.ColumnCount = 3;/);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button1, 2, 1\);/);
+	assert.match(text, /tableLayoutPanel1\.Controls\.Add\(button2, 1, 1\);/);
+
+	// The Columns editor: the first column becomes Absolute 80.
+	const c = await cellCenter(0, 0);
+	await page.mouse.click(c.x, c.y);
+	await page.waitForFunction(() => document.querySelector('#inspector [data-prop="Columns"] button.mini'));
+	await page.evaluate(() => document.querySelector('#inspector [data-prop="Columns"] button.mini').click());
+	await page.waitForSelector('.styles-editor .style-row');
+	assert.equal(await page.$$eval('.styles-editor .style-row', (n) => n.length), 3);
+	await page.select('.styles-editor .style-row select', 'Absolute');
+	const size = await page.waitForSelector('.styles-editor .style-row input[type=number]');
+	await size.click({ clickCount: 3 });
+	await page.keyboard.type('80');
+	await page.screenshot({ path: path.join(out, 'table-2-columns.png') });
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.styles-editor button')].find((b) => b.textContent === 'OK').click());
+	text = await waitFile(before);
+	assert.match(text, /tableLayoutPanel1\.ColumnStyles\.Add\(new ColumnStyle\(SizeType\.Absolute, 80F\)\);/);
+	await page.screenshot({ path: path.join(out, 'table-3-edited.png') });
+	assert.deepEqual(errors, []);
+});

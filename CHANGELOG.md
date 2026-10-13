@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — TableLayoutPanel in the designer
+
+- **Designer: TableLayoutPanel is laid out by cells, as in Visual Studio.** Before, a control dropped into a table
+  flowed into the next free cell (a new one even pushed the others along), and dragging a control inside a table did
+  nothing — the table's layout put it back. Now a control dropped from the toolbox or dragged from the form goes to the
+  **cell under the mouse** (the cell is highlighted while dragging); a control dragged onto a taken cell **swaps** with
+  the one there; the arrow keys move a control from cell to cell; a full table grows a row (or a column, by its
+  `GrowStyle`). Every control of a table the designer edits is written as `Controls.Add(control, column, row)`, as
+  Visual Studio writes it.
+- **Columns and rows are edited.** The table's cells are drawn dashed on the canvas; the boundary between two columns
+  (rows) is dragged to resize them (Absolute keeps pixels, Percent shares are recomputed, AutoSize becomes Absolute).
+  The property grid has **Columns** and **Rows** (…): each column's size type (Absolute / Percent / AutoSize) and size,
+  insert, remove, reorder — the controls go along with their columns; those of a removed column move to free cells,
+  never deleted. A right-click in a table: *Insert Column Left/Right*, *Delete Column*, *Insert Row Above/Below*,
+  *Delete Row*, *Edit Columns and Rows…*. `ColumnCount`/`RowCount` typed in the grid keep the styles in step. A
+  control in a table has **Column**, **Row**, **ColumnSpan**, **RowSpan** in the grid (a wider span moves what it
+  covers aside). A new table is 2 × 2 with 50% columns and rows, as Visual Studio makes it.
+
 ## 0.1.1 — PrintPreviewDialog in the designer
 
 - **Designer bug fix — PrintPreviewDialog could not be added.** A click on it in the toolbox failed: the designer put the

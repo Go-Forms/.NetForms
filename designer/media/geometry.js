@@ -248,5 +248,83 @@
 		return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
 	}
 
-	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, union, resizeEdges };
+	// --- TableLayoutPanel: cells instead of coordinates ------------------------------------------
+
+	/**
+	 * Where the tracks of a table's grid lie on the canvas. `table` is the view's {x, y, border, columns,
+	 * rows}: a border before the first cell and after each, as TableLayoutPanel lays them out. Returns the
+	 * cells' starts along each axis and the boundaries between them (lines[i] is just before track i;
+	 * lines[n] closes the last).
+	 */
+	function tableTracks(table) {
+		const axis = (origin, sizes) => {
+			const starts = [], lines = [];
+			let pos = origin;
+			for (const size of sizes) { lines.push(pos); starts.push(pos + table.border); pos += table.border + size; }
+			lines.push(pos);
+			return { starts, sizes: sizes.slice(), lines, end: pos + table.border };
+		};
+		return { columns: axis(table.x, table.columns), rows: axis(table.y, table.rows) };
+	}
+
+	/** The rectangle of a cell (with its spans) on the canvas. */
+	function cellRect(table, column, row, columnSpan, rowSpan) {
+		const t = tableTracks(table);
+		const c = Math.max(0, Math.min(column, t.columns.starts.length - 1)), r = Math.max(0, Math.min(row, t.rows.starts.length - 1));
+		const c2 = Math.min(t.columns.starts.length, c + (columnSpan || 1)) - 1, r2 = Math.min(t.rows.starts.length, r + (rowSpan || 1)) - 1;
+		const x = t.columns.starts[c], y = t.rows.starts[r];
+		return { x, y, w: t.columns.starts[c2] + t.columns.sizes[c2] - x, h: t.rows.starts[r2] + t.rows.sizes[r2] - y };
+	}
+
+	/** The cell under a canvas point, clamped to the grid (past the last column is the last column). */
+	function cellAt(table, x, y) {
+		const t = tableTracks(table);
+		const index = (axis, v) => {
+			let i = 0;
+			while (i < axis.starts.length - 1 && v >= axis.lines[i + 1]) i++;
+			return i;
+		};
+		return { column: index(t.columns, x), row: index(t.rows, y) };
+	}
+
+	/** "Percent 50" → {type: 'Percent', size: 50}; "AutoSize" → {type: 'AutoSize', size: 0}. */
+	function parseStyle(text) {
+		const [type, size] = String(text || 'AutoSize').trim().split(/\s+/);
+		return { type: type || 'AutoSize', size: type === 'AutoSize' ? 0 : Number(size) || 0 };
+	}
+
+	function formatStyle(style) {
+		return style.type === 'AutoSize' ? 'AutoSize' : style.type + ' ' + Math.round(style.size * 100) / 100;
+	}
+
+	/**
+	 * The styles after the boundary between track `index` and the next is dragged by `delta` pixels, as the
+	 * VS designer resizes a table: both tracks change by the pixels moved (never below 0); an Absolute track
+	 * takes its new pixels, an AutoSize one becomes Absolute at them, and Percent tracks share their total
+	 * percentage again in proportion to their new pixels. `sizes` are the tracks' pixels as laid out.
+	 */
+	function resizeTracks(styles, sizes, index, delta) {
+		const parsed = styles.map(parseStyle);
+		if (index < 0 || index + 1 >= sizes.length) return styles.slice();
+		const d = Math.max(-sizes[index], Math.min(sizes[index + 1], Math.round(delta)));
+		if (d === 0) return styles.slice();
+		const px = sizes.slice();
+		px[index] += d;
+		px[index + 1] -= d;
+		let percent = false;
+		for (const k of [index, index + 1]) {
+			const s = parsed[k];
+			if (s.type === 'Percent') percent = true;
+			else { s.type = 'Absolute'; s.size = px[k]; }
+		}
+		if (percent) {
+			const ks = parsed.map((s, k) => (s.type === 'Percent' ? k : -1)).filter((k) => k >= 0);
+			const total = ks.reduce((sum, k) => sum + parseStyle(styles[k]).size, 0) || 100;
+			const pixels = ks.reduce((sum, k) => sum + px[k], 0);
+			if (pixels > 0) for (const k of ks) parsed[k].size = total * px[k] / pixels;
+		}
+		return parsed.map(formatStyle);
+	}
+
+	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks };
 });

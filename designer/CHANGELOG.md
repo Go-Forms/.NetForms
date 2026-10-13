@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **TableLayoutPanel is laid out by cells.** A control dropped or dragged into a table goes to the cell under the mouse
+  (highlighted while dragging); onto a taken cell the two controls swap; the arrow keys move from cell to cell; a full
+  table grows. Before, controls only flowed into the next free cell and could not be moved inside the table.
+- **Columns and rows:** the cells are drawn dashed; drag the boundary between two columns or rows to resize them;
+  **Columns** and **Rows** (…) in the property grid edit each one's size type (Absolute / Percent / AutoSize) and size,
+  insert, remove and reorder them, the controls going along. Right-click in a table: insert or delete a column or row.
+  A control in a table has **Column**, **Row**, **ColumnSpan** and **RowSpan** in the property grid.
+
 ## 0.2.1
 
 - **Fixed: PrintPreviewDialog could not be added** from the toolbox; it now goes to the component tray, as in Visual

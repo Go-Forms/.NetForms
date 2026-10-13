@@ -120,3 +120,43 @@ test('a docked control is resized only by its free edge', () => {
 	assert.deepEqual(g.resizeEdges('Fill'), []);
 	assert.equal(g.resizeEdges('None').length, 8);
 });
+
+// --- TableLayoutPanel (decision 170) -----------------------------------------------------------------
+
+const table = { x: 10, y: 20, border: 0, columns: [100, 50], rows: [30, 30] };
+
+test('a point is in the cell its tracks cover, clamped to the grid', () => {
+	assert.deepEqual(g.cellAt(table, 10, 20), { column: 0, row: 0 });
+	assert.deepEqual(g.cellAt(table, 109, 49), { column: 0, row: 0 });
+	assert.deepEqual(g.cellAt(table, 110, 50), { column: 1, row: 1 });
+	// Past the grid (an Absolute table narrower than its panel): the last track.
+	assert.deepEqual(g.cellAt(table, 400, 400), { column: 1, row: 1 });
+	assert.deepEqual(g.cellAt(table, 0, 0), { column: 0, row: 0 });
+});
+
+test('cell borders come before the first cell and after each', () => {
+	const bordered = { ...table, border: 1 };
+	const t = g.tableTracks(bordered);
+	assert.deepEqual(t.columns.lines, [10, 111, 162]);
+	assert.deepEqual(t.columns.starts, [11, 112]);
+	assert.deepEqual(g.cellRect(bordered, 1, 0), { x: 112, y: 21, w: 50, h: 30 });
+	// A span covers the border between its cells.
+	assert.deepEqual(g.cellRect(bordered, 0, 0, 2, 1), { x: 11, y: 21, w: 151, h: 30 });
+});
+
+test('dragging a boundary between Absolute tracks moves pixels from one to the other', () => {
+	assert.deepEqual(g.resizeTracks(['Absolute 100', 'Absolute 50'], [100, 50], 0, 20), ['Absolute 120', 'Absolute 30']);
+	// Never below zero.
+	assert.deepEqual(g.resizeTracks(['Absolute 100', 'Absolute 50'], [100, 50], 0, 80), ['Absolute 150', 'Absolute 0']);
+});
+
+test('between Percent tracks the percentages follow the pixels', () => {
+	assert.deepEqual(g.resizeTracks(['Percent 50', 'Percent 50'], [100, 100], 0, 50), ['Percent 75', 'Percent 25']);
+	// Their total stays what it was (here 3 × 33.33).
+	assert.deepEqual(g.resizeTracks(['Percent 33.33', 'Percent 33.33', 'Percent 33.33'], [90, 90, 90], 1, -30), ['Percent 33.33', 'Percent 22.22', 'Percent 44.44']);
+});
+
+test('an AutoSize track dragged becomes Absolute; a Percent neighbour of an Absolute one keeps the rest', () => {
+	assert.deepEqual(g.resizeTracks(['AutoSize', 'Percent 100'], [40, 160], 0, 10), ['Absolute 50', 'Percent 100']);
+	assert.deepEqual(g.resizeTracks(['Absolute 60', 'Percent 50', 'Percent 50'], [60, 70, 70], 0, -20), ['Absolute 40', 'Percent 56.25', 'Percent 43.75']);
+});
