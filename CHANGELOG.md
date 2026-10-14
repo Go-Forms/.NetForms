@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — TableLayoutPanel in the designer
+## 0.1.2 — TableLayoutPanel in the designer
 
 - **Designer: TableLayoutPanel is laid out by cells, as in Visual Studio.** Before, a control dropped into a table
   flowed into the next free cell (a new one even pushed the others along), and dragging a control inside a table did

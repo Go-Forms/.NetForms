@@ -177,7 +177,7 @@ A control library is a class library that references NetForms:
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.1" />
+    <PackageReference Include="NetForms" Version="0.1.2" />
     <Using Include="System.Drawing" />
     <Using Include="System.Windows.Forms" />
   </ItemGroup>
