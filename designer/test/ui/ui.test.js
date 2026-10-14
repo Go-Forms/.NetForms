@@ -678,3 +678,57 @@ test('menus open on the canvas, their items take handlers, and a tool tip is set
 	assert.match(text, /toolTip1\.SetToolTip\(button1, "Сохранить файл"\);/);
 	assert.deepEqual(errors, []);
 });
+
+// Decision 173: a FlowLayoutPanel keeps the order controls are added in, and a drag (or an arrow key) reorders it.
+test('a flow: controls are added in order and reordered by dragging', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-flow-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const toolbox = async (name) => { const before = file(); await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name); return waitFile(before); };
+	const order = (text) => [...text.matchAll(/flowLayoutPanel1\.Controls\.Add\((\w+)\);/g)].map((m) => m[1]);
+	const box = async (id) => (await page.waitForSelector(`.hit[data-id="${id}"]`)).boundingBox();
+
+	await toolbox('FlowLayoutPanel');
+	await toolbox('Button');
+	await toolbox('Button');
+	let text = await toolbox('Button');
+	assert.deepEqual(order(text), ['button2', 'button3', 'button4'], 'added in order, each after the last');
+
+	// button4 dragged before button2: the mark shows, the order follows.
+	const from = await box('button4'), to = await box('button2');
+	let before = file();
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	for (let i = 1; i <= 10; i++) await page.mouse.move(from.x + from.width / 2 + (to.x + 4 - from.x - from.width / 2) * i / 10, from.y + from.height / 2);
+	await page.waitForSelector('.flow-bar');
+	await page.screenshot({ path: path.join(out, 'flow-1-drag.png') });
+	await page.mouse.up();
+	text = await waitFile(before);
+	assert.deepEqual(order(text), ['button4', 'button2', 'button3']);
+
+	// An arrow key moves the selected control on by one.
+	await page.mouse.click((await box('button4')).x + 5, (await box('button4')).y + 5);
+	before = file();
+	await page.keyboard.press('ArrowRight');
+	text = await waitFile(before);
+	assert.deepEqual(order(text), ['button2', 'button4', 'button3']);
+	assert.deepEqual(errors, []);
+});

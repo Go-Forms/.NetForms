@@ -114,6 +114,7 @@ button, input, select { font: inherit; color: inherit; }
 .tl-grip.v { cursor: col-resize; }
 .tl-grip.h { cursor: row-resize; }
 .tl-grip:hover { background: #0078d433; }
+.flow-bar { position: absolute; pointer-events: none; z-index: 21; background: #3c9; box-shadow: 0 0 0 1px #fff8; }
 .cell-target { position: absolute; pointer-events: none; z-index: 19; background: #3c92; outline: 2px solid #3c9; outline-offset: -2px; }
 
 .tab-badge {

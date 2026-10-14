@@ -424,9 +424,10 @@
 			const p = canvasPoint(e);
 			const target = G.dropTarget(state.view.items, p.x, p.y, new Set());
 			showCellTarget(target && target.table ? G.cellRect(target.table, G.cellAt(target.table, p.x, p.y).column, G.cellAt(target.table, p.x, p.y).row) : null);
+			showFlowBar(target && target.flow ? flowDrop(target, p, null).bar : null);
 		});
-		canvas.addEventListener('dragleave', (e) => { if (!canvas.contains(e.relatedTarget)) showCellTarget(null); });
-		canvas.addEventListener('drop', (e) => { showCellTarget(null); onToolboxDrop(e, canvas); });
+		canvas.addEventListener('dragleave', (e) => { if (!canvas.contains(e.relatedTarget)) { showCellTarget(null); showFlowBar(null); } });
+		canvas.addEventListener('drop', (e) => { showCellTarget(null); showFlowBar(null); onToolboxDrop(e, canvas); });
 		frame.append(title, canvas);
 		stage.append(frame);
 		// An open menu may hang below or beside the form.
@@ -471,6 +472,34 @@
 		canvas.querySelectorAll('.cell-target').forEach((n) => n.remove());
 		if (!rect) return;
 		const n = el('div', 'cell-target');
+		place(n, rect);
+		canvas.append(n);
+	}
+
+	// --- FlowLayoutPanel: the order of the flow ------------------------------------------------------
+
+	/** The controls of a flow in flow order (first in Controls first), but for `skip`. */
+	function flowChildren(flow, skip) {
+		return state.view.items
+			.filter((i) => i.parent === flow.id && i.kind === 'control' && i.flowIndex !== undefined && i.flowIndex !== null && !(skip && skip.has(i.id)))
+			.sort((a, b) => a.flowIndex - b.flowIndex);
+	}
+
+	/** Where a drop goes in a flow: the insertion index among its controls (but for `skip`) and the mark to draw. */
+	function flowDrop(flow, p, skip) {
+		const kids = flowChildren(flow, skip);
+		const ins = G.flowInsert(kids, p.x, p.y, flow.flow);
+		const c = containerRect(flow.id);
+		return { index: ins.index, order: kids.map((k) => k.id), bar: ins.bar || { x: c.x + c.padding[0] + 3, y: c.y + c.padding[1] + 3, w: 2, h: 23 } };
+	}
+
+	/** The insertion mark of a flow (null removes it). */
+	function showFlowBar(rect) {
+		const canvas = state.canvas;
+		if (!canvas) return;
+		canvas.querySelectorAll('.flow-bar').forEach((n) => n.remove());
+		if (!rect) return;
+		const n = el('div', 'flow-bar');
 		place(n, rect);
 		canvas.append(n);
 	}
@@ -658,7 +687,7 @@
 		// A group moves together; they must share a container (as the canvas can only drop into one).
 		const parent = itemById(ids[0]).parent;
 		const moving = ids.filter((id) => itemById(id).parent === parent);
-		state.drag = { kind: 'move', start: p, ids: moving, anchor: moving.includes(hit.id) ? hit.id : moving[0], moved: false, target: null, dx: 0, dy: 0, table: null, cell: null };
+		state.drag = { kind: 'move', start: p, ids: moving, anchor: moving.includes(hit.id) ? hit.id : moving[0], moved: false, target: null, dx: 0, dy: 0, table: null, cell: null, flow: null };
 		e.preventDefault();
 		window.addEventListener('mousemove', onDragMove);
 		window.addEventListener('mouseup', onDragUp, { once: true });
@@ -714,6 +743,18 @@
 		}
 		d.table = null;
 		showCellTarget(null);
+		if (target && target.flow) {
+			// In a flow the drop is a place in its order: where the mark is.
+			const drop = flowDrop(target, p, new Set(d.ids));
+			d.flow = { id: target.id, index: drop.index, order: drop.order };
+			d.target = targetId !== parentId ? targetId : null;
+			drawDragFeedback(items.map((i) => ({ x: i.x + dx, y: i.y + dy, w: i.w, h: i.h })), [], d.target !== null ? target : null);
+			showFlowBar(drop.bar);
+			renderStatus(`${items.length > 1 ? T('{0} controls', items.length) : items[0].id}: ${T('position {0} in {1}', drop.index + 1, target.id)}`);
+			return;
+		}
+		d.flow = null;
+		showFlowBar(null);
 		const others = state.view.items.filter((i) => i.visible && i.kind === 'control' && i.parent === targetId && !d.ids.includes(i.id));
 		const snapOn = !e.altKey && state.snap;
 		const moved = { x: group.x + dx, y: group.y + dy, w: group.w, h: group.h, margin: group.margin };
@@ -754,6 +795,17 @@
 		const d = state.drag;
 		state.drag = null;
 		if (!d || !d.moved) return; // a plain click: nothing was drawn, keep the canvas (a double-click needs it)
+		if (d.flow) {
+			// The new order of the flow: the moved controls (in their order) at the mark.
+			const flow = itemById(d.flow.id);
+			const moving = d.ids.slice().sort((a, b) => (itemById(a).parent === flow.id && itemById(b).parent === flow.id ? itemById(a).flowIndex - itemById(b).flowIndex : 0));
+			const order = d.flow.order.slice(0, d.flow.index).concat(moving, d.flow.order.slice(d.flow.index));
+			const ops = moving.filter((id) => itemById(id).parent !== flow.id).map((id) => ({ op: 'setParent', id, parent: flow.id }));
+			if (!ops.length && order.join('\n') === flowChildren(flow, null).map((k) => k.id).join('\n')) { renderStage(); return; }
+			ops.push({ op: 'reorder', id: flow.id, ids: order });
+			apply(ops, state.selection);
+			return;
+		}
 		if (d.table) {
 			const table = itemById(d.table);
 			const shift = cellShift(d, table);
@@ -800,6 +852,10 @@
 		if (target && target.table) {
 			const cell = G.cellAt(target.table, p.x, p.y);
 			apply([{ op: 'add', type, parent: target.id, column: cell.column, row: cell.row }]);
+			return;
+		}
+		if (target && target.flow) {
+			apply([{ op: 'add', type, parent: target.id, index: flowDrop(target, p, null).index }]);
 			return;
 		}
 		apply([{ op: 'add', type, parent: target ? target.id : '', x: Math.max(0, p.x - c.x), y: Math.max(0, p.y - c.y) }]);
@@ -919,8 +975,19 @@
 				const it = itemById(primaryId());
 				if (it && it.resizable) ops.push({ op: 'setBounds', id: it.id, w: Math.max(1, it.w + ax * step), h: Math.max(1, it.h + ay * step) });
 			} else {
-				for (const id of movableSelection()) {
+				const only = movableSelection().length === 1 ? itemById(movableSelection()[0]) : null;
+				if (only && only.flowIndex !== undefined && only.flowIndex !== null) {
+					// In a flow the arrows move a control back or forth in the order.
+					const order = flowChildren(itemById(only.parent), null).map((k) => k.id);
+					const i = order.indexOf(only.id), j = i + (ax + ay);
+					if (j >= 0 && j < order.length) {
+						[order[i], order[j]] = [order[j], order[i]];
+						ops.push({ op: 'reorder', id: only.parent, ids: order });
+					}
+				}
+				else for (const id of movableSelection()) {
 					const it = itemById(id);
+					if (it.flowIndex !== undefined && it.flowIndex !== null) continue;
 					// In a table the arrows go from cell to cell.
 					if (it.cell) { if (it.cell[0] + ax >= 0 && it.cell[1] + ay >= 0) ops.push({ op: 'setCell', id, column: it.cell[0] + ax, row: it.cell[1] + ay }); }
 					else ops.push({ op: 'setBounds', id, x: it.left + ax * step, y: it.top + ay * step });
@@ -1596,7 +1663,7 @@
 		if (!v) { s.textContent = ''; return; }
 		const it = itemById(primaryId());
 		s.textContent = it
-			? `${it.id} (${shortType(it.type)})  ·  ${it.cell ? T('column {0}, row {1}', it.cell[0], it.cell[1]) : it.left + ', ' + it.top}  ·  ${it.w} × ${it.h}${it.dock !== 'None' ? '  ·  Dock ' + it.dock : ''}`
+			? `${it.id} (${shortType(it.type)})  ·  ${it.cell ? T('column {0}, row {1}', it.cell[0], it.cell[1]) : it.flowIndex !== undefined && it.flowIndex !== null ? T('position {0} in {1}', it.flowIndex + 1, it.parent) : it.left + ', ' + it.top}  ·  ${it.w} × ${it.h}${it.dock !== 'None' ? '  ·  Dock ' + it.dock : ''}`
 			: `${v.className}  ·  ${v.width} × ${v.height}` + (state.selection.length > 1 ? '  ·  ' + T('{0} selected', state.selection.length) : '');
 	}
 

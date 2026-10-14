@@ -98,6 +98,10 @@ public sealed class DesignerViewItem
     /// <summary>A TableLayoutPanel's grid; null for other controls.</summary>
     public DesignerTable? Table { get; set; }
 
+    /// <summary>A FlowLayoutPanel's FlowDirection (null for other controls), and a control's place in a flow (first is 0).</summary>
+    public string? Flow { get; set; }
+    public int? FlowIndex { get; set; }
+
     /// <summary>A menu item with items of its own: a click on it opens them.</summary>
     public bool HasDropDown { get; set; }
 

@@ -323,6 +323,7 @@ public sealed partial class DesignSurface : IDisposable
             case "add": Add(op); break;
             case "remove": Remove(Resolve(op.Id)); break;
             case "setParent": SetParent(Resolve(op.Id), Resolve(op.Parent), op); break;
+            case "reorder": Reorder(AsControl(Resolve(op.Id)), op.Ids ?? Array.Empty<string?>()); break;
             case "setCell": MoveToCell(AsControl(Resolve(op.Id)), op.Column ?? throw new DesignerEditException("The edit needs 'column'."), op.Row ?? throw new DesignerEditException("The edit needs 'row'.")); break;
             case "setStyles": SetStyles(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "rename": SetProperty(Resolve(op.Id), "Name", Required(op.Value, "value")); break;
@@ -832,6 +833,13 @@ public sealed partial class DesignSurface : IDisposable
                     PlaceInTable(table, control, op, atTop: true);
                     break;
                 }
+                if (container is FlowLayoutPanel flow)
+                {
+                    // A flow places by order: where the drop was, or at the end (VS appends; first in Controls is first in the flow).
+                    PlaceInFlow(flow, control, op.Index);
+                    if (op.W != null || op.H != null) control.Size = new Size(op.W ?? control.Width, op.H ?? control.Height);
+                    break;
+                }
                 container.Controls.Add(control);
                 container.Controls.SetChildIndex(control, 0);
                 control.SetBounds(op.X ?? control.Left, op.Y ?? control.Top, op.W ?? control.Width, op.H ?? control.Height);
@@ -970,10 +978,20 @@ public sealed partial class DesignSurface : IDisposable
             if (op.Column != null || op.Row != null) MoveToCell(control, op.Column ?? ((TableLayoutPanel)container).GetColumn(control), op.Row ?? ((TableLayoutPanel)container).GetRow(control));
             return;
         }
+        if (ReferenceEquals(control.Parent, container) && container is FlowLayoutPanel)
+        {
+            if (op.Index != null) MoveInFlow(control, op.Index.Value);
+            return;
+        }
         control.Parent?.Controls.Remove(control);
         if (container is TableLayoutPanel table)
         {
             PlaceInTable(table, control, new DesignerOp { Column = op.Column, Row = op.Row }, atTop: true);
+            return;
+        }
+        if (container is FlowLayoutPanel flow)
+        {
+            PlaceInFlow(flow, control, op.Index);
             return;
         }
         container.Controls.Add(control);
@@ -1095,6 +1113,8 @@ public sealed partial class DesignSurface : IDisposable
                 Padding = new[] { child.Padding.Left, child.Padding.Top, child.Padding.Right, child.Padding.Bottom },
             };
             if (child is TableLayoutPanel table) item.Table = TableView(table);
+            if (child is FlowLayoutPanel flowPanel) item.Flow = flowPanel.FlowDirection.ToString();
+            if (parent is FlowLayoutPanel && !nested) item.FlowIndex = parent.Controls.GetChildIndex(child);
             if (parent is TableLayoutPanel cells && !nested)
             {
                 var cell = cells.GetPositionFromControl(child);

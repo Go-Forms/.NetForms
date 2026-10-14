@@ -102,6 +102,10 @@ A click on a tab header of a TabControl shows that page, so each page is laid ou
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
 down; `-` adds a menu separator.
 
+A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it goes at the end, a control dropped or
+dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
+move the selected control back or forth in it.
+
 Menus open on the canvas, as in Visual Studio: a click on a menu item shows its drop-down under it (a sub-menu opens to
 the right), and a **ContextMenuStrip** selected in the tray opens at the top left of the form. Every item in them can be
 selected — double-click one to write its `Click` handler, or set `ShortcutKeys`, `Checked`, `Image` and its own

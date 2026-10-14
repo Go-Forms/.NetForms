@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Designer: FlowLayoutPanel keeps its order and is reordered with the mouse.** A control added to a flow went first in
+  it (so three buttons added one after another came out in reverse), and a drag inside the panel did nothing. Now a
+  control goes at the end, or where it is dropped — a mark between the controls shows where — and a drag reorders the
+  flow; the arrow keys move the selected control back or forth in it.
 - **Designer: menus open on the canvas, as in Visual Studio.** A click on a menu item opens its drop-down under it (a
   sub-menu to the right of its menu), and a ContextMenuStrip selected in the component tray opens at the top left of the
   form. Every item in them can be selected, so an item at any depth gets its **Click** handler (double-click or the

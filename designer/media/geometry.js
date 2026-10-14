@@ -326,5 +326,39 @@
 		return parsed.map(formatStyle);
 	}
 
-	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks };
+	// --- FlowLayoutPanel: order instead of coordinates -------------------------------------------
+
+	/**
+	 * Where a drop goes in a flow: `children` are the controls of the panel in flow order (canvas rects), the
+	 * point is the mouse, `direction` the FlowDirection. The line under the point (or the nearest one) is
+	 * found; the drop goes before the first control of it whose middle is past the point, else after its last.
+	 * Returns the insertion index (0 … children.length) and the mark to draw (a 2px bar between controls).
+	 */
+	function flowInsert(children, x, y, direction) {
+		if (!children.length) return { index: 0, bar: null };
+		const horizontal = direction !== 'TopDown' && direction !== 'BottomUp';
+		const reverse = direction === 'RightToLeft' || direction === 'BottomUp';
+		const main = (r) => (horizontal ? [r.x, r.w] : [r.y, r.h]);
+		const cross = (r) => (horizontal ? [r.y, r.h] : [r.x, r.w]);
+		const pm = horizontal ? x : y, pc = horizontal ? y : x;
+		const distance = (r) => { const [s, l] = cross(r); return pc < s ? s - pc : pc >= s + l ? pc - (s + l) + 1 : 0; };
+		const nearest = Math.min(...children.map(distance));
+		const line = children.map((c, i) => ({ c, i })).filter(({ c }) => distance(c) === nearest);
+		// The bar at the start (before) or the end (after) of a control along the flow.
+		const bar = (c, before) => {
+			const [s, l] = main(c);
+			const atStart = before !== reverse;
+			const pos = atStart ? s - 2 : s + l;
+			return horizontal ? { x: pos, y: c.y, w: 2, h: c.h } : { x: c.x, y: pos, w: c.w, h: 2 };
+		};
+		for (const { c, i } of line) {
+			const [s, l] = main(c);
+			const mid = s + l / 2;
+			if (reverse ? pm > mid : pm < mid) return { index: i, bar: bar(c, true) };
+		}
+		const last = line[line.length - 1];
+		return { index: last.i + 1, bar: bar(last.c, false) };
+	}
+
+	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
 });

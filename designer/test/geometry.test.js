@@ -160,3 +160,38 @@ test('an AutoSize track dragged becomes Absolute; a Percent neighbour of an Abso
 	assert.deepEqual(g.resizeTracks(['AutoSize', 'Percent 100'], [40, 160], 0, 10), ['Absolute 50', 'Percent 100']);
 	assert.deepEqual(g.resizeTracks(['Absolute 60', 'Percent 50', 'Percent 50'], [60, 70, 70], 0, -20), ['Absolute 40', 'Percent 56.25', 'Percent 43.75']);
 });
+
+// --- FlowLayoutPanel (decision 173) -------------------------------------------------------------------
+
+// Two lines: a, b, c on the first (y 10-33), d on the second (y 40-63).
+const flow = [
+	{ x: 10, y: 10, w: 75, h: 23 }, { x: 91, y: 10, w: 75, h: 23 }, { x: 172, y: 10, w: 75, h: 23 },
+	{ x: 10, y: 40, w: 75, h: 23 },
+];
+
+test('a drop in a flow goes before the control whose middle is past the mouse, on the line under it', () => {
+	assert.equal(g.flowInsert(flow, 12, 20, 'LeftToRight').index, 0);
+	assert.equal(g.flowInsert(flow, 60, 20, 'LeftToRight').index, 1);
+	assert.equal(g.flowInsert(flow, 140, 20, 'LeftToRight').index, 2);
+	// Past the end of the first line: after c, not after d.
+	assert.equal(g.flowInsert(flow, 300, 20, 'LeftToRight').index, 3);
+	assert.equal(g.flowInsert(flow, 300, 50, 'LeftToRight').index, 4);
+	// Between the lines or below them: the nearest line.
+	assert.equal(g.flowInsert(flow, 5, 90, 'LeftToRight').index, 3);
+	// The mark sits between the controls.
+	assert.deepEqual(g.flowInsert(flow, 60, 20, 'LeftToRight').bar, { x: 89, y: 10, w: 2, h: 23 });
+	assert.deepEqual(g.flowInsert(flow, 300, 50, 'LeftToRight').bar, { x: 85, y: 40, w: 2, h: 23 });
+});
+
+test('an empty flow takes the drop first; TopDown and RightToLeft turn the axes', () => {
+	assert.equal(g.flowInsert([], 5, 5, 'LeftToRight').index, 0);
+	const column = [{ x: 10, y: 10, w: 75, h: 23 }, { x: 10, y: 40, w: 75, h: 23 }];
+	assert.equal(g.flowInsert(column, 20, 15, 'TopDown').index, 0);
+	assert.equal(g.flowInsert(column, 20, 45, 'TopDown').index, 1);
+	assert.equal(g.flowInsert(column, 20, 70, 'TopDown').index, 2);
+	// Right to left: the first control is the rightmost.
+	const rtl = [{ x: 172, y: 10, w: 75, h: 23 }, { x: 91, y: 10, w: 75, h: 23 }];
+	assert.equal(g.flowInsert(rtl, 240, 20, 'RightToLeft').index, 0);
+	assert.equal(g.flowInsert(rtl, 150, 20, 'RightToLeft').index, 1);
+	assert.equal(g.flowInsert(rtl, 20, 20, 'RightToLeft').index, 2);
+});

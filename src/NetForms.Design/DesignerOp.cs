@@ -13,9 +13,10 @@ namespace NetForms.Design;
 /// <item><term>resetProp</term><description><c>id</c>, <c>prop</c>: back to the default.</description></item>
 /// <item><term>setItems</term><description><c>id</c>, <c>prop</c>, <c>values</c>: replace a string collection (ListBox.Items). For a collection of components (TabPages, a strip's Items, Columns) also <c>ids</c>: the element each value is the caption of, "" for a new one; elements left out are removed.</description></item>
 /// <item><term>setEvent</term><description><c>id</c>, <c>event</c>, <c>handler</c> ("" unbinds). A missing handler method is added to the code-behind file.</description></item>
-/// <item><term>add</term><description><c>type</c> (full name), <c>parent</c>, <c>x</c>/<c>y</c>, optional <c>w</c>/<c>h</c> and <c>id</c>; into a TableLayoutPanel <c>column</c>/<c>row</c> instead of x/y (the first free cell from there; none - the first free one).</description></item>
+/// <item><term>add</term><description><c>type</c> (full name), <c>parent</c>, <c>x</c>/<c>y</c>, optional <c>w</c>/<c>h</c> and <c>id</c>; into a TableLayoutPanel <c>column</c>/<c>row</c> instead of x/y (the first free cell from there; none - the first free one); into a FlowLayoutPanel <c>index</c>, the place in its flow (none - at the end).</description></item>
 /// <item><term>remove</term><description><c>id</c>, with everything inside it.</description></item>
-/// <item><term>setParent</term><description><c>id</c>, <c>parent</c>, <c>x</c>/<c>y</c> (into a TableLayoutPanel: <c>column</c>/<c>row</c>).</description></item>
+/// <item><term>setParent</term><description><c>id</c>, <c>parent</c>, <c>x</c>/<c>y</c> (into a TableLayoutPanel: <c>column</c>/<c>row</c>; into a FlowLayoutPanel: <c>index</c>).</description></item>
+/// <item><term>reorder</term><description><c>id</c> (a container), <c>ids</c>: its controls in the new order (a FlowLayoutPanel's flow); those left out follow, as they were.</description></item>
 /// <item><term>setCell</term><description><c>id</c> (a control in a TableLayoutPanel), <c>column</c>, <c>row</c>: moves it there; a control already there swaps with it.</description></item>
 /// <item><term>setStyles</term><description><c>id</c> (a TableLayoutPanel), <c>prop</c> = <c>ColumnStyles</c> or <c>RowStyles</c>, <c>values</c> = the tracks' styles (<c>Percent 50</c>, <c>Absolute 120</c>, <c>AutoSize</c>), optional <c>ids</c> = the track each was (<c>#2</c>, "" for a new one). Controls move with their tracks; those of a removed track take free cells.</description></item>
 /// <item><term>rename</term><description><c>id</c>, <c>value</c> = the new name.</description></item>
@@ -42,4 +43,5 @@ public sealed class DesignerOp
     public string? Handler { get; set; }
     public int? Column { get; set; }
     public int? Row { get; set; }
+    public int? Index { get; set; }
 }

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **FlowLayoutPanel:** controls are added in order (they came out reversed), a drag reorders them with a mark showing
+  where they go, the arrow keys move one back or forth.
 - **Menus open on the canvas:** a click on a menu item shows its drop-down (sub-menus beside it), a ContextMenuStrip
   selected in the tray opens over the form; any item, however deep, can be selected and given a Click handler and its
   properties.
