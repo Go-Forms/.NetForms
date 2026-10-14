@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.3 — designer: menus, tool tips, flows and columns
 
 - **Designer: the columns of a DataGridView and a ListView are selected by their headers.** A click on a column header
   selects the column; the property grid edits it — `Width`, `DataPropertyName`, `ReadOnly`, `AutoSizeMode`, its cell

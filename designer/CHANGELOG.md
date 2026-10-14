@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.3
 
 - **Columns:** a click on a DataGridView or ListView column header selects the column; the property grid edits it, and
   **ColumnType** changes a DataGridView column to a check box, combo box, button, image or link column.
+- New projects reference NetForms 0.1.3.
 - **FlowLayoutPanel:** controls are added in order (they came out reversed), a drag reorders them with a mark showing
   where they go, the arrow keys move one back or forth.
 - **Menus open on the canvas:** a click on a menu item shows its drop-down (sub-menus beside it), a ContextMenuStrip

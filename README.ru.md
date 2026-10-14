@@ -22,7 +22,7 @@ Avalonia в роли платформенного слоя.
 -    <TargetFramework>net8.0-windows</TargetFramework>
 -    <UseWindowsForms>true</UseWindowsForms>
 +    <TargetFramework>net10.0</TargetFramework>
-+    <PackageReference Include="NetForms" Version="0.1.2" />
++    <PackageReference Include="NetForms" Version="0.1.3" />
 ```
 
 Для большинства проектов это и есть весь перенос — код не меняется. `netforms-convert` сделает это за вас,
@@ -38,7 +38,7 @@ Avalonia в роли платформенного слоя.
 
 ```sh
 # новое приложение
-dotnet new install NetForms.Templates::0.1.2
+dotnet new install NetForms.Templates::0.1.3
 dotnet new netforms -n MyApp && cd MyApp && dotnet run
 
 # готовое WinForms-приложение
@@ -73,7 +73,7 @@ NetForms (тот же Markdown лежит в [docs/ru/](docs/ru/README.md)):
 
 - **API:** из 1254 публичных типов `System.Windows.Forms` + `System.Drawing.Common` 761 — полные,
   141 — частично, 352 — нет ([покрытие](docs/api/README.md)).
-- **Поведение:** 569/569 тестов; раскладка, порядок событий, метрики текста и то, что пишет дизайнер,
+- **Поведение:** 591/591 тестов; раскладка, порядок событий, метрики текста и то, что пишет дизайнер,
   сверяются с настоящим WinForms на Windows, отрисовка проверяется без окна на обеих ОС.
 - **Реальные проекты:** 7 из 7 проектов заказчика на .NET Framework и 31 из 45 открытых WinForms-проектов
   переводятся и собираются без ручных правок.
