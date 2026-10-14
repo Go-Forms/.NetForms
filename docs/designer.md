@@ -102,6 +102,15 @@ A click on a tab header of a TabControl shows that page, so each page is laid ou
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
 down; `-` adds a menu separator.
 
+Menus open on the canvas, as in Visual Studio: a click on a menu item shows its drop-down under it (a sub-menu opens to
+the right), and a **ContextMenuStrip** selected in the tray opens at the top left of the form. Every item in them can be
+selected — double-click one to write its `Click` handler, or set `ShortcutKeys`, `Checked`, `Image` and its own
+`DropDownItems` in the property grid. Selecting anything else closes the menus.
+
+A **ToolTip**, **HelpProvider**, **ErrorProvider** or **FlowLayoutPanel** gives the controls properties of its own, listed
+in the grid by its name — *ToolTip on toolTip1*, *HelpString on helpProvider1*, *Error on errorProvider1*, *FlowBreak on
+flowLayoutPanel1* — and written as `toolTip1.SetToolTip(button1, "...")`.
+
 A **BindingNavigator** dropped on a form comes with its standard items (first, previous, position, count, next, last,
 add, delete), each a component of the form named as in Visual Studio (`bindingNavigatorMoveFirstItem`, …); set its
 `BindingSource` in the property grid. A **HelpProvider** adds *HelpString*, *HelpKeyword*, *HelpNavigator* and *ShowHelp*

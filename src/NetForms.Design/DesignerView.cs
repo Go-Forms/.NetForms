@@ -36,6 +36,10 @@ public sealed class DesignerView
 
     /// <summary>Set by a paste or duplicate: the new components, for the client to select.</summary>
     public List<string>? Select { get; set; }
+
+    /// <summary>The menus open on the canvas, from the outermost in (null: none), and what opened them.</summary>
+    public List<DesignerDropDown>? DropDowns { get; set; }
+    public string? OpenMenu { get; set; }
 }
 
 public sealed class DesignerViewItem
@@ -48,7 +52,7 @@ public sealed class DesignerViewItem
     /// <summary>The containing component's id ("" for the root).</summary>
     public string Parent { get; set; } = "";
 
-    /// <summary><c>control</c>, <c>nested</c> (SplitContainer.Panel1: selectable, not movable) or <c>item</c> (a tool strip item).</summary>
+    /// <summary><c>control</c>, <c>nested</c> (SplitContainer.Panel1: selectable, not movable), <c>item</c> (a tool strip item) or <c>dropdown</c> (an open menu's area; its id is what owns it).</summary>
     public string Kind { get; set; } = "control";
 
     /// <summary>Where it is on the canvas (root client coordinates).</summary>
@@ -93,6 +97,9 @@ public sealed class DesignerViewItem
 
     /// <summary>A TableLayoutPanel's grid; null for other controls.</summary>
     public DesignerTable? Table { get; set; }
+
+    /// <summary>A menu item with items of its own: a click on it opens them.</summary>
+    public bool HasDropDown { get; set; }
 
     /// <summary>For a control in a TableLayoutPanel: column, row, column span, row span; null elsewhere.</summary>
     public int[]? Cell { get; set; }

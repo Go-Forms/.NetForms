@@ -21,6 +21,7 @@ namespace NetForms.Design;
 /// <item><term>hello</term><description>→ <c>{name, protocol}</c>.</description></item>
 /// <item><term>open</term><description><c>{path, autoSave = true}</c> → view.</description></item>
 /// <item><term>render</term><description>→ view (base64 PNG of the client area, every component's rectangle, the tray).</description></item>
+/// <item><term>menu</term><description><c>{id}</c>: show that menu item's drop-down (with those above it), or a ContextMenuStrip, open on the canvas; <c>""</c> closes → view.</description></item>
 /// <item><term>apply</term><description><c>{ops: [DesignerOp…]}</c> → view; one undoable step, all or nothing.</description></item>
 /// <item><term>undo / redo</term><description>→ view.</description></item>
 /// <item><term>properties / events</term><description><c>{id}</c> → the property grid / the Events tab of a component.</description></item>
@@ -85,6 +86,10 @@ public sealed class DesignerProtocol : IDisposable
                 return _surface.Render();
             }
             case "render":
+                return Current().Render();
+            case "menu":
+                // Opens a menu on the canvas (a menu item, a ContextMenuStrip; "" closes): nothing is edited.
+                Current().OpenMenu = (string?)p["id"] is { Length: > 0 } menu ? menu : null;
                 return Current().Render();
             case "apply":
             {

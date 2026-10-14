@@ -589,3 +589,92 @@ test('a table: controls go to cells, move between them, and its columns are edit
 	await page.screenshot({ path: path.join(out, 'table-3-edited.png') });
 	assert.deepEqual(errors, []);
 });
+
+// Decisions 171-172: menus open on the canvas and every item in them is selectable (a double-click wires its Click);
+// a ContextMenuStrip opens from the tray; "ToolTip on toolTip1" is in the property grid.
+test('menus open on the canvas, their items take handlers, and a tool tip is set in the grid', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-menu-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const code = path.join(dir, 'MainForm.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const idle = () => page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await idle();
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const apply = async (ops) => {
+		const before = file();
+		await page.evaluate((o) => acquireVsCodeApi().postMessage({ type: 'apply', ops: o }), ops);
+		return waitFile(before);
+	};
+	const click = async (selector, options) => {
+		const b = await (await page.waitForSelector(selector)).boundingBox();
+		await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2, options);
+	};
+
+	// A menu File → Open, Recent → (One, Two), Exit, and a ContextMenuStrip with Copy, Paste.
+	await apply([{ op: 'add', type: 'System.Windows.Forms.MenuStrip', parent: '' }, { op: 'add', type: 'System.Windows.Forms.ContextMenuStrip' }]);
+	await apply([{ op: 'setItems', id: 'menuStrip1', prop: 'Items', values: ['File'], ids: [''] }]);
+	await apply([{ op: 'setItems', id: 'toolStripMenuItem1', prop: 'DropDownItems', values: ['Open', 'Recent', 'Exit'], ids: ['', '', ''] }]);
+	await apply([{ op: 'setItems', id: 'toolStripMenuItem3', prop: 'DropDownItems', values: ['One', 'Two'], ids: ['', ''] }]);
+	let text = await apply([{ op: 'setItems', id: 'contextMenuStrip1', prop: 'Items', values: ['Copy', 'Paste'], ids: ['', ''] }]);
+	assert.match(text, /toolStripMenuItem6\.Text = "Two";/);
+	assert.equal(await page.$('.dd-picture'), null, 'no menu is open at first');
+
+	// A click on File opens its menu; on Recent, the sub-menu beside it.
+	await click('.hit[data-id="toolStripMenuItem1"]');
+	await page.waitForSelector('.dd-picture');
+	await page.waitForSelector('.hit.in-menu[data-id="toolStripMenuItem3"]');
+	await click('.hit.in-menu[data-id="toolStripMenuItem3"]');
+	await page.waitForFunction(() => document.querySelectorAll('.dd-picture').length === 2);
+	await page.screenshot({ path: path.join(out, 'menu-1-open.png') });
+
+	// A double-click on Two (inside the sub-menu) writes its Click handler.
+	let before = file();
+	await click('.hit.in-menu[data-id="toolStripMenuItem6"]', { clickCount: 2 });
+	text = await waitFile(before);
+	assert.match(text, /toolStripMenuItem6\.Click \+= toolStripMenuItem6_Click;/);
+	assert.match(fs.readFileSync(code, 'utf8'), /private void toolStripMenuItem6_Click\(object sender, EventArgs e\)/);
+	// The menus are still open after the edit.
+	await page.waitForFunction(() => document.querySelectorAll('.dd-picture').length === 2);
+
+	// The ContextMenuStrip opens from the tray, alone.
+	await click('.tray-item');
+	await page.waitForFunction(() => document.querySelectorAll('.dd-picture').length === 1 && document.querySelector('.hit.in-menu[data-id="toolStripMenuItem8"]'));
+	await page.screenshot({ path: path.join(out, 'menu-2-context.png') });
+	await click('.hit.in-menu[data-id="toolStripMenuItem8"]');
+	await page.waitForFunction(() => document.querySelector('#inspector .target')?.textContent === 'toolStripMenuItem8');
+
+	// Anything else selected closes them (button1: label1 is under the open menu).
+	await click('.hit[data-id="button1"]');
+	await page.waitForFunction(() => !document.querySelector('.dd-picture'));
+
+	// A ToolTip gives button1 "ToolTip on toolTip1".
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === 'ToolTip').click());
+	await waitFile(before);
+	await click('.hit[data-id="button1"]');
+	await page.waitForFunction(() => document.querySelector('#inspector [data-prop="ToolTip on toolTip1"] input'));
+	before = file();
+	const input = await page.$('#inspector [data-prop="ToolTip on toolTip1"] input');
+	await input.click({ clickCount: 3 });
+	await page.keyboard.type('Сохранить файл');
+	await page.keyboard.press('Enter');
+	text = await waitFile(before);
+	assert.match(text, /toolTip1\.SetToolTip\(button1, "Сохранить файл"\);/);
+	assert.deepEqual(errors, []);
+});

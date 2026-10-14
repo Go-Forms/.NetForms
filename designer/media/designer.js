@@ -374,10 +374,23 @@
 		img.draggable = false;
 		canvas.append(img);
 
+		const owners = new Set((v.dropDowns || []).map((d) => d.owner));
 		for (const it of v.items) {
 			if (!it.visible) continue;
+			if (it.kind === 'dropdown') {
+				// An open menu: NetForms's picture of it, over the form, under the hits of its items.
+				const d = (v.dropDowns || []).find((x) => x.owner === it.id && x.x === it.x && x.y === it.y);
+				if (d) {
+					const pic = el('img', 'dd-picture');
+					pic.src = 'data:image/png;base64,' + d.png;
+					pic.draggable = false;
+					place(pic, d);
+					canvas.append(pic);
+				}
+			}
+			const inMenu = it.kind === 'dropdown' || (it.kind === 'item' && owners.has(it.parent));
 			// A docked control sits where its dock puts it: a dashed outline says dragging it does nothing.
-			const hit = el('div', 'hit' + (it.kind === 'item' ? ' item-kind' : '') + (it.dock && it.dock !== 'None' && it.kind === 'control' && !it.cell ? ' docked' : ''));
+			const hit = el('div', 'hit' + (it.kind === 'item' ? ' item-kind' : '') + (inMenu ? ' in-menu' : '') + (it.kind === 'dropdown' ? ' dropdown-kind' : '') + (it.dock && it.dock !== 'None' && it.kind === 'control' && !it.cell ? ' docked' : ''));
 			hit.dataset.id = it.id;
 			place(hit, it);
 			hit.title = `${it.id} (${shortType(it.type)})`;
@@ -416,8 +429,11 @@
 		canvas.addEventListener('drop', (e) => { showCellTarget(null); onToolboxDrop(e, canvas); });
 		frame.append(title, canvas);
 		stage.append(frame);
-		stage.style.minWidth = (v.width + 2) * state.zoom + 48 + 'px';
-		stage.style.minHeight = (v.height + 32) * state.zoom + 48 + 'px';
+		// An open menu may hang below or beside the form.
+		const right = Math.max(v.width, ...(v.dropDowns || []).map((d) => d.x + d.w));
+		const bottom = Math.max(v.height, ...(v.dropDowns || []).map((d) => d.y + d.h));
+		stage.style.minWidth = (right + 2) * state.zoom + 48 + 'px';
+		stage.style.minHeight = (bottom + 32) * state.zoom + 48 + 'px';
 		state.canvas = canvas;
 	}
 
@@ -544,6 +560,29 @@
 		renderInspector();
 		renderStatus();
 		requestInspector();
+		syncMenu();
+	}
+
+	/**
+	 * Menus open where VS opens them: a selected menu item with items of its own shows them (a sub-menu to the
+	 * right), a selected item inside a menu keeps that menu open, a ContextMenuStrip selected in the tray opens at
+	 * the top left of the form; selecting anything else closes them. The host paints the menus; a request goes
+	 * only when what is open would change (a rebuilt canvas between two clicks would swallow a double-click).
+	 */
+	function syncMenu() {
+		const v = state.view;
+		if (!v || state.selection.length !== 1) return;
+		const id = primaryId();
+		const owners = (v.dropDowns || []).map((d) => d.owner);
+		const last = owners[owners.length - 1];
+		const it = itemById(id), tray = trayById(id);
+		let want = null; // null: leave the menus as they are
+		if (it && it.kind === 'item' && it.hasDropDown) want = last === id ? null : id;
+		else if (it && it.kind === 'item' && owners.includes(it.parent)) want = last === it.parent ? null : id;
+		else if (it && it.kind === 'dropdown') want = null;
+		else if (tray && /ContextMenuStrip$|ToolStripDropDown(Menu)?$/.test(tray.type)) want = owners.length === 1 && owners[0] === id ? null : id;
+		else if (owners.length) want = '';
+		if (want !== null) post({ type: 'menu', id: want });
 	}
 
 	/**

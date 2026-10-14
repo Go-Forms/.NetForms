@@ -13,7 +13,7 @@ export interface ViewItem {
 	id: string;
 	type: string;
 	parent: string;
-	kind: 'control' | 'nested' | 'item';
+	kind: 'control' | 'nested' | 'item' | 'dropdown';
 	x: number; y: number; w: number; h: number;
 	left: number; top: number;
 	clientX: number; clientY: number;
@@ -28,6 +28,11 @@ export interface ViewItem {
 	/** A TabControl's tab headers (x, y, w, h) and its selected page. */
 	tabs?: number[][];
 	selectedIndex?: number;
+	/** A menu item with items of its own. */
+	hasDropDown?: boolean;
+	/** A TableLayoutPanel's grid; a control's cell in one (column, row, spans). */
+	table?: { x: number; y: number; border: number; columns: number[]; rows: number[]; columnStyles: string[]; rowStyles: string[] };
+	cell?: number[];
 }
 
 export interface HandlerLocation { file: string; method: string; line: number; created: boolean; }
@@ -46,11 +51,15 @@ export interface DesignerView {
 	handler?: HandlerLocation;
 	/** Set by a paste or duplicate: the new components. */
 	select?: string[];
+	/** Menus open on the canvas, outermost first. */
+	dropDowns?: { owner: string; x: number; y: number; w: number; h: number; png: string }[];
+	openMenu?: string;
 }
 
 export interface Op {
-	op: 'setBounds' | 'setForm' | 'setProp' | 'resetProp' | 'setItems' | 'setEvent' | 'add' | 'remove' | 'setParent' | 'rename' | 'bringToFront' | 'sendToBack' | 'paste' | 'duplicate';
+	op: 'setBounds' | 'setForm' | 'setProp' | 'resetProp' | 'setItems' | 'setEvent' | 'add' | 'remove' | 'setParent' | 'setCell' | 'setStyles' | 'rename' | 'bringToFront' | 'sendToBack' | 'paste' | 'duplicate';
 	id?: string; type?: string; parent?: string;
+	column?: number; row?: number;
 	x?: number; y?: number; w?: number; h?: number;
 	prop?: string; value?: string; values?: string[]; ids?: string[];
 	event?: string; handler?: string;
@@ -163,6 +172,8 @@ export class HostClient implements vscode.Disposable {
 
 	open(file: string, autoSave = true) { return this.request<DesignerView>('open', { path: file, autoSave }); }
 	render() { return this.request<DesignerView>('render'); }
+	/** Shows a menu item's drop-down (or a ContextMenuStrip) open on the canvas; '' closes. Edits nothing. */
+	menu(id: string) { return this.request<DesignerView>('menu', { id }); }
 	apply(ops: Op[]) { return this.request<DesignerView>('apply', { ops }); }
 	undo() { return this.request<DesignerView>('undo'); }
 	redo() { return this.request<DesignerView>('redo'); }

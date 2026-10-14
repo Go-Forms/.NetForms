@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Menus open on the canvas:** a click on a menu item shows its drop-down (sub-menus beside it), a ContextMenuStrip
+  selected in the tray opens over the form; any item, however deep, can be selected and given a Click handler and its
+  properties.
+- **ToolTip on toolTip1** and the other properties of extender providers (HelpProvider, ErrorProvider,
+  FlowLayoutPanel's FlowBreak) are in the property grid.
+
 ## 0.2.2
 
 - **TableLayoutPanel is laid out by cells.** A control dropped or dragged into a table goes to the cell under the mouse

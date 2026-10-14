@@ -84,6 +84,7 @@ function start(designerFile, options = {}) {
 			}
 			case 'apply': return wrap(await host.call('apply', { ops: m.ops }), (view) => ({ type: 'view', view, select: m.select }));
 			case 'undo': return wrap(await host.call('undo'), (view) => ({ type: 'view', view }));
+			case 'menu': return wrap(await host.call('menu', { id: m.id }), (view) => ({ type: 'view', view }));
 			case 'redo': return wrap(await host.call('redo'), (view) => ({ type: 'view', view }));
 			case 'properties': return wrap(await host.call('properties', { id: m.id }), (rows) => ({ type: 'properties', id: m.id, rows }));
 			case 'events': return wrap(await host.call('events', { id: m.id }), (rows) => ({ type: 'events', id: m.id, rows }));

@@ -81,6 +81,10 @@ button, input, select { font: inherit; color: inherit; }
 
 .hit { position: absolute; }
 .hit.item-kind { outline: none; }
+/* An open menu (the host's picture of it) and its items, over the form and the table grid. */
+.dd-picture { position: absolute; z-index: 4; pointer-events: none; box-shadow: 2px 2px 6px #0004; }
+.hit.in-menu { z-index: 5; }
+.hit.dropdown-kind:not(.primary):not(.selected) { outline: none; }
 .hit.docked { outline: 1px dashed #8888; outline-offset: -1px; }
 .hit.selected { outline: 1px dashed var(--vscode-focusBorder, #0078d4); }
 .hit.primary { outline: 1px solid var(--vscode-focusBorder, #0078d4); }

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Designer: menus open on the canvas, as in Visual Studio.** A click on a menu item opens its drop-down under it (a
+  sub-menu to the right of its menu), and a ContextMenuStrip selected in the component tray opens at the top left of the
+  form. Every item in them can be selected, so an item at any depth gets its **Click** handler (double-click or the
+  Events tab), `ShortcutKeys`, `Checked`, its own `DropDownItems` and the rest. Before, only the items of a strip on the
+  form could be selected; the items of sub-menus and of a ContextMenuStrip were reachable only as captions.
+- **Designer: ToolTip, HelpProvider, ErrorProvider and FlowLayoutPanel give their properties to the controls** —
+  *ToolTip on toolTip1*, *HelpString on helpProvider1*, *Error on errorProvider1*, *FlowBreak on flowLayoutPanel1* —
+  set in the property grid and written as Visual Studio writes them (`toolTip1.SetToolTip(button1, "...")`); a copied
+  control keeps its tool tip. Before, none of them was in the grid, so a tool tip could not be set in the designer.
+
 ## 0.1.2 — TableLayoutPanel in the designer
 
 - **Designer: TableLayoutPanel is laid out by cells, as in Visual Studio.** Before, a control dropped into a table

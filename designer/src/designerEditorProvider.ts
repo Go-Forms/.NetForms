@@ -11,6 +11,7 @@ type FromWebview =
 	| { type: 'ready' }
 	| { type: 'apply'; ops: Op[]; select?: string[] }
 	| { type: 'undo' }
+	| { type: 'menu'; id: string }
 	| { type: 'redo' }
 	| { type: 'properties'; id: string }
 	| { type: 'events'; id: string }
@@ -194,6 +195,7 @@ export class DesignerSession implements vscode.Disposable {
 				case 'addLibrary': await vscode.commands.executeCommand('netforms.addControlLibrary', this.document.uri); break;
 				case 'apply': this.show(await this.write(() => this.ensureHost().apply(m.ops)), m.select); break;
 				case 'undo': this.show(await this.write(() => this.ensureHost().undo())); break;
+				case 'menu': this.show(await this.ensureHost().menu(m.id)); break;
 				case 'redo': this.show(await this.write(() => this.ensureHost().redo())); break;
 				case 'properties': this.post({ type: 'properties', id: m.id, rows: await this.ensureHost().properties(m.id) }); break;
 				case 'events': this.post({ type: 'events', id: m.id, rows: await this.ensureHost().events(m.id) }); break;

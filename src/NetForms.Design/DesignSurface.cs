@@ -1026,6 +1026,7 @@ public sealed partial class DesignSurface : IDisposable
 
         var ids = Ids();
         Walk(Root, "", ids, view.Items);
+        AddDropDowns(view, ids);
         foreach (var c in Model.Components)
         {
             if (c.Name == null || c.Instance is not IComponent) continue;
@@ -1131,6 +1132,7 @@ public sealed partial class DesignSurface : IDisposable
                         Left = b2.X,
                         Top = b2.Y,
                         Visible = VisibleOnCanvas(child) && stripItem.Placement == ToolStripItemPlacement.Main,
+                        HasDropDown = stripItem is ToolStripDropDownItem { HasDropDownItems: true },
                     });
                 }
             }
