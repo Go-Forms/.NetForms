@@ -42,6 +42,13 @@ namespace NetForms.Design.Serialization;
 public sealed class DesignerCodeWriter
 {
     /// <summary>
+    /// A property an extender provider gives the object ("ToolTip on toolTip1"): on a component of the design
+    /// surface TypeDescriptor lists them with its own. They are written as the provider's <c>SetXxx(control, value)</c>.
+    /// </summary>
+    public static bool IsExtenderProperty(PropertyDescriptor pd) =>
+        pd.Attributes[typeof(ExtenderProvidedPropertyAttribute)] is ExtenderProvidedPropertyAttribute { Provider: not null };
+
+    /// <summary>
     /// The usings a WinForms project gets implicitly (<c>ImplicitUsings</c> + <c>UseWindowsForms</c>).
     /// A type is written by its short name only if these, plus the file's own usings, make it
     /// unambiguous - which is why <c>System.Windows.Forms.Timer</c> stays qualified (System.Threading.Timer).
@@ -529,6 +536,8 @@ public sealed class DesignerCodeWriter
             foreach (PropertyDescriptor pd in TypeDescriptor.GetProperties(instance).Sort())
             {
                 if (pd.Name == "Name" && instance is Control or ToolStripItem) continue;
+                // "ToolTip on toolTip1": the provider's SetToolTip(control, ...), written by Extenders.
+                if (IsExtenderProperty(pd)) continue;
                 var visibility = pd.SerializationVisibility;
                 if (visibility == DesignerSerializationVisibility.Hidden) continue;
 

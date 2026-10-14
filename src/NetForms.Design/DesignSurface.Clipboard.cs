@@ -82,6 +82,11 @@ public sealed partial class DesignSurface
         foreach (PropertyDescriptor pd in TypeDescriptor.GetProperties(instance).Sort())
         {
             if (pd.Name == "Name") continue;
+            if (DesignerCodeWriter.IsExtenderProperty(pd))
+            {
+                CaptureExtender(instance, pd, node);
+                continue;
+            }
             var visibility = pd.SerializationVisibility;
             if (visibility == DesignerSerializationVisibility.Hidden) continue;
             object? value;
@@ -111,6 +116,45 @@ public sealed partial class DesignSurface
 
         if (instance is Control { Parent: TableLayoutPanel table } cell && component != null)
             node.Cell = new[] { table.GetColumn(cell), table.GetRow(cell), table.GetColumnSpan(cell), table.GetRowSpan(cell) };
+    }
+
+    /// <summary>"ToolTip on toolTip1": kept by the provider's name, set again through it on paste.</summary>
+    private void CaptureExtender(object instance, PropertyDescriptor pd, ClipNode node)
+    {
+        var provider = ((ExtenderProvidedPropertyAttribute)pd.Attributes[typeof(ExtenderProvidedPropertyAttribute)]!).Provider;
+        if (provider == null || Model.FindByInstance(provider)?.Name is not { } providerName || provider is TableLayoutPanel) return;
+        if (!ShouldSerialize(pd, instance)) return;
+        object? value;
+        try { value = pd.GetValue(instance); }
+        catch (Exception) { return; }
+        if (ClipText(pd, value, out var text)) (node.Extenders ??= new())[providerName + "|" + pd.Name] = text;
+    }
+
+    /// <summary>
+    /// A copied extender value back through its provider (<c>toolTip1.SetToolTip(button2, ...)</c>): the provider
+    /// pasted along with it, or the one of that name on this form; none there - the value stays behind, as in VS.
+    /// </summary>
+    private void PasteExtender(object instance, string key, string? text, Dictionary<string, string> renames)
+    {
+        int bar = key.IndexOf('|');
+        if (bar <= 0) return;
+        var providerName = key.Substring(0, bar);
+        var property = key.Substring(bar + 1);
+        if (renames.TryGetValue(providerName, out var renamed)) providerName = renamed;
+        if (Model.Find(providerName)?.Instance is not IExtenderProvider provider || !provider.CanExtend(instance)) return;
+        var type = provider.GetType();
+        var getter = type.GetMethods().FirstOrDefault(m => m.Name == "Get" + property && m.GetParameters() is [var p] && p.ParameterType.IsInstanceOfType(instance));
+        var setter = type.GetMethods().FirstOrDefault(m => m.Name == "Set" + property && m.GetParameters() is [var p, _] && p.ParameterType.IsInstanceOfType(instance));
+        if (getter == null || setter == null) return;
+        try
+        {
+            var valueType = getter.ReturnType;
+            object? value = valueType == typeof(string) ? text
+                : text == null ? null
+                : TypeDescriptor.GetConverter(valueType).ConvertFromInvariantString(text);
+            setter.Invoke(provider, new[] { instance, value });
+        }
+        catch (Exception) { }
     }
 
     private void CaptureContent(object owner, PropertyDescriptor pd, object? value, ClipNode node)
@@ -360,6 +404,8 @@ public sealed partial class DesignSurface
                 catch (DesignerEditException) { }
             }
         }
+        if (node.Extenders != null)
+            foreach (var (key, text) in node.Extenders) PasteExtender(instance, key, text, renames);
         if (node.Styles != null && instance is TableLayoutPanel table)
         {
             foreach (var (name, styles) in node.Styles)
@@ -492,6 +538,8 @@ public sealed partial class DesignSurface
         public int[]? Cell { get; set; }
         /// <summary>Event → handler.</summary>
         public Dictionary<string, string>? Events { get; set; }
+        /// <summary>What extender providers give it, by "provider|Property" ("toolTip1|ToolTip").</summary>
+        public Dictionary<string, string?>? Extenders { get; set; }
     }
 
     private sealed class ClipList

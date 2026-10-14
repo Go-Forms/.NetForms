@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -64,6 +65,7 @@ public sealed partial class DesignSurface : IDisposable
     private DesignSurface(string source, string? companion, string? path, string? companionPath, DesignerLibraries? libraries)
     {
         HeadlessPlatform.Install();
+        _extenders = new ExtenderList(this);
         _libraries = libraries ?? DesignerLibraries.None;
         _reader = new DesignerCodeReader(_libraries.AllAssemblies());
         _writer = new DesignerCodeWriter(_libraries.AllAssemblies());
@@ -270,8 +272,10 @@ public sealed partial class DesignSurface : IDisposable
     private void PrepareForDesign()
     {
         foreach (var c in Model.Components.Prepend(Model.Root))
-            if (c.Instance is IComponent component && component.Site == null)
-                component.Site = new DesignSite(component, c.IsRoot ? Model.ClassName : c.Name ?? "");
+            // Also one the file put into components (new ToolTip(this.components)): that container's site has no
+            // name and no services, so "ToolTip on toolTip1" would not be listed.
+            if (c.Instance is IComponent component && component.Site is not DesignSite)
+                component.Site = new DesignSite(component, c.IsRoot ? Model.ClassName : c.Name ?? "", _extenders);
         foreach (var c in Model.Components)
         {
             if (c.Instance is not Control control || !IsShadowable(control)) continue;
@@ -378,16 +382,51 @@ public sealed partial class DesignSurface : IDisposable
         }
     }
 
-    /// <summary>The site of a designed component: its name, and DesignMode = true. It offers no services.</summary>
+    /// <summary>
+    /// The site of a designed component: its name, DesignMode = true, and the one service TypeDescriptor asks it for -
+    /// the extender providers of the form (ToolTip, HelpProvider, ErrorProvider, a FlowLayoutPanel), so a control has
+    /// "ToolTip on toolTip1" among its properties, as on the VS design surface.
+    /// </summary>
     private sealed class DesignSite : ISite
     {
-        public DesignSite(IComponent component, string name) => (Component, Name) = (component, name);
+        private readonly IExtenderListService _extenders;
+
+        public DesignSite(IComponent component, string name, IExtenderListService extenders) => (Component, Name, _extenders) = (component, name, extenders);
         public IComponent Component { get; }
         public IContainer? Container => null;
         public bool DesignMode => true;
         public string? Name { get; set; }
-        public object? GetService(Type serviceType) => null;
+        public object? GetService(Type serviceType) => serviceType == typeof(IExtenderListService) ? _extenders : null;
     }
+
+    /// <summary>The extender providers among the components of the open form.</summary>
+    private sealed class ExtenderList : IExtenderListService
+    {
+        private readonly DesignSurface _surface;
+        public ExtenderList(DesignSurface surface) => _surface = surface;
+        public IExtenderProvider[] GetExtenderProviders() =>
+            _surface._model == null ? Array.Empty<IExtenderProvider>()
+                : _surface._model.Components.Select(c => c.Instance).OfType<IExtenderProvider>().Where(p => p is IComponent { Site: not null }).ToArray();
+    }
+
+    private readonly IExtenderListService _extenders;
+
+    /// <summary>
+    /// A property of the grid by the name it shows: an extender's is "ToolTip on toolTip1" (its display name - two
+    /// tool tips give a control two "ToolTip" properties); anything else by its name.
+    /// </summary>
+    private static PropertyDescriptor? FindProperty(object target, string name)
+    {
+        var all = TypeDescriptor.GetProperties(target);
+        foreach (PropertyDescriptor pd in all)
+            if (DesignerCodeWriter.IsExtenderProperty(pd) && pd.DisplayName == name) return pd;
+        var own = all[name];
+        return own;
+    }
+
+    /// <summary>Extenders the grid does not list as such: the table's cells have rows of their own.</summary>
+    private static bool HiddenExtender(PropertyDescriptor pd) =>
+        pd.Attributes[typeof(ExtenderProvidedPropertyAttribute)] is ExtenderProvidedPropertyAttribute { Provider: TableLayoutPanel };
 
     private static bool IsShadowed(object target, PropertyDescriptor pd, bool isRoot) =>
         pd.Name is "Visible" or "Enabled" && target is Control control && IsShadowable(control) && !(isRoot && pd.Name == "Visible");
@@ -412,7 +451,7 @@ public sealed partial class DesignSurface : IDisposable
         }
         if (target is TableLayoutPanel grid && SetTrackCount(grid, name, value)) return;
 
-        var pd = TypeDescriptor.GetProperties(target)[name]
+        var pd = FindProperty(target, name)
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
         if (component != null && IsShadowed(target, pd, component.IsRoot))
         {
@@ -465,7 +504,7 @@ public sealed partial class DesignSurface : IDisposable
             if (name is "ColumnSpan" or "RowSpan") SetCellProperty(table, cellControl, name, "1");
             return;
         }
-        var pd = TypeDescriptor.GetProperties(target)[name]
+        var pd = FindProperty(target, name)
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
         if (pd.CanResetValue(target)) pd.ResetValue(target);
         else if (pd.Attributes[typeof(DefaultValueAttribute)] is DefaultValueAttribute dv && !pd.IsReadOnly) pd.SetValue(target, dv.Value);
@@ -1120,13 +1159,15 @@ public sealed partial class DesignSurface : IDisposable
 
         foreach (PropertyDescriptor pd in TypeDescriptor.GetProperties(target, new Attribute[] { BrowsableAttribute.Yes }))
         {
-            if (pd.Name == "Name") continue;
+            if (pd.Name == "Name" || HiddenExtender(pd)) continue;
+            bool extender = DesignerCodeWriter.IsExtenderProperty(pd);
             object? value;
             try { value = pd.GetValue(target); }
             catch (Exception) { continue; }
             var row = new DesignerPropertyRow
             {
-                Name = pd.Name,
+                // "ToolTip on toolTip1", as the VS grid names what a provider gives.
+                Name = extender ? pd.DisplayName : pd.Name,
                 Category = pd.Category,
                 Description = pd.Description,
                 Type = pd.PropertyType.Name,
