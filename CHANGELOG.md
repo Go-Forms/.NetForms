@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Designer: the columns of a DataGridView and a ListView are selected by their headers.** A click on a column header
+  selects the column; the property grid edits it — `Width`, `DataPropertyName`, `ReadOnly`, `AutoSizeMode`, its cell
+  style, and for a DataGridView column its **ColumnType** (text box, check box, combo box, button, image, link), keeping
+  its name, place and settings, as Visual Studio's *Edit Columns* dialog does. A new DataGridView column gets its `Name`
+  (`Columns["…"]` finds it), and renaming the column renames both, as in Visual Studio. Before, only the columns'
+  captions could be edited, and every new column was a text box column.
 - **Designer: FlowLayoutPanel keeps its order and is reordered with the mouse.** A control added to a flow went first in
   it (so three buttons added one after another came out in reverse), and a drag inside the panel did nothing. Now a
   control goes at the end, or where it is dropped — a mark between the controls shows where — and a drag reorders the

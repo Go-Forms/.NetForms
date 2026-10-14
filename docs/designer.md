@@ -102,6 +102,11 @@ A click on a tab header of a TabControl shows that page, so each page is laid ou
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
 down; `-` adds a menu separator.
 
+The columns of a **DataGridView** and of a **ListView** (in *Details* view) are selected by a click on their headers and
+edited in the property grid: `Width`, `DataPropertyName`, `ReadOnly`, the cell style and the rest; **ColumnType** changes
+a DataGridView column to a check box, combo box, button, image or link column, keeping its name and settings. Click the
+grid's body to select the grid itself (or press Escape on a column).
+
 A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it goes at the end, a control dropped or
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.

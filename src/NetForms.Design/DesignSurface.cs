@@ -442,6 +442,8 @@ public sealed partial class DesignSurface : IDisposable
             try { Model.Rename(component, value ?? ""); }
             catch (ArgumentException ex) { throw new DesignerEditException(ex.Message, ex); }
             if (oldName != null && oldName != component.Name) RenameInCode(component, oldName, component.Name!);
+            // A grid column's own Name (Columns["..."]) is its name in the code, as VS keeps the two together.
+            if (target is DataGridViewColumn gridColumn && (string.IsNullOrEmpty(gridColumn.Name) || gridColumn.Name == oldName)) gridColumn.Name = component.Name;
             return;
         }
 
@@ -451,6 +453,11 @@ public sealed partial class DesignSurface : IDisposable
             return;
         }
         if (target is TableLayoutPanel grid && SetTrackCount(grid, name, value)) return;
+        if (target is DataGridViewColumn column && name == "ColumnType")
+        {
+            SetColumnType(column, value);
+            return;
+        }
 
         var pd = FindProperty(target, name)
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
@@ -893,6 +900,10 @@ public sealed partial class DesignSurface : IDisposable
             case GroupBox group:
                 group.Text = name;
                 break;
+            case DataGridViewColumn column:
+                // DataGridViewColumnCollectionEditor: the column's Name is its name in the code (Columns["Column1"]).
+                column.Name = name;
+                break;
             case TableLayoutPanel table:
                 InitializeTable(table);
                 break;
@@ -1132,6 +1143,7 @@ public sealed partial class DesignSurface : IDisposable
                 }
             }
             into.Add(item);
+            AddColumnHeaders(child, id, ids, into);
 
             if (child is ToolStrip strip)
             {
@@ -1176,7 +1188,7 @@ public sealed partial class DesignSurface : IDisposable
         var target = Resolve(id);
         var component = Model.FindByInstance(target);
         var rows = new List<DesignerPropertyRow>();
-        if (component is { IsRoot: false } && target is Control or ToolStripItem)
+        if (component is { IsRoot: false } && target is Control or ToolStripItem or DataGridViewColumn or ColumnHeader)
             rows.Add(new DesignerPropertyRow { Name = "Name", Category = "Design", Description = "Indicates the name used in code to identify the object.", Type = "String", Value = component.Name, Editor = "text", Modified = true });
 
         foreach (PropertyDescriptor pd in TypeDescriptor.GetProperties(target, new Attribute[] { BrowsableAttribute.Yes }))
@@ -1256,6 +1268,7 @@ public sealed partial class DesignSurface : IDisposable
             rows.Add(row);
         }
         if (component is { IsRoot: false } || target is TableLayoutPanel) TableRows(target, rows);
+        if (target is DataGridViewColumn { DataGridView: not null } column) rows.Add(ColumnTypeRow(column));
         return rows.OrderBy(r => r.Category, StringComparer.Ordinal).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
     }
 

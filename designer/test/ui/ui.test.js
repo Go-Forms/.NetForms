@@ -732,3 +732,45 @@ test('a flow: controls are added in order and reordered by dragging', { skip, ti
 	assert.deepEqual(order(text), ['button2', 'button4', 'button3']);
 	assert.deepEqual(errors, []);
 });
+
+// Decision 174: a column is selected by its header and edited in the grid, its type too.
+test('a grid\'s column is selected by its header and its type changed', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-columns-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const apply = async (ops) => { const before = file(); await page.evaluate((o) => acquireVsCodeApi().postMessage({ type: 'apply', ops: o }), ops); return waitFile(before); };
+
+	await apply([{ op: 'add', type: 'System.Windows.Forms.DataGridView', parent: '', x: 10, y: 30, w: 260, h: 100 }]);
+	let text = await apply([{ op: 'setItems', id: 'dataGridView1', prop: 'Columns', values: ['Name', 'Paid'], ids: ['', ''] }]);
+	const paid = /(\w+)\.HeaderText = "Paid";/.exec(text)[1];
+
+	// A click on the header selects the column; its grid has ColumnType.
+	const b = await (await page.waitForSelector(`.hit[data-id="${paid}"]`)).boundingBox();
+	await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+	await page.waitForFunction((id) => document.querySelector('#inspector .target')?.textContent === id, {}, paid);
+	await page.waitForSelector('#inspector [data-prop="ColumnType"] select');
+	await page.screenshot({ path: path.join(out, 'columns-1-selected.png') });
+	const before = file();
+	await page.select('#inspector [data-prop="ColumnType"] select', 'DataGridViewCheckBoxColumn');
+	text = await waitFile(before);
+	assert.match(text, new RegExp(`${paid} = new DataGridViewCheckBoxColumn\\(\\);`));
+	assert.match(text, new RegExp(`${paid}\\.HeaderText = "Paid";`));
+	assert.deepEqual(errors, []);
+});

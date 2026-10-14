@@ -1305,6 +1305,16 @@ public class ListView : Control
         base.OnDoubleClick(e);
     }
 
+    /// <summary>Where a column's header is, in client coordinates (cut to the header); empty without a header. The designer selects a column by it.</summary>
+    internal Rectangle GetColumnHeaderBounds(int index)
+    {
+        if (HeaderHeight == 0 || index < 0 || index >= _columns.Count) return Rectangle.Empty;
+        var header = HeaderRectangle;
+        int x = header.X - _scroll.X;
+        for (int i = 0; i < index; i++) x += _columns[i].Width;
+        return Rectangle.Intersect(new Rectangle(x, header.Y, _columns[index].Width, header.Height), header);
+    }
+
     private int ColumnFromPoint(Point p)
     {
         if (HeaderHeight == 0 || !HeaderRectangle.Contains(p)) return -1;
