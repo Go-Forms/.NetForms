@@ -131,7 +131,7 @@ WinForms из .NET Framework, 1 — на `Microsoft.VisualBasic.Devices` из Vi
 | `Panel`, `GroupBox` | ✅ Работают · API полный | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, состояние прокрутки (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (переопределите, чтобы панель не прыгала к контролу с фокусом), `SetAutoScrollMargin`, специальные возможности (`Client`, `Grouping`). `GroupBoxRenderer` рисует рамку группы для owner-drawn контролов; `ButtonRenderer`, `CheckBoxRenderer`, `RadioButtonRenderer`, `ComboBoxRenderer`, `ProgressBarRenderer` и `ScrollBarRenderer` рисуют части остальных контролов в теме NetForms. |
 | `FlowLayoutPanel` | ✅ Работает · API полный | Движок раскладки перенесён из dotnet/winforms, вместе с особенностью `SetFlowBreak`. |
 | `TableLayoutPanel` | ✅ Работает · нет 1 | Строки и столбцы в процентах, пикселях и по содержимому, объединение ячеек. |
-| `SplitContainer` | ✅ Работает · нет 2 | |
+| `SplitContainer` | ✅ Работает · нет 1 | Раскладка как у WinForms (пропорция сохраняется при изменении размера, `FixedPanel`, `BeginInit`/`EndInit`, рамка — у панелей); при перетаскивании видна полоса, панели сдвигаются, когда кнопку отпустили. Пока нет: перемещения сплиттера стрелками. |
 | `TabControl` | ✅ Работает · нет 12 | `TabPages.Add`/`Insert` по ключу, тексту и картинке. Нет: `ImageList` у вкладок, `DeselectTab`, `RightToLeftLayout`. |
 | `Splitter` | ✅ Работает · API полный | Пристыкованный разделитель WinForms 1.0: `MinSize`, `MinExtra`, `SplitPosition`, `SplitterMoving`/`SplitterMoved`, Escape отменяет. Полоса при перетаскивании — штриховка поверх соседей (Win32 инвертирует пиксели). |
 | `UserControl` | ✅ Работает · API полный | |

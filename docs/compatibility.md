@@ -129,7 +129,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | `Panel`, `GroupBox` | ✅ Works · API complete | `AutoScroll`, `AutoSize`, `BorderStyle`, `DockPadding`, the scroll state (`HScroll`/`VScroll`, `GetScrollState`), `ScrollToControl` (override it to stop a panel jumping to the focused control), `SetAutoScrollMargin`, accessibility (`Client`, `Grouping`). `GroupBoxRenderer` draws the group box frame for owner-drawn controls; `ButtonRenderer`, `CheckBoxRenderer`, `RadioButtonRenderer`, `ComboBoxRenderer`, `ProgressBarRenderer` and `ScrollBarRenderer` draw the other controls' parts in the NetForms theme. |
 | `FlowLayoutPanel` | ✅ Works · API complete | Layout engine ported from dotnet/winforms, including the `SetFlowBreak` quirk. |
 | `TableLayoutPanel` | ✅ Works · 1 missing | Percent/absolute/auto-size rows and columns, spans. |
-| `SplitContainer` | ✅ Works · 2 missing | |
+| `SplitContainer` | ✅ Works · 1 missing | Laid out as in WinForms (the ratio kept across resizes, `FixedPanel`, `BeginInit`/`EndInit`, the border on the panels); a drag shows a bar and moves the panels when let go. Not yet: moving the splitter with the arrow keys. |
 | `TabControl` | ✅ Works · 12 missing | `TabPages.Add`/`Insert` by key, text and image. Missing: `ImageList` on tabs, `DeselectTab`, `RightToLeftLayout`. |
 | `Splitter` | ✅ Works · API complete | The docked splitter of WinForms 1.0: `MinSize`, `MinExtra`, `SplitPosition`, `SplitterMoving`/`SplitterMoved`, Escape cancels. The drag bar is a hatched bar above the other controls (Win32 inverts the pixels). |
 | `UserControl` | ✅ Works · API complete | |

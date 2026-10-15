@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Fixed: SplitContainer behaved oddly when resized and when designed.** The splitter's position is now kept as in
+  WinForms: a window shrunk and grown back puts the splitter back where it was (before, each resize rounded it and a
+  small window pushed it to the minimum for good); `FixedPanel` keeps a panel's size; `Panel1MinSize`,
+  `Panel2MinSize` and `SplitterWidth` set between `BeginInit` and `EndInit` (as designer code does) no longer move the
+  splitter before the size is known; the border is drawn by the panels (it was hidden under them); setting
+  `SplitterDistance` raises `SplitterMoved`; the control cannot be made smaller than its two minimum panel sizes.
+  A drag shows a bar where the splitter goes and moves the panels when let go, as in WinForms; `SplitterMoving` can
+  cancel it. `SplitterPanel` has its public constructor; `OnSplitterMoving`/`OnSplitterMoved` are public, as in WinForms.
 - **Designer: selection rectangle.** A drag on the form draws a rectangle that selects the controls it touches, as in
   Visual Studio; inside a selected panel or group box (or a SplitContainer's panel, a tab page) it selects that
   container's controls, and the container then moves by the ✥ glyph at its top left. Ctrl or Shift adds to the
