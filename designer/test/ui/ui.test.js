@@ -1018,3 +1018,49 @@ test('a selection rectangle selects controls; a selected panel moves by its glyp
 	assert.ok(x1 - x0 >= 30 && y1 - y0 >= 10, `moved from ${x0},${y0} to ${x1},${y1}`);
 	assert.deepEqual(errors, []);
 });
+
+// Item 9: a SplitContainer's splitter is dragged on the canvas; SplitterDistance follows.
+test('a SplitContainer\'s splitter is dragged on the canvas', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-split-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const toolbox = async (name) => { const before = file(); await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name); return waitFile(before); };
+
+	await toolbox('SplitContainer');
+	const grip = await (await page.waitForSelector('.split-grip')).boundingBox();
+	const split = await (await page.waitForSelector('.hit[data-id="splitContainer1"]')).boundingBox();
+	const before = file();
+	assert.doesNotMatch(before, /SplitterDistance/);
+	const from = { x: grip.x + grip.width / 2, y: grip.y + grip.height / 2 };
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	for (let i = 1; i <= 8; i++) await page.mouse.move(from.x + 30 * i / 8, from.y);
+	await page.waitForSelector('.split-bar');
+	await page.screenshot({ path: path.join(out, 'split-1-drag.png') });
+	await page.mouse.up();
+	const text = await waitFile(before);
+	const distance = Number(/splitContainer1\.SplitterDistance = (\d+);/.exec(text)[1]);
+	assert.equal(distance, Math.round(grip.x - split.x) + 30);
+	// The container did not move.
+	const location = (x) => /splitContainer1\.Location = [^;]*;/.exec(x)[0];
+	assert.equal(location(text), location(before));
+	assert.deepEqual(errors, []);
+});

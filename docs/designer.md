@@ -114,6 +114,9 @@ A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it g
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.
 
+A **SplitContainer**'s splitter is dragged on the canvas, as in Visual Studio: a bar follows the mouse and
+`SplitterDistance` is set when it is let go (not while `IsSplitterFixed` is on or a panel is collapsed).
+
 A **ToolStripContainer** is designed as in Visual Studio: tool strips (ToolStrip, MenuStrip, StatusStrip) go into its
 four side panels and everything else into its middle (`ContentPanel`); with the container selected, a click in the
 toolbox puts a strip into the top panel and a control into the middle. A strip joins the row it is dropped on, or a new

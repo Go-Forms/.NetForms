@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Designer: a SplitContainer's splitter is dragged on the canvas** and sets `SplitterDistance`, as in Visual Studio.
+  Before, a press on the splitter took the whole SplitContainer along.
 - **Fixed: SplitContainer behaved oddly when resized and when designed.** The splitter's position is now kept as in
   WinForms: a window shrunk and grown back puts the splitter back where it was (before, each resize rounded it and a
   small window pushed it to the minimum for good); `FixedPanel` keeps a panel's size; `Panel1MinSize`,

@@ -418,6 +418,14 @@
 			canvas.append(hit);
 		}
 		for (const it of v.items) if (it.visible && it.table) drawTableGrid(canvas, it);
+		for (const it of v.items) {
+			if (!it.visible || !it.splitter) continue;
+			// Shows the resize cursor over a SplitContainer's splitter; the press goes on to the canvas.
+			const grip = el('div', 'split-grip');
+			place(grip, { x: it.splitter[0], y: it.splitter[1], w: it.splitter[2], h: it.splitter[3] });
+			grip.style.cursor = it.splitterVertical ? 'col-resize' : 'row-resize';
+			canvas.append(grip);
+		}
 		if (!state.drag) drawHandles(canvas);
 		if (state.tabOrder) drawTabBadges(canvas);
 
@@ -717,6 +725,8 @@
 		const p = canvasPoint(e);
 		const hit = G.hitTest(state.view.items, p.x, p.y);
 		const additive = e.ctrlKey || e.shiftKey;
+		// A SplitContainer's splitter is dragged, as in VS: SplitterDistance follows.
+		if (hit && hit.splitter && !additive && !state.locked && G.inside(hit.splitter, p)) { startSplitterDrag(e, hit, p); return; }
 		// A drag on the form, or on a container's own background, draws a selection rectangle (VS): on a panel that
 		// is selected already (moved by its glyph then), on a part that cannot move (a SplitContainer's panel, a page).
 		if (!hit || hit.container && (hit.kind === 'nested' || !hit.movable || (state.selection.length === 1 && state.selection[0] === hit.id))
@@ -765,6 +775,34 @@
 			if (!ids.length) { if (!additive) select(containerId, false); return; }
 			// Ctrl or Shift adds what the rectangle took to what was selected (the first taken becomes primary otherwise).
 			selectAll(additive ? before.concat(ids.filter((id) => !before.includes(id))) : ids);
+		}, { once: true });
+	}
+
+	/** The splitter of a SplitContainer dragged: a bar follows the mouse, and on release SplitterDistance is set. */
+	function startSplitterDrag(e, it, p) {
+		e.preventDefault();
+		if (!(state.selection.length === 1 && state.selection[0] === it.id)) select(it.id, false);
+		const [bx, by, bw, bh] = it.splitter;
+		const vertical = it.splitterVertical;
+		const bar = el('div', 'split-bar');
+		let delta = 0;
+		const move = (ev) => {
+			const q = canvasPoint(ev);
+			// Within the container (the host keeps the panels' minimum sizes).
+			delta = vertical
+				? Math.max(it.x - bx, Math.min(it.x + it.w - bw - bx, q.x - p.x))
+				: Math.max(it.y - by, Math.min(it.y + it.h - bh - by, q.y - p.y));
+			if (!bar.isConnected) state.canvas.append(bar);
+			place(bar, vertical ? { x: bx + delta, y: by, w: bw, h: bh } : { x: bx, y: by + delta, w: bw, h: bh });
+			renderStatus(`${it.id}: SplitterDistance ${(vertical ? bx - it.clientX : by - it.clientY) + delta}`);
+		};
+		window.addEventListener('mousemove', move);
+		window.addEventListener('mouseup', () => {
+			window.removeEventListener('mousemove', move);
+			bar.remove();
+			if (!delta) return;
+			const distance = (vertical ? bx - it.clientX : by - it.clientY) + delta;
+			apply([{ op: 'setProp', id: it.id, prop: 'SplitterDistance', value: String(distance) }], [it.id]);
 		}, { once: true });
 	}
 

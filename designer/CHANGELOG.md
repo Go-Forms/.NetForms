@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **SplitContainer:** drag its splitter on the canvas to set `SplitterDistance` (it used to move the whole control);
+  the splitter no longer drifts when the form or the container is resized.
 - **Selection rectangle:** drag on the form (or inside a selected panel) to select the controls it touches; a selected
   panel moves by its ✥ glyph.
 - **ToolStripContainer:** strips go into its side panels (the row they are dropped on, or a new one past the last;

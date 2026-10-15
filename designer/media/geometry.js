@@ -233,6 +233,11 @@
 			&& it.x < r.x + r.w && r.x < it.x + it.w && it.y < r.y + r.h && r.y < it.y + it.h).map((it) => it.id);
 	}
 
+	/** The point is in the rectangle [x, y, w, h]. */
+	function inside(r, p) {
+		return p.x >= r[0] && p.y >= r[1] && p.x < r[0] + r[2] && p.y < r[1] + r[3];
+	}
+
 	/** The ToolStripPanel under a point (a container that takes tool strips only), or null. */
 	function stripsPanelAt(items, x, y) {
 		for (let i = items.length - 1; i >= 0; i--) {
@@ -382,5 +387,5 @@
 		return { index: last.i + 1, bar: bar(last.c, false) };
 	}
 
-	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, stripsPanelAt, lassoSelect, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
+	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, stripsPanelAt, lassoSelect, inside, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
 });

@@ -106,6 +106,13 @@ public sealed class DesignerViewItem
     public string? Flow { get; set; }
     public int? FlowIndex { get; set; }
 
+    /// <summary>
+    /// A SplitContainer's splitter on the canvas (x, y, w, h) when it can be dragged (not fixed, no panel collapsed),
+    /// and whether it stands up (Orientation.Vertical); null for other controls.
+    /// </summary>
+    public int[]? Splitter { get; set; }
+    public bool SplitterVertical { get; set; }
+
     /// <summary>A menu item with items of its own: a click on it opens them.</summary>
     public bool HasDropDown { get; set; }
 

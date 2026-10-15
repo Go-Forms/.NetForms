@@ -1214,6 +1214,13 @@ public sealed partial class DesignSurface : IDisposable
                 Padding = new[] { child.Padding.Left, child.Padding.Top, child.Padding.Right, child.Padding.Bottom },
             };
             if (child is TableLayoutPanel table) item.Table = TableView(table);
+            if (child is SplitContainer split && !split.IsSplitterFixed && !split.Panel1Collapsed && !split.Panel2Collapsed)
+            {
+                // Dragged on the canvas as in VS's SplitContainerDesigner: the client sends the new SplitterDistance.
+                var bar = split.SplitterRectangle;
+                item.Splitter = new[] { origin.X + bar.X, origin.Y + bar.Y, bar.Width, bar.Height };
+                item.SplitterVertical = split.Orientation == Orientation.Vertical;
+            }
             if (child is FlowLayoutPanel flowPanel) item.Flow = flowPanel.FlowDirection.ToString();
             if (parent is FlowLayoutPanel && !nested) item.FlowIndex = parent.Controls.GetChildIndex(child);
             if (parent is TableLayoutPanel cells && !nested)
