@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **Designer: selection rectangle.** A drag on the form draws a rectangle that selects the controls it touches, as in
+  Visual Studio; inside a selected panel or group box (or a SplitContainer's panel, a tab page) it selects that
+  container's controls, and the container then moves by the ✥ glyph at its top left. Ctrl or Shift adds to the
+  selection.
 - **ToolStripContainer and ToolStripPanel.** Tool bars, menus and status bars in rows along the sides of a window: a
   strip joins the row its location falls in (a new one past the last), the panels size themselves to their rows and the
   `ContentPanel` takes the rest; at run time the user drags a strip by its grip along its row, to another row or to

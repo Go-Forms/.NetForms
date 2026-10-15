@@ -223,6 +223,16 @@
 		return null;
 	}
 
+	/**
+	 * What a selection rectangle drawn in a container takes, as in VS: the container's own controls it touches
+	 * (shown ones only; not the controls inside them, nor strip items or menus). In canvas order.
+	 */
+	function lassoSelect(items, containerId, rect) {
+		const r = { x: Math.min(rect.x, rect.x + rect.w), y: Math.min(rect.y, rect.y + rect.h), w: Math.abs(rect.w), h: Math.abs(rect.h) };
+		return items.filter((it) => it.visible && it.kind === 'control' && it.parent === containerId
+			&& it.x < r.x + r.w && r.x < it.x + it.w && it.y < r.y + r.h && r.y < it.y + it.h).map((it) => it.id);
+	}
+
 	/** The ToolStripPanel under a point (a container that takes tool strips only), or null. */
 	function stripsPanelAt(items, x, y) {
 		for (let i = items.length - 1; i >= 0; i--) {
@@ -372,5 +382,5 @@
 		return { index: last.i + 1, bar: bar(last.c, false) };
 	}
 
-	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, stripsPanelAt, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
+	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, stripsPanelAt, lassoSelect, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
 });

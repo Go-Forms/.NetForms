@@ -601,6 +601,16 @@
 		} else {
 			state.selection = [id];
 		}
+		selectionChanged();
+	}
+
+	/** Several at once (a selection rectangle); the first is the primary one. */
+	function selectAll(ids) {
+		state.selection = ids.length ? ids.slice() : [''];
+		selectionChanged();
+	}
+
+	function selectionChanged() {
 		state.props = null;
 		state.events = null;
 		refreshSelection();
@@ -661,7 +671,17 @@
 	function drawHandles(canvas) {
 		const id = primaryId();
 		const it = itemById(id);
-		if (!it || state.selection.length !== 1 || !it.resizable || !it.visible || state.locked) return;
+		if (!it || state.selection.length !== 1 || !it.visible || state.locked) return;
+		if (it.container && it.movable && it.kind === 'control') {
+			// VS's move glyph: a drag inside a selected container draws a selection rectangle, this moves it.
+			const g = el('div', 'handle move-glyph', '✥');
+			g.title = T('Drag to move');
+			g.style.left = it.x + 'px';
+			g.style.top = (it.y >= 16 ? it.y - 15 : it.y + 1) + 'px';
+			g.addEventListener('mousedown', (e) => startGlyphMove(e, it));
+			canvas.append(g);
+		}
+		if (!it.resizable) return;
 		for (const edge of G.resizeEdges(it.dock)) {
 			const h = el('div', 'handle primary');
 			const x = edge.includes('w') ? it.x : edge.includes('e') ? it.x + it.w : it.x + it.w / 2;
@@ -697,7 +717,13 @@
 		const p = canvasPoint(e);
 		const hit = G.hitTest(state.view.items, p.x, p.y);
 		const additive = e.ctrlKey || e.shiftKey;
-		if (!hit) { select('', false); return; }
+		// A drag on the form, or on a container's own background, draws a selection rectangle (VS): on a panel that
+		// is selected already (moved by its glyph then), on a part that cannot move (a SplitContainer's panel, a page).
+		if (!hit || hit.container && (hit.kind === 'nested' || !hit.movable || (state.selection.length === 1 && state.selection[0] === hit.id))
+			&& !(hit.tabs && hit.tabs.some(([x, y, w, h]) => p.x >= x && p.y >= y && p.x < x + w && p.y < y + h))) {
+			startLasso(e, p, hit ? hit.id : '', additive);
+			return;
+		}
 		if (!additive && switchTab(hit, p)) { e.preventDefault(); return; }
 		if (additive) { select(hit.id, true); return; }
 		if (!state.selection.includes(hit.id)) select(hit.id, false);
@@ -709,6 +735,46 @@
 		const moving = ids.filter((id) => itemById(id).parent === parent);
 		state.drag = { kind: 'move', start: p, ids: moving, anchor: moving.includes(hit.id) ? hit.id : moving[0], moved: false, target: null, dx: 0, dy: 0, table: null, cell: null, flow: null };
 		e.preventDefault();
+		window.addEventListener('mousemove', onDragMove);
+		window.addEventListener('mouseup', onDragUp, { once: true });
+	}
+
+	/** The selection rectangle: on release, the container's controls it touches are selected (a click selects the container). */
+	function startLasso(e, p, containerId, additive) {
+		e.preventDefault();
+		const before = state.selection.filter((s) => s !== '');
+		const box = el('div', 'lasso');
+		let rect = null;
+		const move = (ev) => {
+			const q = canvasPoint(ev);
+			if (!rect && Math.abs(q.x - p.x) + Math.abs(q.y - p.y) < 3) return;
+			if (!rect) state.canvas.append(box);
+			rect = { x: Math.min(p.x, q.x), y: Math.min(p.y, q.y), w: Math.abs(q.x - p.x), h: Math.abs(q.y - p.y) };
+			place(box, rect);
+			const ids = G.lassoSelect(state.view.items, containerId, rect);
+			state.canvas.querySelectorAll('.hit').forEach((n) => n.classList.toggle('lasso-hit', ids.includes(n.dataset.id)));
+			renderStatus(T('{0} controls', ids.length));
+		};
+		window.addEventListener('mousemove', move);
+		window.addEventListener('mouseup', () => {
+			window.removeEventListener('mousemove', move);
+			box.remove();
+			state.canvas.querySelectorAll('.lasso-hit').forEach((n) => n.classList.remove('lasso-hit'));
+			if (!rect) { if (!additive) select(containerId, false); return; }
+			const ids = G.lassoSelect(state.view.items, containerId, rect);
+			if (!ids.length) { if (!additive) select(containerId, false); return; }
+			// Ctrl or Shift adds what the rectangle took to what was selected (the first taken becomes primary otherwise).
+			selectAll(additive ? before.concat(ids.filter((id) => !before.includes(id))) : ids);
+		}, { once: true });
+	}
+
+	/** Moving a selected container: by the glyph at its top left, as a drag inside it draws a selection rectangle. */
+	function startGlyphMove(e, it) {
+		if (e.button !== 0 || state.busy || state.locked) return;
+		e.stopPropagation();
+		e.preventDefault();
+		const p = canvasPoint(e);
+		state.drag = { kind: 'move', start: p, ids: [it.id], anchor: it.id, moved: false, target: null, dx: 0, dy: 0, table: null, cell: null, flow: null };
 		window.addEventListener('mousemove', onDragMove);
 		window.addEventListener('mouseup', onDragUp, { once: true });
 	}

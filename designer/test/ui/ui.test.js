@@ -946,3 +946,75 @@ test('a tool strip container: strips go to the side panels, other controls to th
 	assert.match(text, /toolStripContainer1\.ContentPanel\.Controls\.Add\((this\.)?button2\);/);
 	assert.deepEqual(errors, []);
 });
+
+// Item 8: a selection rectangle on the form, and inside a selected panel, which then moves by its glyph.
+test('a selection rectangle selects controls; a selected panel moves by its glyph', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-lasso-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const toolbox = async (name) => { const before = file(); await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name); return waitFile(before); };
+	const box = async (id) => (await page.waitForSelector(`.hit[data-id="${id}"]`)).boundingBox();
+	const selected = () => page.evaluate(() => [...document.querySelectorAll('.hit.selected, .hit.primary')].map((n) => n.dataset.id).sort());
+	const sweep = async (from, to) => {
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		for (let i = 1; i <= 8; i++) await page.mouse.move(from.x + (to.x - from.x) * i / 8, from.y + (to.y - from.y) * i / 8);
+	};
+
+	// Over the form, from its top left past both controls.
+	const canvas = await (await page.$('.canvas')).boundingBox();
+	const button = await box('button1');
+	await sweep({ x: canvas.x + 3, y: canvas.y + 3 }, { x: button.x + 5, y: button.y + 5 });
+	await page.waitForSelector('.lasso');
+	await page.screenshot({ path: path.join(out, 'lasso-1-form.png') });
+	await page.mouse.up();
+	assert.deepEqual(await selected(), ['button1', 'label1']);
+	assert.equal(await page.$('.lasso'), null);
+
+	// A click on the form selects the form again.
+	await page.mouse.click(canvas.x + 3, canvas.y + canvas.height - 3);
+	assert.deepEqual(await selected(), []);
+
+	// A panel with a button in it: selected, a drag inside it selects the button...
+	await toolbox('Panel');
+	await toolbox('Button');
+	const panel = await box('panel1');
+	await page.mouse.click(panel.x + panel.width - 15, panel.y + panel.height - 15);
+	assert.deepEqual(await selected(), ['panel1']);
+	const inner = await box('button2');
+	await sweep({ x: panel.x + panel.width - 15, y: panel.y + panel.height - 15 }, { x: inner.x + 5, y: inner.y + 5 });
+	await page.screenshot({ path: path.join(out, 'lasso-2-panel.png') });
+	await page.mouse.up();
+	assert.deepEqual(await selected(), ['button2']);
+
+	// ...and the panel, selected again, moves by its glyph.
+	await page.mouse.click(panel.x + panel.width - 15, panel.y + panel.height - 15);
+	const glyph = await (await page.waitForSelector('.move-glyph')).boundingBox();
+	const before = file();
+	const location = (text) => /panel1\.Location = new (System\.Drawing\.)?Point\((\d+), (\d+)\);/.exec(text).slice(2).map(Number);
+	const [x0, y0] = location(before);
+	await sweep({ x: glyph.x + 6, y: glyph.y + 6 }, { x: glyph.x + 46, y: glyph.y + 26 });
+	await page.mouse.up();
+	const text = await waitFile(before);
+	const [x1, y1] = location(text);
+	assert.ok(x1 - x0 >= 30 && y1 - y0 >= 10, `moved from ${x0},${y0} to ${x1},${y1}`);
+	assert.deepEqual(errors, []);
+});

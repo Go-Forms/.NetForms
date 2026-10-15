@@ -75,7 +75,8 @@ Debugging (F5) is the C# extension's: its **.NET: Generate Assets for Build and 
 ## Canvas
 
 Move and resize with the mouse or the arrow keys (Ctrl — by 8, Shift — size), snap lines, select several with
-Ctrl/Shift, Escape selects the parent, drop into another container, Format → Align / Make Same Size / Spacing,
+Ctrl/Shift or by drawing a rectangle over them (on the form; inside a panel or group box once it is selected — it then
+moves by the ✥ glyph at its top left, as in Visual Studio; Ctrl/Shift adds to the selection), Escape selects the parent, drop into another container, Format → Align / Make Same Size / Spacing,
 zoom, lock, bring to front / send to back, tab order mode (click the controls in order). Docked controls
 are outlined with a dashed line and resize only from their free edge, as in Visual Studio. Components without a
 place on the form (Timer, ToolTip, ImageList, menus, dialogs) go to the tray under the form. Undo and redo with

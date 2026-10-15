@@ -317,5 +317,6 @@
 	"The kind of item": "Вид пункта",
 	"Edit Items…": "Изменить пункты…",
 	"Edit DropDownItems…": "Изменить подпункты…",
-	"A ToolStripPanel takes tool strips only.": "ToolStripPanel принимает только панели инструментов (ToolStrip, MenuStrip, StatusStrip)."
+	"A ToolStripPanel takes tool strips only.": "ToolStripPanel принимает только панели инструментов (ToolStrip, MenuStrip, StatusStrip).",
+	"Drag to move": "Перетащите, чтобы переместить"
 }

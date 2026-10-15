@@ -126,6 +126,21 @@ test('a ToolStripPanel takes a drop only of tool strips', () => {
 	assert.equal(g.stripsPanelAt(items, 20, 50), null);
 });
 
+test('a selection rectangle takes the controls of its container that it touches', () => {
+	const items = [
+		{ id: 'button1', kind: 'control', parent: '', x: 10, y: 10, w: 50, h: 20, visible: true },
+		{ id: 'panel1', kind: 'control', parent: '', x: 100, y: 10, w: 80, h: 80, visible: true, container: true },
+		{ id: 'button2', kind: 'control', parent: 'panel1', x: 110, y: 20, w: 50, h: 20, visible: true },
+		{ id: 'item1', kind: 'item', parent: 'button1', x: 12, y: 12, w: 5, h: 5, visible: true },
+		{ id: 'hidden', kind: 'control', parent: '', x: 0, y: 0, w: 5, h: 5, visible: false },
+	];
+	assert.deepEqual(g.lassoSelect(items, '', { x: 0, y: 0, w: 120, h: 30 }), ['button1', 'panel1']);
+	// Drawn right to left, upwards: the same.
+	assert.deepEqual(g.lassoSelect(items, '', { x: 120, y: 30, w: -100, h: -25 }), ['button1', 'panel1']);
+	assert.deepEqual(g.lassoSelect(items, 'panel1', { x: 105, y: 15, w: 10, h: 10 }), ['button2']);
+	assert.deepEqual(g.lassoSelect(items, '', { x: 300, y: 300, w: 10, h: 10 }), []);
+});
+
 test('a docked control is resized only by its free edge', () => {
 	assert.deepEqual(g.resizeEdges('Top'), ['s']);
 	assert.deepEqual(g.resizeEdges('Right'), ['w']);

@@ -103,6 +103,13 @@ button, input, select { font: inherit; color: inherit; }
 	background: #fff; border: 1px solid #333;
 }
 .handle.primary { background: #333; border-color: #fff; }
+.handle.move-glyph {
+	width: 13px; height: 13px; margin: 0; line-height: 12px; font-size: 11px; text-align: center; cursor: move;
+	background: #fff; color: #333; border: 1px solid #333;
+}
+/* The selection rectangle drawn on the form, and what it takes. */
+.lasso { position: absolute; border: 1px dashed var(--vscode-focusBorder, #0078d4); background: #0078d414; pointer-events: none; z-index: 30; }
+.hit.lasso-hit { outline: 1px dashed var(--vscode-focusBorder, #0078d4); }
 .form-grip { position: absolute; width: 7px; height: 7px; background: #fff; border: 1px solid #333; z-index: 25; }
 .form-grip.e { cursor: e-resize; } .form-grip.s { cursor: s-resize; } .form-grip.se { cursor: se-resize; }
 
