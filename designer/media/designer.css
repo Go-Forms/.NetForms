@@ -182,6 +182,8 @@ button, input, select { font: inherit; color: inherit; }
 .coll-row .mini:hover:not(:disabled) { opacity: 1; background: var(--vscode-toolbar-hoverBackground, #8883); }
 .coll-row .mini:disabled { opacity: .25; cursor: default; }
 .coll-bar { display: flex; gap: 4px; margin-top: 4px; }
+.row .value img.thumb { max-width: 20px; max-height: 20px; flex: none; image-rendering: auto; border: 1px solid #8884; }
+.image-row img.thumb, .image-row .thumb.new { width: 24px; height: 24px; object-fit: contain; flex: none; border: 1px solid #8884; text-align: center; line-height: 22px; opacity: .8; }
 .style-row select, .style-row input[type=number] {
 	height: 20px; padding: 0 2px; background: var(--vscode-input-background); color: inherit; border: 1px solid transparent;
 }

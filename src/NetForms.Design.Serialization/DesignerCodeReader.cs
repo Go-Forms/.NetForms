@@ -72,10 +72,17 @@ public sealed class DesignerCodeReader
     }
 
     /// <summary>Reads designer code from memory; <paramref name="companionSources"/> are the other parts of the class.</summary>
-    public DesignerModel Read(string designerSource, IEnumerable<string>? companionSources = null, string? filePath = null)
+    public DesignerModel Read(string designerSource, IEnumerable<string>? companionSources = null, string? filePath = null) =>
+        Read(designerSource, companionSources, filePath, null);
+
+    /// <summary>
+    /// Reads designer code with its .resx given as text (<paramref name="resx"/>; null: the file next to
+    /// <paramref name="filePath"/>, if any) - the designer's own copy, which an edit may have changed before it is saved.
+    /// </summary>
+    public DesignerModel Read(string designerSource, IEnumerable<string>? companionSources, string? filePath, string? resx)
     {
         _types ??= new TypeResolver(_assemblies);
-        return new Session(_types, filePath).Run(designerSource, companionSources ?? Array.Empty<string>());
+        return new Session(_types, filePath, resx).Run(designerSource, companionSources ?? Array.Empty<string>());
     }
 
     // =============================================================================================
@@ -101,16 +108,18 @@ public sealed class DesignerCodeReader
     {
         private readonly TypeResolver _types;
         private readonly string? _path;
+        private readonly string? _resx;
         private readonly Dictionary<string, FieldSlot> _fields = new(StringComparer.Ordinal);
         private readonly Dictionary<string, ValueR> _locals = new(StringComparer.Ordinal);
         private DesignerModel _model = null!;
         private object _root = null!;
         private string _className = null!;
 
-        public Session(TypeResolver types, string? path)
+        public Session(TypeResolver types, string? path, string? resx)
         {
             _types = types;
             _path = path;
+            _resx = resx;
         }
 
         public DesignerModel Run(string designerSource, IEnumerable<string> companionSources)
@@ -625,10 +634,18 @@ public sealed class DesignerCodeReader
             {
                 // new ComponentResourceManager(typeof(MainForm)): the form's resources, from its .resx.
                 var resx = _path == null ? null : ResxResources.ResxPathOf(_path);
-                if (resx == null || !File.Exists(resx))
+                if (_resx != null)
+                {
+                    try { instance = ResxResources.Parse(_resx, resx ?? "Form.resx", name => _types.ResolveFullName(name)); }
+                    catch (System.Xml.XmlException ex) { throw Error($"{Path.GetFileName(resx) ?? "The .resx"} is not a valid .resx: {ex.Message}", n, ex); }
+                }
+                else if (resx == null || !File.Exists(resx))
                     throw Error($"The form keeps resources in a .resx, and {(resx == null ? "the designer file has no path" : Path.GetFileName(resx) + " is not next to it")}.", n);
-                try { instance = ResxResources.Load(resx, name => _types.ResolveFullName(name)); }
-                catch (System.Xml.XmlException ex) { throw Error($"{Path.GetFileName(resx)} is not a valid .resx: {ex.Message}", n, ex); }
+                else
+                {
+                    try { instance = ResxResources.Load(resx, name => _types.ResolveFullName(name)); }
+                    catch (System.Xml.XmlException ex) { throw Error($"{Path.GetFileName(resx)} is not a valid .resx: {ex.Message}", n, ex); }
+                }
             }
             else
             {

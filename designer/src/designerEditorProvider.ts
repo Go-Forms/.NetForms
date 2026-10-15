@@ -12,6 +12,7 @@ type FromWebview =
 	| { type: 'apply'; ops: Op[]; select?: string[] }
 	| { type: 'undo' }
 	| { type: 'menu'; id: string }
+	| { type: 'pickFiles'; requestId: number; many: boolean; icon: boolean }
 	| { type: 'redo' }
 	| { type: 'properties'; id: string }
 	| { type: 'events'; id: string }
@@ -200,6 +201,17 @@ export class DesignerSession implements vscode.Disposable {
 				case 'properties': this.post({ type: 'properties', id: m.id, rows: await this.ensureHost().properties(m.id) }); break;
 				case 'events': this.post({ type: 'events', id: m.id, rows: await this.ensureHost().events(m.id) }); break;
 				case 'gotoHandler': await this.gotoHandler(m.handler); break;
+				case 'pickFiles': {
+					// A picture (or icon) for the property grid: the webview cannot open files itself.
+					const uris = await vscode.window.showOpenDialog({
+						canSelectMany: m.many,
+						defaultUri: vscode.Uri.file(path.dirname(this.file)),
+						filters: m.icon ? { [vscode.l10n.t('Icons')]: ['ico'] } : { [vscode.l10n.t('Pictures')]: ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico'] },
+						openLabel: vscode.l10n.t('Choose'),
+					});
+					this.post({ type: 'pickedFiles', requestId: m.requestId, paths: (uris || []).map((u) => u.fsPath) });
+					break;
+				}
 				case 'viewCode': await this.viewCode(); break;
 				case 'run': await vscode.commands.executeCommand('netforms.run', this.document.uri); break;
 				case 'setStartup': await vscode.commands.executeCommand('netforms.setStartupForm', this.document.uri); break;

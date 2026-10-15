@@ -43,9 +43,13 @@ public sealed class ResxResources : ComponentResourceManager
     }
 
     /// <summary>Reads <paramref name="path"/>; <paramref name="resolveType"/> maps a .resx type name to a type (null: unknown).</summary>
-    public static ResxResources Load(string path, Func<string, Type?> resolveType)
+    public static ResxResources Load(string path, Func<string, Type?> resolveType) => FromDocument(XDocument.Load(path), path, resolveType);
+
+    /// <summary>A .resx given as text; <paramref name="path"/> is where it lives (file references are relative to it).</summary>
+    public static ResxResources Parse(string text, string path, Func<string, Type?> resolveType) => FromDocument(XDocument.Parse(text), path, resolveType);
+
+    private static ResxResources FromDocument(XDocument document, string path, Func<string, Type?> resolveType)
     {
-        var document = XDocument.Load(path);
         var values = new Dictionary<string, object?>(StringComparer.Ordinal);
         // An alias can be declared twice (VS writes one per edit session); as ResXResourceReader, the last wins.
         var aliases = new Dictionary<string, string>(StringComparer.Ordinal);

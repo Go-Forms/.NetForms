@@ -774,3 +774,66 @@ test('a grid\'s column is selected by its header and its type changed', { skip, 
 	assert.match(text, new RegExp(`${paid}\\.HeaderText = "Paid";`));
 	assert.deepEqual(errors, []);
 });
+
+// Decision 176: a picture is picked from a file and kept in the form's .resx; an ImageList's pictures are edited.
+test('pictures are picked from files and kept in the .resx', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-images-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	// A real PNG: the picture of the Gallery sample's .resx.
+	const png = path.join(dir, 'red.png');
+	const sample = fs.readFileSync(path.join(repo, 'samples', 'Gallery', 'ResourcesForm.resx'), 'utf8');
+	fs.writeFileSync(png, Buffer.from(/<data name="pictureBox1\.Image"[^>]*>\s*<value>([^<]*)<\/value>/.exec(sample)[1].replace(/\s+/g, ''), 'base64'));
+	const pickFiles = [[png], [png, png]];
+	const harness = await start(designer, { pickFiles });
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const resx = () => (fs.existsSync(path.join(dir, 'MainForm.resx')) ? fs.readFileSync(path.join(dir, 'MainForm.resx'), 'utf8') : '');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 300));
+		return file();
+	};
+
+	// button1's Image: "…" picks red.png.
+	const b = await (await page.waitForSelector('.hit[data-id="button1"]')).boundingBox();
+	await page.mouse.click(b.x + 5, b.y + 5);
+	await page.waitForSelector('#inspector [data-prop="Image"] button.mini');
+	let before = file();
+	await page.evaluate(() => document.querySelector('#inspector [data-prop="Image"] button.mini').click());
+	let text = await waitFile(before);
+	assert.match(text, /button1\.Image = \(Image\)resources\.GetObject\("button1\.Image"\);/);
+	assert.match(resx(), /<data name="button1\.Image" type="System\.Drawing\.Bitmap, System\.Drawing"/);
+	await page.waitForSelector('#inspector [data-prop="Image"] img.thumb');
+	await page.screenshot({ path: path.join(out, 'images-1-button.png') });
+
+	// An ImageList: Add… two pictures, rename the first, OK.
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === 'ImageList').click());
+	await waitFile(before);
+	await page.waitForSelector('#inspector [data-prop="Images"] button.mini');
+	await page.evaluate(() => document.querySelector('#inspector [data-prop="Images"] button.mini').click());
+	await page.waitForSelector('.images-editor');
+	await page.evaluate(() => [...document.querySelectorAll('.images-editor button')].find((x) => x.textContent === 'Add…').click());
+	await page.waitForFunction(() => document.querySelectorAll('.images-editor .image-row').length === 2);
+	const key = await page.$('.images-editor .image-row input');
+	await key.click({ clickCount: 3 });
+	await page.keyboard.type('stop');
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.images-editor button')].find((x) => x.textContent === 'OK').click());
+	text = await waitFile(before);
+	assert.match(text, /imageList1\.Images\.SetKeyName\(0, "stop"\);/);
+	assert.match(text, /imageList1\.Images\.SetKeyName\(1, "red\.png"\);/);
+	assert.match(resx(), /<data name="imageList1\.ImageStream" mimetype="application\/x-microsoft\.net\.object\.binary\.base64">/);
+	await page.waitForFunction(() => document.querySelector('#inspector [data-prop="Images"] input')?.value === '(2 images)');
+	assert.deepEqual(errors, []);
+});

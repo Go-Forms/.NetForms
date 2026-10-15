@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- **Pictures:** **…** beside `Image`, `BackgroundImage`, `Icon` picks a file, kept in the form's `.resx` as Visual
+  Studio keeps it; the grid shows a thumbnail. An ImageList's pictures are added, named, reordered and removed.
+- **Fixed:** a form with an ImageList's pictures in its `.resx` did not open in the designer.
+
 ## 0.2.3
 
 - **Columns:** a click on a DataGridView or ListView column header selects the column; the property grid edits it, and

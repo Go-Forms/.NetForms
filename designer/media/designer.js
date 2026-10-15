@@ -1350,6 +1350,39 @@
 				}
 				break;
 			}
+			case 'image': {
+				// A picture: its thumbnail, "…" to pick a file (kept in the form's .resx), "✕" to clear it.
+				if (r.preview) {
+					const thumb = el('img', 'thumb');
+					thumb.src = 'data:image/png;base64,' + r.preview;
+					thumb.alt = '';
+					value.append(thumb);
+				}
+				const input = textInput(r.value, () => undefined);
+				input.readOnly = true;
+				const pick = el('button', 'mini', '…');
+				pick.title = r.type === 'Icon' ? T('Choose an icon (.ico)…') : T('Choose a picture…');
+				pick.addEventListener('click', () => pickFiles(false, r.type === 'Icon').then((paths) => {
+					if (paths.length) apply([{ op: 'setImage', id, prop: r.name, value: paths[0] }], state.selection);
+				}));
+				value.append(input, pick);
+				if (r.preview) {
+					const clear = el('button', 'mini', '✕');
+					clear.title = T('Remove the picture');
+					clear.addEventListener('click', () => apply([{ op: 'setImage', id, prop: r.name, value: '' }], state.selection));
+					value.append(clear);
+				}
+				break;
+			}
+			case 'images': {
+				const input = textInput(r.value, () => undefined);
+				input.readOnly = true;
+				const edit = el('button', 'mini', '…');
+				edit.title = T('Edit the pictures of the list');
+				edit.addEventListener('click', () => editImages(id, r, row));
+				value.append(input, edit);
+				break;
+			}
 			case 'readonly': {
 				const input = textInput(r.value, () => undefined);
 				input.readOnly = true;
@@ -1359,7 +1392,7 @@
 			default:
 				value.append(textInput(r.value, commit));
 		}
-		if (r.modified && r.name !== 'Name' && r.editor !== 'readonly' && r.editor !== 'collection' && r.editor !== 'styles') {
+		if (r.modified && r.name !== 'Name' && r.editor !== 'readonly' && r.editor !== 'collection' && r.editor !== 'styles' && r.editor !== 'image' && r.editor !== 'images') {
 			const reset = el('button', 'mini', '↺');
 			reset.title = T('Reset to the default');
 			reset.addEventListener('click', () => apply([{ op: 'resetProp', id, prop: r.name }], state.selection));
@@ -1567,6 +1600,69 @@
 		box.append(list, total, bar);
 		row.after(box);
 		draw(0);
+	}
+
+	// --- files: pictures for the grid, through the extension's open dialog ---------------------------
+
+	const pickRequests = new Map();
+	let pickNext = 1;
+
+	/** Asks the extension for files (a picture, or several; an icon); resolves to their paths, [] when cancelled. */
+	function pickFiles(many, icon) {
+		const requestId = pickNext++;
+		return new Promise((resolve) => {
+			pickRequests.set(requestId, resolve);
+			post({ type: 'pickFiles', requestId, many, icon: !!icon });
+		});
+	}
+
+	window.addEventListener('message', (e) => {
+		const m = e.data;
+		if (m.type !== 'pickedFiles' || !pickRequests.has(m.requestId)) return;
+		const resolve = pickRequests.get(m.requestId);
+		pickRequests.delete(m.requestId);
+		resolve(m.paths || []);
+	});
+
+	/**
+	 * An ImageList's pictures, as VS's Images Collection Editor: each with its thumbnail and name, reordered and
+	 * removed; "Add…" picks files. OK writes them (the list's ImageStream goes to the form's .resx).
+	 */
+	function editImages(id, r, row) {
+		const next = row.nextSibling;
+		if (next && next.classList && next.classList.contains('coll-editor')) { next.remove(); return; }
+		const lines = (r.items || []).map((key, i) => ({ id: (r.itemIds || [])[i], key, preview: (r.previews || [])[i] }));
+		const box = el('div', 'coll-editor images-editor');
+		const list = el('div', 'coll-list');
+		const ok = () => apply([{ op: 'setImages', id, prop: r.name, values: lines.map((l) => l.key), ids: lines.map((l) => l.id) }], state.selection);
+		const draw = () => {
+			list.textContent = '';
+			lines.forEach((line, i) => {
+				const n = el('div', 'coll-row image-row');
+				if (line.preview) { const t = el('img', 'thumb'); t.src = 'data:image/png;base64,' + line.preview; t.alt = ''; n.append(t); }
+				else n.append(el('span', 'thumb new', '+'));
+				const key = el('input');
+				key.type = 'text';
+				key.value = line.key;
+				key.title = line.preview ? T('The name of the picture (Images.SetKeyName)') : line.id;
+				key.addEventListener('input', () => { line.key = key.value; });
+				const move = (d) => { const j = i + d; if (j < 0 || j >= lines.length) return; [lines[i], lines[j]] = [lines[j], lines[i]]; draw(); };
+				const up = el('button', 'mini', '↑'); up.title = T('Move up'); up.disabled = i === 0; up.addEventListener('click', () => move(-1));
+				const down = el('button', 'mini', '↓'); down.title = T('Move down'); down.disabled = i === lines.length - 1; down.addEventListener('click', () => move(1));
+				const del = el('button', 'mini', '✕'); del.title = T('Remove'); del.addEventListener('click', () => { lines.splice(i, 1); draw(); });
+				n.append(key, up, down, del);
+				list.append(n);
+			});
+		};
+		const add = button(T('Add…'), T('Add pictures from files'), () => pickFiles(true, false).then((paths) => {
+			for (const p of paths) lines.push({ id: p, key: p.split(/[\\/]/).pop(), preview: null });
+			draw();
+		}));
+		const bar = el('div', 'coll-bar');
+		bar.append(add, button('OK', T('Apply the changes'), ok), button(T('Cancel'), T('Close without changes'), () => box.remove()));
+		box.append(list, bar);
+		row.after(box);
+		draw();
 	}
 
 	function cssColor(text) {

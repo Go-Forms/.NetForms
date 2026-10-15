@@ -124,3 +124,21 @@ test('the host loads the project\'s build and its controls go to the toolbox and
 		fs.rmSync(dir, { recursive: true, force: true });
 	}
 });
+
+// Decision 176: the host process resolves "System.Windows.Forms" (the BinaryFormatter record of an ImageList's
+// pictures in a .resx) to the facade beside NetForms; before, it found no such assembly and the form did not open.
+test('the host opens a form whose ImageList keeps its pictures in the .resx', { skip: !host && 'build tools/NetFormsDesigner.Host first' }, async () => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-protocol-resx-'));
+	for (const f of ['ResourcesForm.cs', 'ResourcesForm.Designer.cs', 'ResourcesForm.resx']) fs.copyFileSync(path.join(repo, 'samples', 'Gallery', f), path.join(dir, f));
+	const { proc, call } = startHost();
+	try {
+		const opened = await call('open', { path: path.join(dir, 'ResourcesForm.Designer.cs') });
+		assert.equal(opened.error, undefined, opened.error && opened.error.message);
+		const rows = (await call('properties', { id: 'imageList1' })).result;
+		assert.equal(rows.find((r) => r.name === 'Images').value, '(4 images)');
+		await call('close');
+	} finally {
+		proc.kill();
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+});

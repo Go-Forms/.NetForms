@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **Designer: pictures and icons are set from files and kept in the form's `.resx`, as in Visual Studio.** `Image`,
+  `BackgroundImage`, a form's `Icon`, a menu item's `Image`: **…** in the property grid picks a file, **✕** clears it,
+  and the grid shows a thumbnail. The designer writes `MainForm.resx` as Visual Studio does (the picture's bytes, read
+  back by its type converter; a new file gets VS's header) and the code reads it with
+  `resources.GetObject("button1.Image")`. An **ImageList**'s pictures are added from files, named, reordered and
+  removed in the property grid; its `ImageStream` is written as the record Visual Studio writes (without
+  BinaryFormatter). Pictures no longer used leave the `.resx`; undo and redo take the `.resx` along with the code.
+- **Fixed: a form whose ImageList has pictures (`ImageList.ImageStream` in its `.resx`) did not open in the designer.**
+  The designer host could not find the `System.Windows.Forms` name the `.resx` record gives (the facade NetForms puts
+  beside itself was not in the host's dependency list).
+
 ## 0.1.3 — designer: menus, tool tips, flows and columns
 
 - **Designer: the columns of a DataGridView and a ListView are selected by their headers.** A click on a column header

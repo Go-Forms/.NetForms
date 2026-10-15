@@ -16,6 +16,25 @@ internal sealed class HeadlessPlatform : IPlatform
     public static void Install()
     {
         if (Application.PlatformIfCreated == null) Application.Platform = new HeadlessPlatform();
+        ResolveWinFormsFacade();
+    }
+
+    private static bool s_facade;
+
+    /// <summary>
+    /// "System.Windows.Forms" - the name a .resx's BinaryFormatter records give (ImageList.ImageStream) - is the
+    /// facade NetForms puts next to itself (decision 123). An application that references the NetForms package has it
+    /// in its deps.json; the designer host references the project, gets the file copied but not listed, and
+    /// "dotnet NetFormsDesigner.Host.dll" looks only at the list: without this no form with an ImageList's pictures
+    /// opened in the designer.
+    /// </summary>
+    private static void ResolveWinFormsFacade()
+    {
+        if (s_facade) return;
+        s_facade = true;
+        var facade = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(typeof(Control).Assembly.Location) ?? AppContext.BaseDirectory, "System.Windows.Forms.dll");
+        System.Runtime.Loader.AssemblyLoadContext.Default.Resolving += (context, name) =>
+            name.Name == "System.Windows.Forms" && System.IO.File.Exists(facade) ? context.LoadFromAssemblyPath(facade) : null;
     }
 
     public void Initialize() { }

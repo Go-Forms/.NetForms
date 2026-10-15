@@ -91,6 +91,12 @@ public sealed class DesignerCodeWriter
     /// rewritten from <paramref name="model"/>. Inline objects of the model get field names first
     /// (<see cref="DesignerModel.NameInlineComponents"/>): the designer format has no other kind.
     /// </summary>
+    /// <summary>
+    /// What the last <see cref="Write"/> keeps in the form's .resx: the pictures, icons and image streams the code now
+    /// gets with <c>resources.GetObject(name)</c> that the file did not have (a picture set in the designer).
+    /// </summary>
+    public IReadOnlyDictionary<string, object> Resources { get; private set; } = new Dictionary<string, object>();
+
     public string Write(DesignerModel model, string designerSource)
     {
         ArgumentNullException.ThrowIfNull(model);
@@ -115,7 +121,9 @@ public sealed class DesignerCodeWriter
         model.NameInlineComponents();
         var style = DesignerCodeStyle.Detect(designerSource, method);
         var namer = new TypeNamer(_types, style.Classic, VisibleNamespaces(cls));
-        var body = new InitializeComponentBuilder(model, style, namer).Build();
+        var builder = new InitializeComponentBuilder(model, style, namer);
+        var body = builder.Build();
+        Resources = builder.Resources;
 
         var edits = new List<(TextSpan Span, string Text)>();
 
@@ -334,6 +342,38 @@ public sealed class DesignerCodeWriter
 
         private bool Classic => _style.Classic;
 
+        /// <summary>The pictures and icons the code gets from the .resx that the file did not have: name → value.</summary>
+        public Dictionary<string, object> Resources { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// A picture, icon or image stream the file did not have (set in the designer), as VS writes it: kept in the
+        /// .resx under <c>component.Property</c> (<c>$this.Icon</c> for the form) and read with <c>resources.GetObject</c>.
+        /// </summary>
+        private string? ResourceExpression(object instance, string property, Type declared, object? value)
+        {
+            if (!ResxWriter.CanWrite(value)) return null;
+            var owner = ReferenceEquals(instance, _model.Root.Instance) ? "$this" : Target(instance).Replace("this.", "", StringComparison.Ordinal);
+            var name = owner + "." + property;
+            Resources[name] = value!;
+            var local = ResourceLocal();
+            var get = $"{local}.GetObject({Literal(name)})";
+            return Classic ? $"(({_namer.Name(declared)})({get}))" : $"({_namer.Name(declared)}){get}";
+        }
+
+        private string? _resourceLocal;
+        private bool _declareResources;
+
+        /// <summary>The file's ComponentResourceManager local (VS names it resources), or one this write declares.</summary>
+        private string ResourceLocal()
+        {
+            if (_resourceLocal != null) return _resourceLocal;
+            foreach (var s in _model.Statements.Where(s => s.Kind == DesignerStatementKind.Local && s.Source.Contains("ComponentResourceManager", StringComparison.Ordinal)))
+                if (SyntaxFactory.ParseStatement(s.Source) is LocalDeclarationStatementSyntax d && d.Declaration.Variables.FirstOrDefault() is { } v)
+                    return _resourceLocal = v.Identifier.ValueText;
+            _declareResources = true;
+            return _resourceLocal = "resources";
+        }
+
         public List<string> Build()
         {
             var statements = new List<string>();
@@ -343,6 +383,9 @@ public sealed class DesignerCodeWriter
             var blocks = _ordered.Append(_model.Root).SelectMany(Block).ToList();
 
             // Locals the file declared that the writer does not regenerate (ComponentResourceManager): kept, first.
+            // A form that gets its first picture in the designer gets the resource manager VS declares.
+            if (_declareResources)
+                statements.Add($"System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof({_model.ClassName}));");
             foreach (var local in KeptLocals()) statements.Add(local);
             statements.AddRange(_localDeclarations);
 
@@ -596,6 +639,7 @@ public sealed class DesignerCodeWriter
                 var expression = Expression(value, pd.PropertyType)
                     ?? (value is DataGridViewCellStyle ? LocalFor(value, prelude) : null)
                     ?? OriginalSource(component, pd.Name, value)
+                    ?? ResourceExpression(instance, pd.Name, pd.PropertyType, value)
                     ?? throw Unwritable(instance, pd.Name, value);
                 Add(items, 1, pd.Name, string.Join("\n", prelude.Append($"{Member(instance, pd.Name)} = {expression};")));
             }

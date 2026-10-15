@@ -84,6 +84,8 @@ function start(designerFile, options = {}) {
 			}
 			case 'apply': return wrap(await host.call('apply', { ops: m.ops }), (view) => ({ type: 'view', view, select: m.select }));
 			case 'undo': return wrap(await host.call('undo'), (view) => ({ type: 'view', view }));
+			// The open dialog: what the test put in options.pickFiles, one answer per request.
+			case 'pickFiles': return [{ type: 'pickedFiles', requestId: m.requestId, paths: (options.pickFiles || []).shift() || [] }];
 			case 'menu': return wrap(await host.call('menu', { id: m.id }), (view) => ({ type: 'view', view }));
 			case 'redo': return wrap(await host.call('redo'), (view) => ({ type: 'view', view }));
 			case 'properties': return wrap(await host.call('properties', { id: m.id }), (rows) => ({ type: 'properties', id: m.id, rows }));

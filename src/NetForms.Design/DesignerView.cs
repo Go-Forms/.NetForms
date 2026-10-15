@@ -140,7 +140,7 @@ public sealed class DesignerPropertyRow
     /// <summary>The value as the grid shows it (the converter's invariant text; a component's name).</summary>
     public string? Value { get; set; }
 
-    /// <summary><c>bool</c>, <c>enum</c>, <c>flags</c>, <c>number</c>, <c>text</c>, <c>color</c>, <c>font</c>, <c>component</c>, <c>collection</c>, <c>styles</c> (a table's Columns/Rows), <c>readonly</c>.</summary>
+    /// <summary><c>bool</c>, <c>enum</c>, <c>flags</c>, <c>number</c>, <c>text</c>, <c>color</c>, <c>font</c>, <c>component</c>, <c>collection</c>, <c>styles</c> (a table's Columns/Rows), <c>image</c> (a picture or icon, from a file), <c>images</c> (an ImageList's), <c>readonly</c>.</summary>
     public string Editor { get; set; } = "text";
 
     /// <summary>The values to pick from (enum members, standard values, compatible components).</summary>
@@ -164,6 +164,12 @@ public sealed class DesignerPropertyRow
 
     /// <summary>For a collection of components (<c>components</c>): the id of each element (<c>#index</c> for one without a name), beside its caption in <see cref="Items"/>.</summary>
     public List<string>? ItemIds { get; set; }
+
+    /// <summary>A picture's thumbnail (<c>image</c>): a base64 PNG at most 48 px; null for none.</summary>
+    public string? Preview { get; set; }
+
+    /// <summary>An ImageList's pictures (<c>images</c>): a thumbnail beside each name in <see cref="Items"/>.</summary>
+    public List<string>? Previews { get; set; }
 }
 
 /// <summary>One row of the Events tab.</summary>

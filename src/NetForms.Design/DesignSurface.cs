@@ -42,7 +42,7 @@ public sealed class DesignerEditException : Exception
 public sealed partial class DesignSurface : IDisposable
 {
     /// <summary>The two files at one step; <paramref name="Epoch"/> is the <see cref="_companionEpoch"/> the code-behind was taken at.</summary>
-    private sealed record Snapshot(string Source, string? Companion, int Epoch);
+    private sealed record Snapshot(string Source, string? Companion, int Epoch, string? Resx = null);
 
     /// <summary>
     /// The two files as they were on disk when last read or written. Anything else found there was written by
@@ -50,6 +50,7 @@ public sealed partial class DesignSurface : IDisposable
     /// </summary>
     private string? _diskSource;
     private string? _diskCompanion;
+    private string? _diskResx;
 
     /// <summary>Bumped each time the code-behind is found edited outside: older history must not put it back.</summary>
     private int _companionEpoch;
@@ -73,10 +74,13 @@ public sealed partial class DesignSurface : IDisposable
         CompanionSource = companion;
         FilePath = path;
         CompanionPath = companionPath;
+        ResxPath = path != null ? ResxResources.ResxPathOf(path) : null;
+        ResxSource = ResxPath != null ? ReadIfExists(ResxPath) : null;
         if (path != null)
         {
             _diskSource = source;
             _diskCompanion = companion;
+            _diskResx = ResxSource;
         }
         Reload();
     }
@@ -101,6 +105,12 @@ public sealed partial class DesignSurface : IDisposable
 
     public string? FilePath { get; }
     public string? CompanionPath { get; }
+
+    /// <summary>The form's .resx (<c>MainForm.resx</c> beside the designer file), whether or not there is one yet.</summary>
+    public string? ResxPath { get; }
+
+    /// <summary>The .resx as it stands after the last edit (pictures and icons set in the designer), or null when the form has none.</summary>
+    public string? ResxSource { get; private set; }
 
     /// <summary>The designer file as it stands after the last edit.</summary>
     public string Source { get; private set; }
@@ -128,12 +138,16 @@ public sealed partial class DesignSurface : IDisposable
     {
         ArgumentNullException.ThrowIfNull(ops);
         SyncWithDisk();
-        var before = new Snapshot(Source, CompanionSource, _companionEpoch);
+        var before = new Snapshot(Source, CompanionSource, _companionEpoch, ResxSource);
         try
         {
             foreach (var op in ops) ApplyOne(op);
             try { Source = _writer.Write(Model, Source); }
             catch (NotSupportedException ex) { throw new DesignerEditException(ex.Message, ex); }
+            // The .resx follows the code: what it now gets from it is written, what it no longer asks for goes.
+            var gone = ResxWriter.ReferencedNames(before.Source);
+            gone.ExceptWith(ResxWriter.ReferencedNames(Source));
+            ResxSource = ResxWriter.Update(ResxSource, _writer.Resources, gone);
             Reload();
         }
         catch
@@ -141,10 +155,11 @@ public sealed partial class DesignSurface : IDisposable
             _pasted = null;
             Source = before.Source;
             CompanionSource = before.Companion;
+            ResxSource = before.Resx;
             Reload();
             throw;
         }
-        if (Source != before.Source || CompanionSource != before.Companion)
+        if (Source != before.Source || CompanionSource != before.Companion || ResxSource != before.Resx)
         {
             _undo.Add(before);
             _redo.Clear();
@@ -160,10 +175,11 @@ public sealed partial class DesignSurface : IDisposable
     {
         SyncWithDisk();
         if (from.Count == 0) return false;
-        to.Add(new Snapshot(Source, CompanionSource, _companionEpoch));
+        to.Add(new Snapshot(Source, CompanionSource, _companionEpoch, ResxSource));
         var target = from[^1];
         from.RemoveAt(from.Count - 1);
         Source = target.Source;
+        ResxSource = target.Resx;
         // The code-behind is the user's: history only puts back a version of it no one has edited since.
         if (target.Epoch == _companionEpoch) CompanionSource = target.Companion;
         Reload();
@@ -190,22 +206,27 @@ public sealed partial class DesignSurface : IDisposable
         if (FilePath == null) return false;
         var source = ReadIfExists(FilePath);
         var companion = CompanionPath != null ? ReadIfExists(CompanionPath) : null;
+        var resx = ResxPath != null ? ReadIfExists(ResxPath) : null;
         bool sourceChanged = source != null && source != _diskSource;
         bool companionChanged = companion != null && companion != _diskCompanion;
-        if (!sourceChanged && !companionChanged) return false;
+        bool resxChanged = resx != null && resx != _diskResx;
+        if (!sourceChanged && !companionChanged && !resxChanged) return false;
 
-        var (oldSource, oldCompanion) = (Source, CompanionSource);
+        var (oldSource, oldCompanion, oldResx) = (Source, CompanionSource, ResxSource);
         if (sourceChanged) Source = source!;
         if (companionChanged) CompanionSource = companion;
+        if (resxChanged) ResxSource = resx;
         try { Reload(); }
         catch
         {
-            (Source, CompanionSource) = (oldSource, oldCompanion);
+            (Source, CompanionSource, ResxSource) = (oldSource, oldCompanion, oldResx);
             throw;
         }
-        if (sourceChanged)
+        if (sourceChanged || resxChanged)
         {
-            _diskSource = source;
+            // The history is made of the old files: it starts over.
+            if (sourceChanged) _diskSource = source;
+            if (resxChanged) _diskResx = resx;
             _undo.Clear();
             _redo.Clear();
         }
@@ -241,12 +262,18 @@ public sealed partial class DesignSurface : IDisposable
             WriteKeepingBom(CompanionPath, CompanionSource);
             _diskCompanion = CompanionSource;
         }
+        if (ResxPath != null && ResxSource != null && ResxSource != _diskResx)
+        {
+            // A new .resx starts with a byte-order mark, as VS writes it.
+            WriteKeepingBom(ResxPath, ResxSource, bomIfNew: true);
+            _diskResx = ResxSource;
+        }
         IsDirty = false;
     }
 
-    private static void WriteKeepingBom(string path, string text)
+    private static void WriteKeepingBom(string path, string text, bool bomIfNew = false)
     {
-        bool bom = false;
+        bool bom = bomIfNew && !File.Exists(path);
         if (File.Exists(path))
         {
             if (File.ReadAllText(path) == text) return;
@@ -259,7 +286,7 @@ public sealed partial class DesignSurface : IDisposable
     private void Reload()
     {
         var old = _model?.Root.Instance as IDisposable;
-        _model = _reader.Read(Source, CompanionSource != null ? new[] { CompanionSource } : Array.Empty<string>(), FilePath);
+        _model = _reader.Read(Source, CompanionSource != null ? new[] { CompanionSource } : Array.Empty<string>(), FilePath, ResxSource);
         PrepareForDesign();
         old?.Dispose();
     }
@@ -323,6 +350,8 @@ public sealed partial class DesignSurface : IDisposable
             case "add": Add(op); break;
             case "remove": Remove(Resolve(op.Id)); break;
             case "setParent": SetParent(Resolve(op.Id), Resolve(op.Parent), op); break;
+            case "setImage": SetImage(Resolve(op.Id), Required(op.Prop, "prop"), op.Value); break;
+            case "setImages": SetImages(Resolve(op.Id), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "reorder": Reorder(AsControl(Resolve(op.Id)), op.Ids ?? Array.Empty<string?>()); break;
             case "setCell": MoveToCell(AsControl(Resolve(op.Id)), op.Column ?? throw new DesignerEditException("The edit needs 'column'."), op.Row ?? throw new DesignerEditException("The edit needs 'row'.")); break;
             case "setStyles": SetStyles(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
@@ -1222,6 +1251,18 @@ public sealed partial class DesignSurface : IDisposable
 
             try { row.Modified = pd.ShouldSerializeValue(target); } catch (Exception) { }
             var type = Nullable.GetUnderlyingType(pd.PropertyType) ?? pd.PropertyType;
+            if (!pd.IsReadOnly && IsImageProperty(type))
+            {
+                ImageRow(row, value);
+                rows.Add(row);
+                continue;
+            }
+            if (target is ImageList images && pd.Name == "Images")
+            {
+                ImagesRow(row, images);
+                rows.Add(row);
+                continue;
+            }
             if (IsReference(type))
             {
                 row.Editor = "component";

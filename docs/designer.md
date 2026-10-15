@@ -111,6 +111,12 @@ A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it g
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.
 
+Pictures and icons — `Image`, `BackgroundImage`, a form's `Icon`, a menu item's `Image` — are picked from a file with
+**…** in the property grid (**✕** clears one; the grid shows a thumbnail) and kept in the form's `.resx`, as Visual
+Studio keeps them: `button1.Image = (Image)resources.GetObject("button1.Image")`. An **ImageList**'s *Images* (**…**)
+are added from files, named, reordered and removed; the list's `ImageStream` goes to the `.resx` too. A localizable
+form (`Localizable = true`) is still shown but not written (its properties live in the `.resx` per culture).
+
 Menus open on the canvas, as in Visual Studio: a click on a menu item shows its drop-down under it (a sub-menu opens to
 the right), and a **ContextMenuStrip** selected in the tray opens at the top left of the form. Every item in them can be
 selected — double-click one to write its `Click` handler, or set `ShortcutKeys`, `Checked`, `Image` and its own

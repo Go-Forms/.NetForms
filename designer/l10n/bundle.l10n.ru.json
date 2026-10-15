@@ -302,5 +302,16 @@
 	"column {0}, row {1}": "столбец {0}, строка {1}",
 	"columns": "столбцы",
 	"rows": "строки",
-	"position {0} in {1}": "позиция {0} в {1}"
+	"position {0} in {1}": "позиция {0} в {1}",
+	"Choose an icon (.ico)…": "Выбрать значок (.ico)…",
+	"Choose a picture…": "Выбрать картинку…",
+	"Remove the picture": "Убрать картинку",
+	"Edit the pictures of the list": "Изменить картинки списка",
+	"The name of the picture (Images.SetKeyName)": "Имя картинки (Images.SetKeyName)",
+	"Remove": "Удалить",
+	"Add…": "Добавить…",
+	"Add pictures from files": "Добавить картинки из файлов",
+	"Icons": "Значки",
+	"Pictures": "Картинки",
+	"Choose": "Выбрать"
 }
