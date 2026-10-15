@@ -143,7 +143,7 @@ WinForms из .NET Framework, 1 — на `Microsoft.VisualBasic.Devices` из Vi
 | Контрол | Состояние | Примечания |
 |---|---|---|
 | `MenuStrip`, `ContextMenuStrip`, `ToolStrip`, `StatusStrip` | ✅ Работают · нет немногого | Все стандартные элементы (`ToolStripButton`, `…MenuItem`, `…DropDownButton`, `…SplitButton`, `…ComboBox`, `…TextBox`, `…ProgressBar`, `…Label`, `…Separator`), горячие клавиши, мнемоники, переполнение, professional-рендерер. Нет: перетаскивания элементов (`AllowItemReorder`), объектов настроек `LayoutStyle`. |
-| `ToolStripContainer`, `ToolStripPanel` | ❌ Нет | Пристыковываемые перетаскиваемые панели. |
+| `ToolStripContainer`, `ToolStripPanel` | ✅ Работает | Полосы рядами с каждой стороны, перетаскиваются за ручку вдоль ряда, в другой ряд и на другую сторону; `Join`, `Rows`, `Locked`, `RowMargin`. Полоса, которой не хватает места в ряду, наезжает на следующую, а не уводит пункты в переполнение. |
 | `MainMenu`, `ContextMenu`, `ToolBar`, `StatusBar`, `DataGrid` | ❌ Нет | Контролы .NET Framework 1.x — **удалены из самого .NET** в .NET Core 3.1; в настоящем WinForms на .NET 10 они тоже не работают. Замените на `MenuStrip`, `ContextMenuStrip`, `ToolStrip`, `StatusStrip`, `DataGridView`. |
 
 ### Данные

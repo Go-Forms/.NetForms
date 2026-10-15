@@ -886,3 +886,63 @@ test('a strip\'s Items editor adds items of the kind picked', { skip, timeout: 1
 	assert.match(text, /toolStripButton1\.Text = "Open";/);
 	assert.deepEqual(errors, []);
 });
+
+// Decision 178: a ToolStripContainer takes strips into its side panels (dragged from one to another) and
+// everything else into its content panel.
+test('a tool strip container: strips go to the side panels, other controls to the middle', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-tsc-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 200));
+		return file();
+	};
+	const toolbox = async (name) => { const before = file(); await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name); return waitFile(before); };
+	const box = async (id) => (await page.waitForSelector(`.hit[data-id="${id}"]`)).boundingBox();
+	const drag = async (from, to) => {
+		const before = file();
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		for (let i = 1; i <= 10; i++) await page.mouse.move(from.x + (to.x - from.x) * i / 10, from.y + (to.y - from.y) * i / 10);
+		await page.mouse.up();
+		return waitFile(before);
+	};
+
+	await toolbox('ToolStripContainer');
+	// The container selected, a strip goes into its top panel...
+	let text = await toolbox('ToolStrip');
+	assert.match(text, /toolStripContainer1\.TopToolStripPanel\.Controls\.Add\((this\.)?toolStrip1\);/);
+	assert.match(text, /toolStrip1\.Dock = (System\.Windows\.Forms\.)?DockStyle\.None;/);
+	// ...and a button, with the strip selected, into the middle.
+	text = await toolbox('Button');
+	assert.match(text, /toolStripContainer1\.ContentPanel\.Controls\.Add\((this\.)?button2\);/);
+
+	// The strip dragged onto the left band: into the left panel.
+	const strip = await box('toolStrip1');
+	const left = await box('toolStripContainer1.LeftToolStripPanel');
+	text = await drag({ x: strip.x + 20, y: strip.y + strip.height / 2 }, { x: left.x + left.width / 2, y: left.y + left.height / 2 });
+	await page.screenshot({ path: path.join(out, 'tsc-1-left.png') });
+	assert.match(text, /toolStripContainer1\.LeftToolStripPanel\.Controls\.Add\((this\.)?toolStrip1\);/);
+	assert.doesNotMatch(text, /TopToolStripPanel\.Controls\.Add/);
+
+	// A button dragged over the top panel stays in the middle: a ToolStripPanel takes strips only.
+	const button = await box('button2');
+	const top = await box('toolStripContainer1.TopToolStripPanel');
+	text = await drag({ x: button.x + 10, y: button.y + 10 }, { x: top.x + 60, y: top.y + top.height / 2 });
+	assert.match(text, /toolStripContainer1\.ContentPanel\.Controls\.Add\((this\.)?button2\);/);
+	assert.deepEqual(errors, []);
+});

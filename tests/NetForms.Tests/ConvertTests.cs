@@ -110,14 +110,14 @@ public sealed class ConvertTests : IDisposable
 
                 public class Editor : Form
                 {
-                    private readonly ToolStripContainer _container = new ToolStripContainer();
+                    private readonly WebBrowser _browser = new WebBrowser();
                 }
                 """));
         var report = new ProjectConverter().Analyze(project);
         Assert.False(report.Compiled);
         Assert.Contains(report.Issues, i => i.Category == "Windows API" && i.Line == 7);
         Assert.Contains(report.Issues, i => i.Category == "Win32 messages" && i.Message.Contains("WndProc"));
-        Assert.Contains(report.Issues, i => i.Category.StartsWith("Missing in NetForms") && i.Message.Contains("ToolStripContainer"));
+        Assert.Contains(report.Issues, i => i.Category.StartsWith("Missing in NetForms") && i.Message.Contains("WebBrowser"));
         Assert.All(report.Issues.Where(i => i.Severity == "error"), i => Assert.NotNull(i.File));
     }
 

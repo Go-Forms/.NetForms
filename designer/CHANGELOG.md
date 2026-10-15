@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **ToolStripContainer:** strips go into its side panels (the row they are dropped on, or a new one past the last;
+  dragged from side to side), other controls into its middle; the code is what Visual Studio writes.
 - **Strip items of every kind:** the Items editor picks the kind of a new item (combo box, text box, progress bar,
   label, drop-down or split button, separator…); *Edit Items…* in a strip's context menu.
 - **Pictures:** **…** beside `Image`, `BackgroundImage`, `Icon` picks a file, kept in the form's `.resx` as Visual

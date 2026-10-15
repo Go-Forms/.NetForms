@@ -208,6 +208,11 @@ public abstract class ToolStripRenderer
     public void DrawGrip(ToolStripGripRenderEventArgs e) => OnRenderGrip(e);
     public void DrawImageMargin(ToolStripRenderEventArgs e) => OnRenderImageMargin(e);
     public void DrawStatusStripSizingGrip(ToolStripRenderEventArgs e) => OnRenderStatusStripSizingGrip(e);
+    public void DrawToolStripPanelBackground(ToolStripPanelRenderEventArgs e) => OnRenderToolStripPanelBackground(e);
+    public void DrawToolStripContentPanelBackground(ToolStripContentPanelRenderEventArgs e) => OnRenderToolStripContentPanelBackground(e);
+
+    public event ToolStripPanelRenderEventHandler? RenderToolStripPanelBackground;
+    public event ToolStripContentPanelRenderEventHandler? RenderToolStripContentPanelBackground;
 
     // --- item backgrounds -------------------------------------------------------------
 
@@ -235,6 +240,8 @@ public abstract class ToolStripRenderer
     protected virtual void OnRenderGrip(ToolStripGripRenderEventArgs e) { }
     protected virtual void OnRenderImageMargin(ToolStripRenderEventArgs e) { }
     protected virtual void OnRenderStatusStripSizingGrip(ToolStripRenderEventArgs e) { }
+    protected virtual void OnRenderToolStripPanelBackground(ToolStripPanelRenderEventArgs e) => RenderToolStripPanelBackground?.Invoke(this, e);
+    protected virtual void OnRenderToolStripContentPanelBackground(ToolStripContentPanelRenderEventArgs e) => RenderToolStripContentPanelBackground?.Invoke(this, e);
     protected virtual void OnRenderButtonBackground(ToolStripItemRenderEventArgs e) { }
     protected virtual void OnRenderDropDownButtonBackground(ToolStripItemRenderEventArgs e) { }
     protected virtual void OnRenderSplitButtonBackground(ToolStripItemRenderEventArgs e) { }

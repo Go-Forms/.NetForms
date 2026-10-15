@@ -60,6 +60,11 @@ public class ToolStripDropDown : ToolStrip
         remove => base.BindingContextChanged -= value;
     }
 
+    /// <summary>A drop-down is never in a ToolStripPanel row.</summary>
+    [Browsable(false)]
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public new bool Stretch { get => base.Stretch; set => base.Stretch = value; }
+
     [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Never)]
     public new event EventHandler? BackgroundImageChanged

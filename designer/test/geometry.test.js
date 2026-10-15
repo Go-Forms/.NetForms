@@ -114,6 +114,18 @@ test('a drop never lands inside what is being moved', () => {
 	assert.equal(g.dropTarget(items, 20, 20, new Set(['panel1'])), null);
 });
 
+test('a ToolStripPanel takes a drop only of tool strips', () => {
+	const items = [
+		{ id: 'tsc.ContentPanel', x: 0, y: 25, w: 100, h: 75, visible: true, container: true, parent: 'tsc' },
+		{ id: 'tsc.TopToolStripPanel', x: 0, y: 0, w: 100, h: 25, visible: true, container: true, strips: true, parent: 'tsc' },
+	];
+	assert.equal(g.dropTarget(items, 20, 10, new Set(), true).id, 'tsc.TopToolStripPanel');
+	assert.equal(g.dropTarget(items, 20, 10, new Set(), false), null);
+	assert.equal(g.dropTarget(items, 20, 50, new Set(), true).id, 'tsc.ContentPanel');
+	assert.equal(g.stripsPanelAt(items, 20, 10).id, 'tsc.TopToolStripPanel');
+	assert.equal(g.stripsPanelAt(items, 20, 50), null);
+});
+
 test('a docked control is resized only by its free edge', () => {
 	assert.deepEqual(g.resizeEdges('Top'), ['s']);
 	assert.deepEqual(g.resizeEdges('Right'), ['w']);

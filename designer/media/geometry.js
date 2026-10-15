@@ -206,16 +206,28 @@
 		return null;
 	}
 
-	/** The deepest container under a point that can take a drop (not one of the moving ids nor inside them). */
-	function dropTarget(items, x, y, moving) {
+	/**
+	 * The deepest container under a point that can take a drop (not one of the moving ids nor inside them).
+	 * A container that takes tool strips only (a ToolStripPanel) takes the drop only when it is strips that move.
+	 */
+	function dropTarget(items, x, y, moving, strip) {
 		const inside = (id) => {
 			for (let cur = byId(items, id); cur; cur = byId(items, cur.parent)) if (moving.has(cur.id)) return true;
 			return false;
 		};
 		for (let i = items.length - 1; i >= 0; i--) {
 			const it = items[i];
-			if (!it.visible || !it.container || inside(it.id)) continue;
+			if (!it.visible || !it.container || inside(it.id) || (it.strips && !strip)) continue;
 			if (x >= it.x && y >= it.y && x < it.x + it.w && y < it.y + it.h) return it;
+		}
+		return null;
+	}
+
+	/** The ToolStripPanel under a point (a container that takes tool strips only), or null. */
+	function stripsPanelAt(items, x, y) {
+		for (let i = items.length - 1; i >= 0; i--) {
+			const it = items[i];
+			if (it.visible && it.strips && x >= it.x && y >= it.y && x < it.x + it.w && y < it.y + it.h) return it;
 		}
 		return null;
 	}
@@ -360,5 +372,5 @@
 		return { index: last.i + 1, bar: bar(last.c, false) };
 	}
 
-	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
+	return { SNAP, snapMove, snapResize, resize, align, spaceEvenly, hitTest, dropTarget, stripsPanelAt, union, resizeEdges, tableTracks, cellRect, cellAt, parseStyle, formatStyle, resizeTracks, flowInsert };
 });

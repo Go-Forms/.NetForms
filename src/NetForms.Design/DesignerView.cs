@@ -75,6 +75,10 @@ public sealed class DesignerViewItem
     /// <summary>Other controls can be dropped into it (Panel, GroupBox, TabPage, …).</summary>
     public bool Container { get; set; }
 
+    /// <summary>A container that takes tool strips only (a ToolStripPanel); and a tool strip, which can go into one.</summary>
+    public bool Strips { get; set; }
+    public bool Strip { get; set; }
+
     /// <summary>The user may drag it / pull its edges (not a Fill-docked control, not a nested panel).</summary>
     public bool Movable { get; set; }
     public bool Resizable { get; set; }
@@ -220,6 +224,9 @@ public sealed class DesignerToolboxItem
 
     /// <summary>It lands in the component tray, not on the form.</summary>
     public bool Tray { get; set; }
+
+    /// <summary>A tool strip (not a drop-down): the only thing a ToolStripPanel takes.</summary>
+    public bool Strip { get; set; }
 
     /// <summary>16×16 PNG (base64) from the type's <c>[ToolboxBitmap]</c>; null for the default icon.</summary>
     public string? Icon { get; set; }

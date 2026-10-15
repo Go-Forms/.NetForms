@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- **ToolStripContainer and ToolStripPanel.** Tool bars, menus and status bars in rows along the sides of a window: a
+  strip joins the row its location falls in (a new one past the last), the panels size themselves to their rows and the
+  `ContentPanel` takes the rest; at run time the user drags a strip by its grip along its row, to another row or to
+  another side (a side panel stands it up). `Join`, `PointToRow`, `Rows`, `Locked`, `RowMargin`,
+  `ToolStripRenderer.DrawToolStripPanelBackground`, `ToolStrip.Stretch` (a MenuStrip or StatusStrip takes its whole
+  row). In the designer the container's panels are parts of it, as SplitContainer's are: strips are dropped into the
+  side panels, other controls into the middle, and the code is the one Visual Studio writes.
+- **Fixed: a ToolStrip standing up (docked left or right) was 100 pixels wide.** It is as wide as its widest item, as
+  in WinForms; an empty ToolStrip is 111 × 25, as in WinForms.
 - **Designer: every kind of strip item.** The Items editor of a ToolStrip, StatusStrip, MenuStrip or menu adds what
   Visual Studio's *Items Collection Editor* offers for it — label, split and drop-down button, separator, combo box,
   text box, progress bar (a status strip: status label, progress bar, drop-down and split button; a menu: menu item,

@@ -113,6 +113,13 @@ A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it g
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.
 
+A **ToolStripContainer** is designed as in Visual Studio: tool strips (ToolStrip, MenuStrip, StatusStrip) go into its
+four side panels and everything else into its middle (`ContentPanel`); with the container selected, a click in the
+toolbox puts a strip into the top panel and a control into the middle. A strip joins the row it is dropped on, or a new
+row when dropped on the band past the last one; drag it to another place, row or side. While designed, an empty top
+panel keeps 25 pixels to drop onto, the other panels and the band past the last row 8 (at run time an empty panel takes
+no room). Hide a side with `TopToolStripPanelVisible` and its kin.
+
 Pictures and icons — `Image`, `BackgroundImage`, a form's `Icon`, a menu item's `Image` — are picked from a file with
 **…** in the property grid (**✕** clears one; the grid shows a thumbnail) and kept in the form's `.resx`, as Visual
 Studio keeps them: `button1.Image = (Image)resources.GetObject("button1.Image")`. An **ImageList**'s *Images* (**…**)
@@ -172,10 +179,7 @@ nothing of it is lost. The assemblies are loaded from a copy, so the next build 
 
 ## Not yet
 
-- Writing `.resx`: a new image picked in the property grid, editing a `Localizable = true` form (such forms
-  open read-only with an explanation).
-- Extender properties (`ToolTip on toolTip1`, `Error on errorProvider1`) in the property grid — they are
-  kept in the file, just not shown.
+- Editing a `Localizable = true` form (such forms open read-only with an explanation).
 - Design-time extras of third-party libraries: their own designers (`[Designer]`, smart tags) and `UITypeEditor`s.
   Their `TypeConverter`s work. How the libraries are loaded (in Russian): [designer-control-libraries.md](designer-control-libraries.md).
 

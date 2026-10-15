@@ -324,7 +324,12 @@
 				} else {
 					row.title = (cat.library ? item.type + '\n' : '') + (item.tray ? T('Click to add to the component tray') : T('Click to add to the selected container, or drag onto the form'));
 					row.draggable = !item.tray;
-					row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/netforms-type', item.type); e.dataTransfer.effectAllowed = 'copy'; });
+					row.addEventListener('dragstart', (e) => {
+						e.dataTransfer.setData('text/netforms-type', item.type);
+						e.dataTransfer.effectAllowed = 'copy';
+						// dragover cannot read the data, only its kinds: whether a ToolStripPanel may take it is kept here.
+						state.dragStrip = !!item.strip;
+					});
 					row.addEventListener('click', () => addFromToolbox(item));
 				}
 				list.append(row);
@@ -332,6 +337,11 @@
 			g.append(head, list);
 			host.append(g);
 		}
+	}
+
+	function toolboxItem(type) {
+		for (const cat of state.toolbox) for (const item of cat.items || []) if (item.type === type) return item;
+		return null;
 	}
 
 	/** A click in the toolbox adds into the selected container (or the selected control's container), near its top left. */
@@ -342,7 +352,17 @@
 		let target = itemById(primaryId());
 		// A TabControl takes new controls on the page it shows, as in VS.
 		if (target && target.tabs) target = state.view.items.find((i) => i.parent === target.id && i.visible && i.container) || target;
+		// A selected ToolStripContainer takes a strip into its top panel and anything else into its middle.
+		if (target && target.type === 'System.Windows.Forms.ToolStripContainer') target = itemById(target.id + (item.strip ? '.TopToolStripPanel' : '.ContentPanel')) || target;
 		if (target && !target.container) target = itemById(target.parent);
+		// A ToolStripPanel takes strips only; anything else goes where the panel's container is.
+		while (target && target.strips && !item.strip) target = itemById(target.parent);
+		if (target && target.type === 'System.Windows.Forms.ToolStripContainer') target = itemById(target.id + '.ContentPanel') || target;
+		if (target && target.strips) {
+			// Into the first row, after the strips already there.
+			apply([{ op: 'add', type: item.type, parent: target.id, x: 0, y: 0 }]);
+			return;
+		}
 		const siblings = state.view.items.filter((i) => i.parent === (target ? target.id : '') && i.kind === 'control');
 		const offset = 12 + (siblings.length % 8) * 8;
 		apply([{ op: 'add', type: item.type, parent: target ? target.id : '', x: offset, y: offset }]);
@@ -422,7 +442,7 @@
 			e.dataTransfer.dropEffect = 'copy';
 			// Over a table, the cell the control will land in.
 			const p = canvasPoint(e);
-			const target = G.dropTarget(state.view.items, p.x, p.y, new Set());
+			const target = G.dropTarget(state.view.items, p.x, p.y, new Set(), state.dragStrip);
 			showCellTarget(target && target.table ? G.cellRect(target.table, G.cellAt(target.table, p.x, p.y).column, G.cellAt(target.table, p.x, p.y).row) : null);
 			showFlowBar(target && target.flow ? flowDrop(target, p, null).bar : null);
 		});
@@ -723,9 +743,11 @@
 		const items = d.ids.map(itemById);
 		const group = G.union(items);
 		group.margin = items.length === 1 ? items[0].margin : [3, 3, 3, 3];
-		const target = G.dropTarget(state.view.items, p.x, p.y, new Set(d.ids));
-		const targetId = target ? target.id : '';
+		const strips = items.every((i) => i.strip);
 		const parentId = items[0].parent;
+		// Over a ToolStripPanel, what is not a strip cannot go in: it stays where it is.
+		const target = !strips && G.stripsPanelAt(state.view.items, p.x, p.y) ? itemById(parentId) : G.dropTarget(state.view.items, p.x, p.y, new Set(d.ids), strips);
+		const targetId = target ? target.id : '';
 		if (target && target.table) {
 			// In a table the drop is a cell, not a position: the one under the mouse.
 			const cell = G.cellAt(target.table, p.x, p.y);
@@ -755,6 +777,9 @@
 		}
 		d.flow = null;
 		showFlowBar(null);
+		// Over a ToolStripPanel the pointer picks the row (and the strip keeps its place along it): see onDragUp.
+		d.strips = target && target.strips ? target : null;
+		d.pointer = p;
 		const others = state.view.items.filter((i) => i.visible && i.kind === 'control' && i.parent === targetId && !d.ids.includes(i.id));
 		const snapOn = !e.altKey && state.snap;
 		const moved = { x: group.x + dx, y: group.y + dy, w: group.w, h: group.h, margin: group.margin };
@@ -827,6 +852,18 @@
 			apply(ops, state.selection);
 			return;
 		}
+		if (d.strips && (d.dx !== 0 || d.dy !== 0 || d.target !== null)) {
+			// Into a ToolStripPanel: along the row where the strip was let go, across it where the pointer is - so
+			// a strip can be dropped onto the band past the last row to start a new one.
+			const panel = d.strips, c = containerRect(panel.id), vertical = panel.dock === 'Left' || panel.dock === 'Right';
+			apply(d.ids.map((id) => {
+				const it = itemById(id);
+				const x = vertical ? d.pointer.x - c.x : it.x + d.dx - c.x;
+				const y = vertical ? it.y + d.dy - c.y : d.pointer.y - c.y;
+				return it.parent === panel.id ? { op: 'setBounds', id, x, y } : { op: 'setParent', id, parent: panel.id, x, y };
+			}), state.selection);
+			return;
+		}
 		if (d.dx === 0 && d.dy === 0 && d.target === null) { renderStage(); return; }
 		const ops = [];
 		for (const id of d.ids) {
@@ -846,7 +883,9 @@
 		if (!type) return;
 		e.preventDefault();
 		const p = canvasPoint(e);
-		const target = G.dropTarget(state.view.items, p.x, p.y, new Set());
+		const strip = toolboxItem(type)?.strip;
+		if (!strip && G.stripsPanelAt(state.view.items, p.x, p.y)) { toast(T('A ToolStripPanel takes tool strips only.'), 'info'); return; }
+		const target = G.dropTarget(state.view.items, p.x, p.y, new Set(), strip);
 		const c = containerRect(target ? target.id : '');
 		state.selectNew = new Set(allIds());
 		if (target && target.table) {

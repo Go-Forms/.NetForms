@@ -29,11 +29,11 @@ public class MenuStrip : ToolStrip
 
     protected override bool DefaultShowItemToolTips => false;
 
-    /// <summary>A menu bar always spans its dock edge; WinForms exposes this on ToolStrip.</summary>
+    /// <summary>A menu bar takes its whole row of a ToolStripPanel.</summary>
     [Category("Layout")]
     [Description("Specifies whether the ToolStrip stretches from end to end in the rafting container.")]
     [DefaultValue(true)]
-    public bool Stretch { get; set; }
+    public new bool Stretch { get => base.Stretch; set => base.Stretch = value; }
 
     [Category("Behavior")]
     [Description("Specifies the item whose DropDown will show the list of MDI windows.")]
@@ -113,7 +113,14 @@ public class StatusStrip : ToolStrip
         LayoutStyle = ToolStripLayoutStyle.Table;
         Dock = DockStyle.Bottom;
         ShowItemToolTips = false;
+        Stretch = true;
     }
+
+    /// <summary>A status bar takes its whole row of a ToolStripPanel.</summary>
+    [DefaultValue(true)]
+    [Category("Layout")]
+    [Description("Specifies whether the ToolStrip stretches from end to end in the rafting container.")]
+    public new bool Stretch { get => base.Stretch; set => base.Stretch = value; }
 
     protected override Size DefaultSize => new Size(200, 22);
 

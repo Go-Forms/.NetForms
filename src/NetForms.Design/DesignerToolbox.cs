@@ -118,6 +118,7 @@ public static class DesignerToolbox
         Name = type.Name,
         // Components, drop-downs and forms (PrintPreviewDialog) go to the component tray, as in VS.
         Tray = !typeof(Control).IsAssignableFrom(type) || typeof(ToolStripDropDown).IsAssignableFrom(type) || typeof(Form).IsAssignableFrom(type),
+        Strip = typeof(ToolStrip).IsAssignableFrom(type) && !typeof(ToolStripDropDown).IsAssignableFrom(type),
     };
 
     /// <summary>

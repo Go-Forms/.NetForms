@@ -639,6 +639,14 @@ public partial class Control : Component, IWin32Window
     internal void AdjustSizeToPreferred()
     {
         if (!_autoSize || _adjustingSize) return;
+        if (SizedByParentLayout)
+        {
+            // A strip in a ToolStripPanel row: the row gives it its preferred size (or more, stretched).
+            _adjustingSize = true;
+            try { _parent?.PerformLayout(this, nameof(AutoSize)); }
+            finally { _adjustingSize = false; }
+            return;
+        }
         // A container's AutoSize is applied from its parent's layout in WinForms: a Panel that has no
         // parent never grows (a top-level Form sizes itself; a Label resizes itself either way).
         // Checked against WinForms, CompatScenarios autosize/panel-* and autosize/parented-*.
@@ -671,6 +679,9 @@ public partial class Control : Component, IWin32Window
 
     private bool _adjustingSize;
 
+    /// <summary>Its parent's layout sizes it even though it is AutoSize (a ToolStrip in a ToolStripPanel).</summary>
+    internal virtual bool SizedByParentLayout => false;
+
     [Browsable(false)]
     public virtual LayoutEngine LayoutEngine => DefaultLayout.Instance;
 
@@ -681,11 +692,21 @@ public partial class Control : Component, IWin32Window
 
     public void SuspendLayout() => _layoutSuspendCount++;
 
+    /// <summary>Inside a SuspendLayout/ResumeLayout pair (designer code is).</summary>
+    internal bool IsLayoutSuspended => _layoutSuspendCount > 0;
+
+    /// <summary>The last ResumeLayout of a pair is running (WinForms' internal OnLayoutResuming): before any layout.</summary>
+    internal virtual void OnLayoutResuming(bool performLayout) { }
+
     public void ResumeLayout() => ResumeLayout(true);
 
     public void ResumeLayout(bool performLayout)
     {
-        if (_layoutSuspendCount > 0) _layoutSuspendCount--;
+        if (_layoutSuspendCount > 0)
+        {
+            _layoutSuspendCount--;
+            if (_layoutSuspendCount == 0) OnLayoutResuming(performLayout);
+        }
 
         if (!performLayout)
         {

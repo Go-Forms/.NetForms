@@ -627,6 +627,10 @@ public sealed class DesignerCodeWriter
                 // RichTextBoxDesigner shadows Text without a default, so VS writes it always - "" too (every
                 // RichTextBox of a VS form has its Text = ""), where the control's own Text would not be.
                 if (instance is RichTextBox && pd.Name == "Text") force = true;
+                // A ToolStripContainer's side panel is placed by the container and shown by its *ToolStripPanelVisible:
+                // VS writes only what is in it (and what was set on it otherwise), never where it is.
+                if (instance is ToolStripPanel { Parent: ToolStripContainer } && !topLevel
+                    && (pd.Name is "Dock" or "Location" or "Size" or "Orientation" or "Visible" || pd.Name == "RowMargin" && value is Padding { Left: 3, Top: 0, Right: 0, Bottom: 0 })) continue;
                 if (!force && !ShouldSerialize(pd, instance)) continue;
                 // A fresh PrintPreviewDialog asks for its Icon (VS puts it in the .resx, which the designer does not
                 // write yet): keep the line a file already has, write none for a new one.

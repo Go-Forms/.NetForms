@@ -887,7 +887,13 @@ public sealed partial class DesignSurface : IDisposable
                 var container = parent as Control ?? throw new DesignerEditException("A control needs a container.");
                 if (container is TabControl) throw new DesignerEditException("Only tab pages go directly into a TabControl; drop the control on a page.");
                 if (container is SplitContainer) throw new DesignerEditException("Drop the control into one of the SplitContainer's panels.");
+                CheckStripPanel(container, control);
                 control.TabIndex = container.Controls.Count;
+                if (container is ToolStripPanel panel)
+                {
+                    JoinStripPanel(panel, (ToolStrip)control, op.X, op.Y);
+                    break;
+                }
                 if (container is TableLayoutPanel table)
                 {
                     // A table places by cell: the one the drop was on, or the first free one.
@@ -953,6 +959,9 @@ public sealed partial class DesignSurface : IDisposable
                 break;
             case GroupBox group:
                 group.Text = name;
+                break;
+            case ToolStripContainer container:
+                container.Text = name;
                 break;
             case DataGridViewColumn column:
                 // DataGridViewColumnCollectionEditor: the column's Name is its name in the code (Columns["Column1"]).
@@ -1038,6 +1047,12 @@ public sealed partial class DesignSurface : IDisposable
         if (ReferenceEquals(control, container) || IsAncestor(control, container))
             throw new DesignerEditException("A control cannot be put inside itself.");
         if (container is TabControl or SplitContainer) throw new DesignerEditException($"A control cannot go directly into a {container.GetType().Name}.");
+        CheckStripPanel(container, control);
+        if (container is ToolStripPanel panel)
+        {
+            JoinStripPanel(panel, (ToolStrip)control, op.X, op.Y);
+            return;
+        }
         if (ReferenceEquals(control.Parent, container) && container is TableLayoutPanel)
         {
             if (op.Column != null || op.Row != null) MoveToCell(control, op.Column ?? ((TableLayoutPanel)container).GetColumn(control), op.Row ?? ((TableLayoutPanel)container).GetRow(control));
@@ -1062,6 +1077,25 @@ public sealed partial class DesignSurface : IDisposable
         container.Controls.Add(control);
         container.Controls.SetChildIndex(control, 0);
         control.Location = new Point(op.X ?? control.Left, op.Y ?? control.Top);
+    }
+
+    /// <summary>A ToolStripContainer takes controls only in its panels: tool strips at the sides, the rest in the middle.</summary>
+    private static void CheckStripPanel(Control container, Control control)
+    {
+        if (container is ToolStripContainer)
+            throw new DesignerEditException("Drop the control into the ToolStripContainer's ContentPanel, or a tool strip into one of its side panels.");
+        if (container is ToolStripPanel && control is not ToolStrip or ToolStripDropDown)
+            throw new DesignerEditException("A ToolStripPanel holds tool strips (ToolStrip, MenuStrip, StatusStrip) only.");
+    }
+
+    /// <summary>
+    /// A strip dropped into a ToolStripPanel: undocked, as VS's ToolStripPanelDesigner leaves it (Dock = None is written),
+    /// and joined to the row at the drop point - a new row past the last one.
+    /// </summary>
+    private static void JoinStripPanel(ToolStripPanel panel, ToolStrip strip, int? x, int? y)
+    {
+        strip.Dock = DockStyle.None;
+        panel.Join(strip, new Point(x ?? 0, y ?? 0));
     }
 
     private static bool IsAncestor(Control ancestor, Control control)
@@ -1165,7 +1199,9 @@ public sealed partial class DesignSurface : IDisposable
                 ClientX = child.PointToForm(Point.Empty).X,
                 ClientY = child.PointToForm(Point.Empty).Y,
                 Visible = VisibleOnCanvas(child),
-                Container = child is Panel or GroupBox,
+                Container = child is Panel or GroupBox or ToolStripPanel,
+                Strips = child is ToolStripPanel,
+                Strip = child is ToolStrip and not ToolStripDropDown,
                 // In a table a control moves from cell to cell, docked to fill its cell or not.
                 Movable = !nested && child is not TabPage && (child.Dock == DockStyle.None || parent is TableLayoutPanel),
                 // An auto-sized label or check box follows its text; an AutoSize button only grows (GrowOnly).

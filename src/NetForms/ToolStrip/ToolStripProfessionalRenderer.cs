@@ -132,6 +132,17 @@ public class ToolStripProfessionalRenderer : ToolStripRenderer
         e.Graphics.FillRectangle(brush, e.AffectedBounds);
     }
 
+    /// <summary>A ToolStripPanel takes the strips' colour unless it was given one, so a row of tool bars reads as one band.</summary>
+    protected override void OnRenderToolStripPanelBackground(ToolStripPanelRenderEventArgs e)
+    {
+        base.OnRenderToolStripPanelBackground(e);
+        var panel = e.ToolStripPanel;
+        if (e.Handled || panel.IsBackColorSet || panel.BackgroundImage != null) return;
+        using var brush = new SolidBrush(ColorTable.ToolStripPanelGradientBegin);
+        e.Graphics.FillRectangle(brush, panel.ClientRectangle);
+        e.Handled = true;
+    }
+
     protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
     {
         var strip = e.ToolStrip;

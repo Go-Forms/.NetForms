@@ -314,9 +314,31 @@ public class ToolStrip : ScrollableControl
     [Browsable(false)]
     public Orientation Orientation => ResolvedLayoutStyle == ToolStripLayoutStyle.VerticalStackWithOverflow ? Orientation.Vertical : Orientation.Horizontal;
 
+    /// <summary>In a ToolStripPanel the strip follows the panel (a side one stands it up); elsewhere its dock decides.</summary>
     internal ToolStripLayoutStyle ResolvedLayoutStyle => _layoutStyle != ToolStripLayoutStyle.StackWithOverflow
         ? _layoutStyle
-        : Dock is DockStyle.Left or DockStyle.Right ? ToolStripLayoutStyle.VerticalStackWithOverflow : ToolStripLayoutStyle.HorizontalStackWithOverflow;
+        : Parent is ToolStripPanel panel
+            ? panel.Orientation == Orientation.Vertical ? ToolStripLayoutStyle.VerticalStackWithOverflow : ToolStripLayoutStyle.HorizontalStackWithOverflow
+            : Dock is DockStyle.Left or DockStyle.Right ? ToolStripLayoutStyle.VerticalStackWithOverflow : ToolStripLayoutStyle.HorizontalStackWithOverflow;
+
+    private bool _stretch;
+
+    internal override bool SizedByParentLayout => Parent is ToolStripPanel;
+
+    /// <summary>In a ToolStripPanel, the strip takes the rest of its row (a MenuStrip does by default).</summary>
+    [DefaultValue(false)]
+    [Category("Layout")]
+    [Description("Specifies whether the ToolStrip stretches from end to end in the rafting container.")]
+    public bool Stretch
+    {
+        get => _stretch;
+        set
+        {
+            if (_stretch == value) return;
+            _stretch = value;
+            Parent?.PerformLayout(this, nameof(Stretch));
+        }
+    }
 
     [Category("Behavior")]
     [Description("Specifies the default direction for DropDowns to open.")]
@@ -672,15 +694,24 @@ public class ToolStrip : ScrollableControl
                 across = Math.Max(across, size.Height + item.Margin.Vertical);
             }
         }
+        var padding = Padding;
+        // No items: WinForms takes the default size (less padding) and adds its 2 pixels after the items, so a
+        // new ToolStrip comes out 111 x 25 (a vertical one turned).
+        if (along == 0)
+        {
+            var empty = vertical ? DefaultSize : DefaultSize - padding.Size;
+            along = empty.Width + 2;
+            across = empty.Height;
+        }
         if (_gripStyle == ToolStripGripStyle.Visible)
         {
             along += GripThickness + (vertical ? _gripMargin.Vertical : _gripMargin.Horizontal);
         }
-        var padding = Padding;
-        // WinForms' GetPreferredSizeHorizontal/Vertical: the default size (less padding) is the minimum
+        // WinForms' GetPreferredSizeHorizontal: the default size (less padding) is the minimum
         // across the strip, so a strip of short items keeps its 25px (a StatusStrip its 22px).
+        // GetPreferredSizeVertical has no such minimum: a strip standing up is as wide as its widest item.
         var minimum = DefaultSize - padding.Size;
-        across = Math.Max(across, vertical ? minimum.Width : minimum.Height);
+        if (!vertical) across = Math.Max(across, minimum.Height);
         return vertical
             ? new Size(across + padding.Horizontal, along + padding.Vertical)
             : new Size(along + padding.Horizontal, across + padding.Vertical);
@@ -779,8 +810,20 @@ public class ToolStrip : ScrollableControl
         UpdateItemToolTip(item);
     }
 
+    /// <summary>Where the grip was taken, while the strip is dragged about its ToolStripPanel; null otherwise.</summary>
+    private Point? _gripGrab;
+
+    internal bool IsCurrentlyDragging => _gripGrab != null;
+
     protected override void OnMouseDown(MouseEventArgs e)
     {
+        if (e.Button == MouseButtons.Left && Parent is ToolStripPanel { Locked: false } && !IsAncestorSiteInDesignMode
+            && _gripStyle == ToolStripGripStyle.Visible && GripRectangle.Contains(e.Location))
+        {
+            _gripGrab = e.Location;
+            base.OnMouseDown(e);
+            return;
+        }
         var item = GetItemAt(e.Location);
         if (item != null && item.Enabled && item.CanSelect)
         {
@@ -793,6 +836,7 @@ public class ToolStrip : ScrollableControl
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
+        _gripGrab = null;
         var pressed = _pressedItem;
         _pressedItem = null;
         if (pressed != null)
@@ -804,6 +848,21 @@ public class ToolStrip : ScrollableControl
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
+        if (_gripGrab is { } grab)
+        {
+            if ((e.Button & MouseButtons.Left) == 0 || Parent is not ToolStripPanel)
+            {
+                _gripGrab = null;
+            }
+            else
+            {
+                ToolStripPanel.Drag(this, PointToForm(e.Location), grab);
+                // Into another panel the strip lost the mouse with its old parent: it keeps it for the rest of the drag.
+                if (_gripGrab != null && !Capture) Capture = true;
+                base.OnMouseMove(e);
+                return;
+            }
+        }
         var item = GetItemAt(e.Location);
         if (item != null && !item.CanSelect) item = null;
         SelectItem(item);

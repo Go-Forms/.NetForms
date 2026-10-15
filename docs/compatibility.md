@@ -141,7 +141,7 @@ diff tests. **API: complete** — every public/protected member exists; *N missi
 | Control | Status | Notes |
 |---|---|---|
 | `MenuStrip`, `ContextMenuStrip`, `ToolStrip`, `StatusStrip` | ✅ Works · few missing | All standard items (`ToolStripButton`, `…MenuItem`, `…DropDownButton`, `…SplitButton`, `…ComboBox`, `…TextBox`, `…ProgressBar`, `…Label`, `…Separator`), shortcuts, mnemonics, overflow, professional renderer. Missing: dragging items (`AllowItemReorder`), `LayoutStyle` settings objects. |
-| `ToolStripContainer`, `ToolStripPanel` | ❌ Missing | Docked, draggable toolbars. |
+| `ToolStripContainer`, `ToolStripPanel` | ✅ Works | Strips in rows on each side, dragged by their grips along a row, to another row or another side; `Join`, `Rows`, `Locked`, `RowMargin`. A strip that does not fit in its row overlaps the next one instead of moving its items to the overflow. |
 | `MainMenu`, `ContextMenu`, `ToolBar`, `StatusBar`, `DataGrid` | ❌ Missing | The .NET Framework 1.x controls — **removed from .NET itself** in .NET Core 3.1; they do not work in real WinForms on .NET 10 either. Replace them with `MenuStrip`, `ContextMenuStrip`, `ToolStrip`, `StatusStrip`, `DataGridView`. |
 
 ### Data
