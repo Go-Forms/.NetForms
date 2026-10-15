@@ -313,5 +313,8 @@
 	"Add pictures from files": "Добавить картинки из файлов",
 	"Icons": "Значки",
 	"Pictures": "Картинки",
-	"Choose": "Выбрать"
+	"Choose": "Выбрать",
+	"The kind of item": "Вид пункта",
+	"Edit Items…": "Изменить пункты…",
+	"Edit DropDownItems…": "Изменить подпункты…"
 }

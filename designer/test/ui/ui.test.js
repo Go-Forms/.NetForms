@@ -837,3 +837,52 @@ test('pictures are picked from files and kept in the .resx', { skip, timeout: 12
 	await page.waitForFunction(() => document.querySelector('#inspector [data-prop="Images"] input')?.value === '(2 images)');
 	assert.deepEqual(errors, []);
 });
+
+// Decision 177: "Edit Items…" from the context menu of a strip; a new item's kind is picked in the editor.
+test('a strip\'s Items editor adds items of the kind picked', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-strip-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 300));
+		return file();
+	};
+	let before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === 'ToolStrip').click());
+	await waitFile(before);
+
+	// Right-click the strip: Edit Items… opens its Items editor.
+	const s = await (await page.waitForSelector('.hit[data-id="toolStrip1"]')).boundingBox();
+	await page.mouse.click(s.x + s.width - 20, s.y + s.height / 2, { button: 'right' });
+	await page.waitForSelector('.ctx-menu');
+	await page.evaluate(() => [...document.querySelectorAll('.ctx-item')].find((n) => n.textContent.startsWith('Edit Items')).dispatchEvent(new MouseEvent('mousedown', { bubbles: true })));
+	await page.waitForSelector('.coll-editor');
+
+	// Two new items: a button (the default) and a combo box.
+	const add = () => page.evaluate(() => [...document.querySelectorAll('.coll-editor button')].find((b) => b.textContent === 'Add').click());
+	await add();
+	await page.keyboard.type('Open');
+	await add();
+	await page.select('.coll-editor .coll-row:nth-child(2) select.item-type', 'ToolStripComboBox');
+	await page.screenshot({ path: path.join(out, 'strip-1-editor.png') });
+	before = file();
+	await page.evaluate(() => [...document.querySelectorAll('.coll-editor button')].find((b) => b.textContent === 'OK').click());
+	const text = await waitFile(before);
+	assert.match(text, /toolStripButton1 = new ToolStripButton\(\);/);
+	assert.match(text, /toolStripComboBox1 = new ToolStripComboBox\(\);/);
+	assert.match(text, /toolStripButton1\.Text = "Open";/);
+	assert.deepEqual(errors, []);
+});

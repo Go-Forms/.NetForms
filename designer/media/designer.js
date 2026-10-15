@@ -1041,6 +1041,7 @@
 		item(T('Send to Back'), '', () => zorder('sendToBack'), movable && !state.locked);
 		sep();
 		tableMenu(item, sep, point);
+		stripMenu(item, sep);
 		item(state.locked ? T('Unlock Controls') : T('Lock Controls'), '', toggleLock);
 		if (state.selection.length === 1 && state.selection[0] !== '')
 			item(T('Select \'{0}\'', parent || (state.view ? state.view.className : '')), 'Esc', () => select(parent, false));
@@ -1085,6 +1086,21 @@
 			select(table.id, false);
 		});
 		sep();
+	}
+
+	/** A strip, a menu or a menu item selected: its items' editor from the menu, as VS's Edit Items… verb. */
+	function stripMenu(item, sep) {
+		if (state.selection.length !== 1) return;
+		const id = state.selection[0];
+		const type = (itemById(id) || trayById(id) || {}).type || '';
+		const open = (name) => () => {
+			state.openStyles = { id, name };
+			state.tab = 'properties';
+			remember();
+			select(id, false);
+		};
+		if (/\.(MenuStrip|ToolStrip|StatusStrip|ContextMenuStrip|BindingNavigator)$/.test(type)) { item(T('Edit Items…'), '', open('Items')); sep(); }
+		else if (/\.ToolStrip(MenuItem|DropDownButton|SplitButton)$/.test(type)) { item(T('Edit DropDownItems…'), '', open('DropDownItems')); sep(); }
 	}
 
 	/** Right-click selects what is under the mouse (unless it is already part of the selection), then shows the menu. */
@@ -1334,6 +1350,11 @@
 				edit.title = T('Edit items, one per line');
 				edit.addEventListener('click', () => editCollection(id, r, row));
 				value.append(input, edit);
+				const open = state.openStyles;
+				if (open && open.id === id && open.name === r.name) {
+					state.openStyles = null;
+					setTimeout(() => editCollection(id, r, row), 0);
+				}
 				break;
 			}
 			case 'styles': {
@@ -1460,17 +1481,40 @@
 	function editComponents(id, r, row) {
 		const next = row.nextSibling;
 		if (next && next.classList && next.classList.contains('coll-editor')) { next.remove(); return; }
-		const lines = (r.items || []).map((text, i) => ({ id: (r.itemIds || [])[i] || '', text, separator: text === '-' && !!(r.itemIds || [])[i] }));
+		const lines = (r.items || []).map((text, i) => ({ id: (r.itemIds || [])[i] || '', text, separator: text === '-' && !!(r.itemIds || [])[i], type: (r.itemTypes || [])[i] }));
 		const strip = r.type === 'ToolStripItemCollection';
+		const types = r.newTypes || [];
 		const box = el('div', 'coll-editor');
 		const list = el('div', 'coll-list');
+		// A new strip item says its type ("+ToolStripComboBox"); "-" typed as a caption is a separator, as before.
+		const newId = (l) => {
+			if (!strip || !l.type) return '';
+			if (l.type === types[0] && l.text.trim() === '-') return types.includes('ToolStripSeparator') ? '+ToolStripSeparator' : '';
+			return '+' + l.type;
+		};
 		const ok = () => {
-			apply([{ op: 'setItems', id, prop: r.name, values: lines.map((l) => l.text), ids: lines.map((l) => l.id) }], state.selection);
+			apply([{ op: 'setItems', id, prop: r.name, values: lines.map((l) => l.text), ids: lines.map((l) => l.id || newId(l)) }], state.selection);
 		};
 		const draw = (focus) => {
 			list.textContent = '';
 			lines.forEach((line, i) => {
 				const n = el('div', 'coll-row');
+				if (strip) {
+					// The kind of item, as VS's Items Collection Editor shows it; a new one's is picked here.
+					const short = (t) => (t || '').replace(/^ToolStrip/, '') || t;
+					if (line.id) {
+						const label = el('span', 'item-type', short(line.type));
+						label.title = line.type || '';
+						n.append(label);
+					} else {
+						const pick = el('select', 'item-type');
+						for (const t of types) { const o = el('option', '', short(t)); o.value = t; pick.append(o); }
+						pick.value = line.type || types[0];
+						pick.title = T('The kind of item');
+						pick.addEventListener('change', () => { line.type = pick.value; });
+						n.append(pick);
+					}
+				}
 				const input = el('input');
 				input.type = 'text';
 				input.value = line.text;
@@ -1505,7 +1549,7 @@
 			});
 		};
 		const add = button(T('Add'), strip ? T('Add an element; type - for a separator') : T('Add an element'), () => {
-			lines.push({ id: '', text: '' });
+			lines.push({ id: '', text: '', type: types[0] });
 			draw(lines.length - 1);
 		});
 		const bar = el('div', 'coll-bar');

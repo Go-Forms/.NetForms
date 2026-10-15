@@ -2297,6 +2297,13 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     рядом (ссылка на проект), но в `deps.json` его нет, а тесты .NET это не ловили (тестовый хост ищет по папке).
     Теперь `HeadlessPlatform.Install` отдаёт это имя фасаду рядом с NetForms. Локализуемые формы — по-прежнему только
     просмотр (решение 108). Тесты: `DesignerImageTests` (5), protocol-тест хоста на `ResourcesForm`, UI-тест.
+177. **Пункты полос любого вида.** `NewElementType` создавал только кнопку, пункт меню или надпись строки состояния.
+    Теперь `NewItemTypes(owner)` — список VS для полосы (ToolStrip: Button, Label, SplitButton, DropDownButton,
+    Separator, ComboBox, TextBox, ProgressBar; StatusStrip: StatusLabel, ProgressBar, DropDownButton, SplitButton;
+    MenuStrip: MenuItem, ComboBox, TextBox; выпадающее меню — ещё Separator), первый — вид по умолчанию; в `setItems`
+    id нового элемента `+ToolStripComboBox` — элемент этого вида (чужой виду полосы — отказ со списком). Грид отдаёт
+    `itemTypes`/`newTypes`; редактор показывает вид каждого пункта и выбор вида у нового; «Изменить пункты…» /
+    «Изменить подпункты…» в контекстном меню. Тесты: `DesignerStripItemTests` (3), UI-тест.
 
 **Состояние тестов на конец сессии (решения 158–161, 2026-09-26, Linux):** .NET — **504/504** (было 484; +20
 `ControlLibraryTests`). Расширение — **40/40** (было 32: +8 `libraries.test.js`, +1 протокол с библиотекой, +1 UI —

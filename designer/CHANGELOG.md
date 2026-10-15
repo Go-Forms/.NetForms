@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Strip items of every kind:** the Items editor picks the kind of a new item (combo box, text box, progress bar,
+  label, drop-down or split button, separator…); *Edit Items…* in a strip's context menu.
 - **Pictures:** **…** beside `Image`, `BackgroundImage`, `Icon` picks a file, kept in the form's `.resx` as Visual
   Studio keeps it; the grid shows a thumbnail. An ImageList's pictures are added, named, reordered and removed.
 - **Fixed:** a form with an ImageList's pictures in its `.resx` did not open in the designer.

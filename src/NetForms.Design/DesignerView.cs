@@ -165,6 +165,10 @@ public sealed class DesignerPropertyRow
     /// <summary>For a collection of components (<c>components</c>): the id of each element (<c>#index</c> for one without a name), beside its caption in <see cref="Items"/>.</summary>
     public List<string>? ItemIds { get; set; }
 
+    /// <summary>A strip's Items: the type of each element, and the types a new one can be (the first is the default).</summary>
+    public List<string>? ItemTypes { get; set; }
+    public List<string>? NewTypes { get; set; }
+
     /// <summary>A picture's thumbnail (<c>image</c>): a base64 PNG at most 48 px; null for none.</summary>
     public string? Preview { get; set; }
 

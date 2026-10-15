@@ -659,6 +659,24 @@ public sealed partial class DesignSurface : IDisposable
     };
 
     /// <summary>
+    /// The item types VS offers for a strip's Items (its "Add" drop-down): a menu takes menu items, combo boxes and
+    /// text boxes (and separators below the top level); a tool strip every kind of item; a status strip labels,
+    /// progress bars and drop-down and split buttons. The first is what a plain new line becomes.
+    /// </summary>
+    internal static Type[] NewItemTypes(object owner) => owner switch
+    {
+        MenuStrip => new[] { typeof(ToolStripMenuItem), typeof(ToolStripComboBox), typeof(ToolStripTextBox) },
+        ToolStripDropDown or ToolStripDropDownItem => new[] { typeof(ToolStripMenuItem), typeof(ToolStripComboBox), typeof(ToolStripSeparator), typeof(ToolStripTextBox) },
+        StatusStrip => new[] { typeof(ToolStripStatusLabel), typeof(ToolStripProgressBar), typeof(ToolStripDropDownButton), typeof(ToolStripSplitButton) },
+        ToolStrip => new[]
+        {
+            typeof(ToolStripButton), typeof(ToolStripLabel), typeof(ToolStripSplitButton), typeof(ToolStripDropDownButton),
+            typeof(ToolStripSeparator), typeof(ToolStripComboBox), typeof(ToolStripTextBox), typeof(ToolStripProgressBar),
+        },
+        _ => Type.EmptyTypes,
+    };
+
+    /// <summary>
     /// The elements of a component collection, in the order given: <paramref name="ids"/> names the
     /// element each line stands for (its name, <c>#index</c> for one without a name, null or "" for a
     /// new one), <paramref name="values"/> their captions.
@@ -673,6 +691,7 @@ public sealed partial class DesignSurface : IDisposable
         var byText = old.GroupBy(ItemText).ToDictionary(g => g.Key, g => new Queue<object>(g));
         var used = new HashSet<object>(ReferenceEqualityComparer.Instance);
         var wanted = new List<(object? Item, string Text)>();
+        var newTypes = new Dictionary<int, Type>();
         for (int i = 0; i < values.Length; i++)
         {
             var text = values[i] ?? "";
@@ -680,7 +699,13 @@ public sealed partial class DesignSurface : IDisposable
             if (ids != null)
             {
                 var id = ids[i];
-                if (!string.IsNullOrEmpty(id))
+                if (id is ['+', ..])
+                {
+                    // "+ToolStripComboBox": a new element of that type (VS's drop-down of item types).
+                    newTypes[wanted.Count] = NewItemTypes(owner).FirstOrDefault(t => t.Name == id[1..])
+                        ?? throw new DesignerEditException($"A {id[1..]} cannot go into this collection: pick one of {string.Join(", ", NewItemTypes(owner).Select(t => t.Name))}.");
+                }
+                else if (!string.IsNullOrEmpty(id))
                 {
                     // "#2": the element that was third, for one the file declares inline (it has no name yet).
                     item = id[0] == '#' && int.TryParse(id.AsSpan(1), out int at) && at >= 0 && at < old.Count ? old[at] : Resolve(id);
@@ -704,7 +729,7 @@ public sealed partial class DesignSurface : IDisposable
             var (item, text) = wanted[i];
             if (item == null)
             {
-                var type = NewElementType(owner, list, text);
+                var type = newTypes.TryGetValue(i, out var picked) ? picked : NewElementType(owner, list, text);
                 IComponent instance;
                 try { instance = (IComponent)Activator.CreateInstance(type)!; }
                 catch (Exception ex) { throw new DesignerEditException($"Creating a {type.Name} failed: {Unwrap(ex).Message}", ex); }
@@ -1276,6 +1301,11 @@ public sealed partial class DesignSurface : IDisposable
                 (row.Items, row.ItemsFormat) = CollectionText(list);
                 if (row.ItemsFormat == "components")
                     row.ItemIds = list.Cast<object>().Select((o, i) => Model.FindByInstance(o)?.Name ?? "#" + i).ToList();
+                if (list is ToolStripItemCollection)
+                {
+                    row.ItemTypes = list.Cast<object>().Select(o => o.GetType().Name).ToList();
+                    row.NewTypes = NewItemTypes(target).Select(t => t.Name).ToList();
+                }
                 row.Value = $"({list.Count} items)";
             }
             else if (pd.SerializationVisibility == DesignerSerializationVisibility.Content)

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Designer: every kind of strip item.** The Items editor of a ToolStrip, StatusStrip, MenuStrip or menu adds what
+  Visual Studio's *Items Collection Editor* offers for it — label, split and drop-down button, separator, combo box,
+  text box, progress bar (a status strip: status label, progress bar, drop-down and split button; a menu: menu item,
+  combo box, text box, separator) — the kind picked beside each new line, the kind of each existing one shown. Before,
+  every new item was a button, a menu item or a status label. A right-click on a strip offers *Edit Items…*, on a menu
+  item *Edit DropDownItems…*.
 - **Designer: pictures and icons are set from files and kept in the form's `.resx`, as in Visual Studio.** `Image`,
   `BackgroundImage`, a form's `Icon`, a menu item's `Image`: **…** in the property grid picks a file, **✕** clears it,
   and the grid shows a thumbnail. The designer writes `MainForm.resx` as Visual Studio does (the picture's bytes, read

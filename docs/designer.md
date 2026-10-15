@@ -100,7 +100,9 @@ designer writes every control of a table it edits as `Controls.Add(control, colu
 A click on a tab header of a TabControl shows that page, so each page is laid out in turn (written as
 `SelectedIndex`, as Visual Studio does). **…** next to TabPages, a strip's Items, DropDownItems or Columns opens the
 collection editor: the elements by their captions, with add, remove (a tab page with its controls), move up and
-down; `-` adds a menu separator.
+down; `-` adds a menu separator. For a strip's items the kind of each new one is picked beside it — button, label,
+split or drop-down button, separator, combo box, text box, progress bar (what Visual Studio offers for that strip);
+*Edit Items…* / *Edit DropDownItems…* in the context menu opens the editor.
 
 The columns of a **DataGridView** and of a **ListView** (in *Details* view) are selected by a click on their headers and
 edited in the property grid: `Width`, `DataPropertyName`, `ReadOnly`, the cell style and the rest; **ColumnType** changes
