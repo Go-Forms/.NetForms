@@ -300,6 +300,7 @@ public class MonthCalendar : Control
 
     [Category("Behavior")]
     [Description("The range of dates selected in a month calendar control.")]
+    [Bindable(true)]
     public SelectionRange SelectionRange
     {
         get => new(_selectionStart, _selectionEnd);

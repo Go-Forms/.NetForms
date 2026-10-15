@@ -554,6 +554,28 @@ public class DataGridViewTests
     }
 
     [Fact]
+    public void ColumnsTheFormMadeStayAndOnlyTheMissingPropertiesGetColumns()
+    {
+        // What a VS form does: its own columns, bound by DataPropertyName, with AutoGenerateColumns left on.
+        var (_, form, _, grid) = ShowGrid();
+        using (form)
+        {
+            var name = new DataGridViewTextBoxColumn { Name = "nameColumn", DataPropertyName = "Name", HeaderText = "Customer", Width = 150 };
+            grid.Columns.Add(name);
+            var people = new BindingList<Person> { new Person { Name = "Ada", Age = 36 } };
+            grid.DataSource = people;
+            Assert.Equal(new[] { "nameColumn", "Age", "Active" }, grid.Columns.Cast<DataGridViewColumn>().Select(c => c.Name));
+            Assert.Same(name, grid.Columns[0]);
+            Assert.Equal(("Customer", 150), (name.HeaderText, name.Width));
+            Assert.Equal("Ada", grid.Rows[0].Cells[0].Value);
+
+            // Bound again: the columns it made go, the form's stay - none twice.
+            grid.DataSource = new BindingList<Person>();
+            Assert.Equal(new[] { "nameColumn", "Age", "Active" }, grid.Columns.Cast<DataGridViewColumn>().Select(c => c.Name));
+        }
+    }
+
+    [Fact]
     public void BindingSourceTracksThePositionAndForwardsListChanges()
     {
         var people = new BindingList<Person>

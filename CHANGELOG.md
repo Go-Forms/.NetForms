@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- **Designer: data binding in the property grid.** `DataSource` lists the form's binding sources and the classes of
+  the project: a class picked for a grid or a list makes a `customerBindingSource` for it (`DataSource =
+  typeof(Customer)`) and a grid gets a column per property, as in Visual Studio. `DisplayMember`, `ValueMember`,
+  `DataMember` and `DataPropertyName` suggest the properties of the data source. The new **(DataBindings)** group binds
+  `Text`, `Checked`, `Value` and the other bindable properties to a binding source's property
+  (`new Binding("Text", customerBindingSource, "Name", true)`). While designed, a grid makes no columns of its own.
+- **Fixed: a bound DataGridView threw away the columns the form gave it.** With `AutoGenerateColumns` on (the default),
+  binding replaced every column — the designer's, with their headers, widths and types — by generated ones. Now, as
+  in WinForms, a column whose `DataPropertyName` names a property shows it, and only the properties no column shows
+  get a generated column.
+- `[Bindable(true)]` on the properties WinForms marks (`Text`, `Tag`, `Checked`, `CheckState`, `Value`,
+  `SelectedItem`, `SelectedIndex`, `Image`, `SplitterDistance`…).
 - **Designer: a SplitContainer's splitter is dragged on the canvas** and sets `SplitterDistance`, as in Visual Studio.
   Before, a press on the splitter took the whole SplitContainer along.
 - **Fixed: SplitContainer behaved oddly when resized and when designed.** The splitter's position is now kept as in

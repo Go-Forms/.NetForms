@@ -139,6 +139,7 @@ public class ListBox : ListControl
     [Browsable(false)]
     [EditorBrowsable(EditorBrowsableState.Never)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Bindable(true)]
     public override int SelectedIndex
     {
         get => _selection.Count > 0 ? _selection[0] : -1;
@@ -168,6 +169,7 @@ public class ListBox : ListControl
     [Description("The currently selected item in the list box, or null.")]
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Bindable(true)]
     public object? SelectedItem
     {
         get => SelectedIndex >= 0 ? _items[SelectedIndex] : null;

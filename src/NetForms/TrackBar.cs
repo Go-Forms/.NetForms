@@ -133,6 +133,7 @@ public class TrackBar : Control, ISupportInitialize
     [Category("Behavior")]
     [Description("The position of the slider.")]
     [DefaultValue(0)]
+    [Bindable(true)]
     public int Value
     {
         get => _value;

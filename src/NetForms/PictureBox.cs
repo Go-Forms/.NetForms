@@ -64,6 +64,7 @@ public class PictureBox : Control, ISupportInitialize
     [Category("Appearance")]
     [Description("The image displayed in the PictureBox.")]
     [Localizable(true)]
+    [Bindable(true)]
     public Image? Image
     {
         get => _image;

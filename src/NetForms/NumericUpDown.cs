@@ -505,6 +505,7 @@ public class NumericUpDown : UpDownBase, ISupportInitialize
 
     [Category("Appearance")]
     [Description("The current value of the numeric up-down control.")]
+    [Bindable(true)]
     public decimal Value
     {
         get

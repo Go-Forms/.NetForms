@@ -1377,7 +1377,7 @@
 		const filter = state.inspectorFilter || '';
 		const byCat = new Map();
 		for (const r of data.rows) {
-			if (filter && !r.name.toLowerCase().includes(filter)) continue;
+			if (filter && !(r.label || r.name).toLowerCase().includes(filter)) continue;
 			if (!byCat.has(r.category)) byCat.set(r.category, []);
 			byCat.get(r.category).push(r);
 		}
@@ -1410,11 +1410,11 @@
 
 	function propertyRow(id, r) {
 		const row = el('div', 'row');
-		const name = el('div', 'name' + (r.modified ? ' modified' : ''), r.name);
+		const name = el('div', 'name' + (r.modified ? ' modified' : ''), r.label || r.name);
 		name.title = r.description;
 		const value = el('div', 'value');
 		row.append(name, value);
-		row.addEventListener('mouseenter', () => showHelp(r.name, r.description));
+		row.addEventListener('mouseenter', () => showHelp(r.label || r.name, r.description));
 		const commit = (v) => {
 			if (v === r.value) return;
 			// A renamed component stays selected under its new name.
@@ -1428,7 +1428,7 @@
 			case 'component': {
 				const s = el('select');
 				const options = r.editor === 'bool' ? ['True', 'False'] : r.options || [];
-				for (const o of options) { const opt = el('option', '', o === '' ? '(none)' : o); opt.value = o; s.append(opt); }
+				for (const o of options) { const opt = el('option', '', optionLabel(o)); opt.value = o; s.append(opt); }
 				s.value = r.value ?? '';
 				s.addEventListener('change', () => commit(s.value));
 				value.append(s);
@@ -1553,8 +1553,19 @@
 				value.append(input);
 				break;
 			}
-			default:
-				value.append(textInput(r.value, commit));
+			default: {
+				const input = textInput(r.value, commit);
+				if (r.options && r.options.length) {
+					// Suggestions (a DisplayMember from the data source's properties); anything else may be typed.
+					const listId = 'options-' + r.name;
+					const dl = el('datalist');
+					dl.id = listId;
+					for (const o of r.options) { const opt = el('option'); opt.value = o; dl.append(opt); }
+					input.setAttribute('list', listId);
+					value.append(dl);
+				}
+				value.append(input);
+			}
 		}
 		if (r.modified && r.name !== 'Name' && r.editor !== 'readonly' && r.editor !== 'collection' && r.editor !== 'styles' && r.editor !== 'image' && r.editor !== 'images') {
 			const reset = el('button', 'mini', '↺');
@@ -1563,6 +1574,15 @@
 			value.append(reset);
 		}
 		return row;
+	}
+
+	/** How a choice reads in a list: "(none)", a project class as "Customer (ControlLibrary) — project class". */
+	function optionLabel(o) {
+		if (o === '') return T('(none)');
+		const m = /^typeof\((.*)\)$/.exec(o);
+		if (!m) return o;
+		const dot = m[1].lastIndexOf('.');
+		return T('{0} ({1}) — project class', m[1].slice(dot + 1), dot > 0 ? m[1].slice(0, dot) : '');
 	}
 
 	function textInput(val, commit) {

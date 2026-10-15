@@ -142,6 +142,9 @@ public sealed class DesignerHandlerLocation
 public sealed class DesignerPropertyRow
 {
     public string Name { get; set; } = "";
+
+    /// <summary>What the grid shows when it is not the name (a (DataBindings) row is "DataBindings.Text", shown "Text").</summary>
+    public string? Label { get; set; }
     public string Category { get; set; } = "";
     public string Description { get; set; } = "";
 

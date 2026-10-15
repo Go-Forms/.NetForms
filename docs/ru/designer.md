@@ -115,6 +115,15 @@ Ctrl+C / Ctrl+X / Ctrl+V копируют, вырезают и вставляю�
 перетащенный в панель — туда, где показывает метка между контролами; перетаскивание внутри панели меняет порядок, а
 стрелки сдвигают выбранный контрол на одно место назад или вперёд.
 
+**Привязка данных** задаётся в окне свойств, как в Visual Studio. `DataSource` (у BindingSource, DataGridView, ComboBox,
+ListBox) предлагает источники привязки формы и **классы проекта** (его сборка загружается так же, как для своих
+контролов, — сначала соберите проект): класс, выбранный для BindingSource, даёт `DataSource = typeof(Customer)`; для
+таблицы или списка — свой `customerBindingSource` (или тот, что на форме уже есть для этого класса), а таблица
+получает по колонке на каждое свойство (`nameDataGridViewTextBoxColumn`, для `bool` — колонку флажков).
+`DisplayMember`, `ValueMember`, `DataMember` и `DataPropertyName` колонки подсказывают свойства источника. Группа
+**(DataBindings)** привязывает свойства контрола (`Text`, `Tag`, `Checked`, `Value`, `SelectedValue`…) к свойству
+источника: *customerBindingSource - Name* пишет `textBox1.DataBindings.Add(new Binding("Text", customerBindingSource, "Name", true))`.
+
 Сплиттер **SplitContainer** перетаскивается прямо на холсте, как в Visual Studio: за мышью идёт полоса, а
 `SplitterDistance` ставится, когда кнопку отпустили (кроме `IsSplitterFixed` и свёрнутой панели).
 

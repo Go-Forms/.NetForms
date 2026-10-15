@@ -34,6 +34,7 @@ public class RadioButton : ButtonBase
     [Category("Appearance")]
     [Description("Indicates whether the radio button is checked or not.")]
     [DefaultValue(false)]
+    [Bindable(true)]
     public bool Checked
     {
         get => _checked;

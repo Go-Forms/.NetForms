@@ -849,6 +849,7 @@ public class ToolStripComboBox : ToolStripControlHost
     [Description("The currently selected item in the combo box, or null.")]
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Bindable(true)]
     public object? SelectedItem { get => ComboBox.SelectedItem; set => ComboBox.SelectedItem = value; }
 
     [Category("Appearance")]
@@ -925,6 +926,7 @@ public class ToolStripProgressBar : ToolStripControlHost
     [Category("Behavior")]
     [Description("The current value for the ProgressBar, in the range specified by the minimum and maximum properties.")]
     [DefaultValue(0)]
+    [Bindable(true)]
     public int Value { get => ProgressBar.Value; set => ProgressBar.Value = value; }
 
     [Category("Behavior")]

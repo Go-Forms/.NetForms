@@ -51,6 +51,7 @@ public class CheckBox : ButtonBase
     [Category("Appearance")]
     [Description("Indicates whether the component is in the checked state.")]
     [DefaultValue(false)]
+    [Bindable(true)]
     public bool Checked
     {
         get => _checkState != CheckState.Unchecked;
@@ -63,6 +64,7 @@ public class CheckBox : ButtonBase
     [Category("Appearance")]
     [Description("Indicates the state of the component.")]
     [DefaultValue(CheckState.Unchecked)]
+    [Bindable(true)]
     public CheckState CheckState
     {
         get => _checkState;
@@ -99,6 +101,7 @@ public class CheckBox : ButtonBase
     [Description("Determines the location of the check box inside the control.")]
     [DefaultValue(typeof(ContentAlignment), "MiddleLeft")]
     [Localizable(true)]
+    [Bindable(true)]
     public ContentAlignment CheckAlign
     {
         get => _checkAlign;

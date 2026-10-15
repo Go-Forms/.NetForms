@@ -103,11 +103,13 @@ public partial class Control : Component, IWin32Window
     [Category("Data")]
     [Description("User-defined data associated with the object.")]
     [DefaultValue(null)]
+    [Bindable(true)]
     public object? Tag { get; set; }
 
     [Category("Appearance")]
     [Description("The text associated with the control.")]
     [Localizable(true)]
+    [Bindable(true)]
     public virtual string Text
     {
         get => _text;

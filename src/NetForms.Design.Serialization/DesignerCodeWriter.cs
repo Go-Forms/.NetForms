@@ -1004,6 +1004,7 @@ public sealed class DesignerCodeWriter
                 case TableLayoutStyle style: return StyleExpression(style);
                 // VS writes tree nodes as locals (LocalFor), not through TreeNodeConverter's constructor call.
                 case TreeNode: return null;
+                case Binding binding: return BindingExpression(binding);
             }
 
             var converter = TypeDescriptor.GetConverter(value);
@@ -1012,6 +1013,35 @@ public sealed class DesignerCodeWriter
             try { descriptor = converter.ConvertTo(value, typeof(InstanceDescriptor)) as InstanceDescriptor; }
             catch (Exception) { return null; }
             return descriptor is { IsComplete: true } ? DescriptorExpression(descriptor) : null;
+        }
+
+        /// <summary>
+        /// A data binding as VS writes it: <c>new Binding("Text", customerBindingSource, "Name", true)</c>, and the long
+        /// constructor when its update mode, null value or format string are not the defaults. Null when its data
+        /// source is not a component of the form (the statement the file had is kept then).
+        /// </summary>
+        private string? BindingExpression(Binding binding)
+        {
+            if (binding.DataSource == null || Reference(binding.DataSource) is not { } source) return null;
+            var type = _namer.Name(typeof(Binding));
+            var args = new List<string> { Literal(binding.PropertyName), source, Literal(binding.BindingMemberInfo.BindingMember) };
+            bool plain = binding.DataSourceUpdateMode == DataSourceUpdateMode.OnValidation && binding.NullValue == null && string.IsNullOrEmpty(binding.FormatString);
+            if (plain && !binding.FormattingEnabled) return $"new {type}({string.Join(", ", args)})";
+            args.Add(binding.FormattingEnabled ? "true" : "false");
+            if (!plain)
+            {
+                // The update mode alone: the five-argument constructor, as VS writes it; the null value or the
+                // format string: all seven.
+                args.Add(EnumExpression(binding.DataSourceUpdateMode));
+                if (binding.NullValue != null || !string.IsNullOrEmpty(binding.FormatString))
+                {
+                    var nullValue = binding.NullValue == null ? "null" : Expression(binding.NullValue, typeof(object));
+                    if (nullValue == null) return null;
+                    args.Add(nullValue);
+                    args.Add(Literal(binding.FormatString ?? ""));
+                }
+            }
+            return $"new {type}({string.Join(", ", args)})";
         }
 
         private string? DescriptorExpression(InstanceDescriptor descriptor)

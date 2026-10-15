@@ -114,6 +114,16 @@ A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it g
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.
 
+**Data binding** is set in the property grid, as in Visual Studio. `DataSource` (of a BindingSource, a DataGridView, a
+ComboBox, a ListBox) lists the form's binding sources and the **classes of the project** (its build output is loaded
+as for its own controls — build it first): a class picked for a BindingSource becomes `DataSource = typeof(Customer)`;
+picked for a grid or a list it gets a `customerBindingSource` of its own (or the one the form has for that class), and
+a grid gets a column for each property (`nameDataGridViewTextBoxColumn`, a check box column for a `bool`).
+`DisplayMember`, `ValueMember`, `DataMember` and a column's `DataPropertyName` suggest the data source's properties.
+The **(DataBindings)** group binds a control's bindable properties (`Text`, `Tag`, `Checked`, `Value`,
+`SelectedValue`…) to a property of a binding source: *customerBindingSource - Name* writes
+`textBox1.DataBindings.Add(new Binding("Text", customerBindingSource, "Name", true))`.
+
 A **SplitContainer**'s splitter is dragged on the canvas, as in Visual Studio: a bar follows the mouse and
 `SplitterDistance` is set when it is let go (not while `IsSplitterFixed` is on or a panel is collapsed).
 

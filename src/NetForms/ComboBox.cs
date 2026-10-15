@@ -209,6 +209,7 @@ public class ComboBox : ListControl
     [Description("The currently selected item in the combo box, or null.")]
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Bindable(true)]
     public object? SelectedItem
     {
         get => _selectedIndex >= 0 ? _items[_selectedIndex] : null;

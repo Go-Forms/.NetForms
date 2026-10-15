@@ -305,6 +305,7 @@ public sealed partial class DesignSurface : IDisposable
                 component.Site = new DesignSite(component, c.IsRoot ? Model.ClassName : c.Name ?? "", _extenders);
         foreach (var c in Model.Components)
         {
+            if (c.Instance is DataGridView grid) PrepareGridForDesign(c, grid);
             if (c.Instance is not Control control || !IsShadowable(control)) continue;
             if (!control.VisibleOwn)
             {
@@ -487,6 +488,11 @@ public sealed partial class DesignSurface : IDisposable
             SetColumnType(column, value);
             return;
         }
+        if (IsBindingProperty(name, out var bound))
+        {
+            SetBinding(target, bound, value);
+            return;
+        }
 
         var pd = FindProperty(target, name)
             ?? throw new DesignerEditException($"'{target.GetType().Name}' has no property '{name}'.");
@@ -498,6 +504,11 @@ public sealed partial class DesignSurface : IDisposable
             return;
         }
         if (pd.IsReadOnly) throw new DesignerEditException($"{name} is read-only.");
+        if (IsDataSourceProperty(pd))
+        {
+            SetDataSource(target, pd, value);
+            return;
+        }
 
         object? converted;
         try { converted = Convert(pd, value); }
@@ -533,6 +544,11 @@ public sealed partial class DesignSurface : IDisposable
 
     private void ResetProperty(object target, string name)
     {
+        if (IsBindingProperty(name, out var bound))
+        {
+            SetBinding(target, bound, null);
+            return;
+        }
         var component = Model.FindByInstance(target);
         if (component != null && component.RemoveShadowProperty(name)) return;
         if (IsCellProperty(target, name, out var table, out var cellControl))
@@ -1331,7 +1347,11 @@ public sealed partial class DesignSurface : IDisposable
                 rows.Add(row);
                 continue;
             }
-            if (IsReference(type))
+            if (IsDataSourceProperty(pd))
+            {
+                DataSourceRow(row, target, value);
+            }
+            else if (IsReference(type))
             {
                 row.Editor = "component";
                 row.Value = value == null ? "" : Model.FindByInstance(value)?.Name ?? "";
@@ -1351,6 +1371,11 @@ public sealed partial class DesignSurface : IDisposable
                 }
                 row.Value = $"({list.Count} items)";
             }
+            else if (value is ControlBindingsCollection)
+            {
+                // Edited in its own category, (DataBindings), a row per bindable property (BindingRows).
+                continue;
+            }
             else if (pd.SerializationVisibility == DesignerSerializationVisibility.Content)
             {
                 // A content object the grid cannot edit inline (DataBindings, FlatAppearance): shown, not bold unless it holds something.
@@ -1369,6 +1394,7 @@ public sealed partial class DesignSurface : IDisposable
                     : IsNumber(type) ? "number"
                     : "text";
                 if (type.IsEnum) row.Options = Enum.GetNames(type).ToList();
+                else if (type == typeof(string) && pd.Name is "DisplayMember" or "ValueMember" or "DataMember" or "DataPropertyName") MemberOptions(row, target, pd.Name);
                 else if (!pd.IsReadOnly && type != typeof(bool) && pd.Converter.GetStandardValuesSupported())
                 {
                     var standard = pd.Converter.GetStandardValues();
@@ -1383,6 +1409,7 @@ public sealed partial class DesignSurface : IDisposable
         }
         if (component is { IsRoot: false } || target is TableLayoutPanel) TableRows(target, rows);
         if (target is DataGridViewColumn { DataGridView: not null } column) rows.Add(ColumnTypeRow(column));
+        BindingRows(target, rows);
         return rows.OrderBy(r => r.Category, StringComparer.Ordinal).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
     }
 

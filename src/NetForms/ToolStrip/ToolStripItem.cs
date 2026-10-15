@@ -202,6 +202,7 @@ public abstract partial class ToolStripItem : Component
     [Category("Data")]
     [Description("User-defined data associated with the item.")]
     [DefaultValue(null)]
+    [Bindable(true)]
     public object? Tag { get; set; }
 
     [Category("Behavior")]

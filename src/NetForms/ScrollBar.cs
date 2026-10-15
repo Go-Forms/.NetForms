@@ -95,6 +95,7 @@ public abstract class ScrollBar : Control
     [Category("Behavior")]
     [Description("The value that the scroll box position represents.")]
     [DefaultValue(0)]
+    [Bindable(true)]
     public int Value
     {
         get => _core.Value;

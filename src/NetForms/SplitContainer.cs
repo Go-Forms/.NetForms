@@ -349,6 +349,7 @@ public class SplitContainer : ContainerControl, ISupportInitialize
     [Description("Determines pixel distance of the splitter from the left or top edge.")]
     [DefaultValue(50)]
     [Localizable(true)]
+    [Bindable(true)]
     public int SplitterDistance
     {
         get => _splitDistance;

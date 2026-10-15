@@ -92,7 +92,8 @@ test('the canvas edits the form with the mouse', { skip, timeout: 120000 }, asyn
 	// The property grid: set Text through the text box, commit with Enter.
 	await page.waitForFunction(() => [...document.querySelectorAll('.row .name')].some((n) => n.textContent === 'Text'));
 	await gesture(async () => {
-		const input = await page.evaluateHandle(() => [...document.querySelectorAll('.row')].find((r) => r.querySelector('.name')?.textContent === 'Text').querySelector('input'));
+		// (By its property: the (DataBindings) row for Text is shown as "Text" too.)
+		const input = await page.waitForSelector('.row[data-prop="Text"] input');
 		await input.click({ clickCount: 3 });
 		await input.type('Сохранить');
 		await page.keyboard.press('Enter');
@@ -1062,5 +1063,58 @@ test('a SplitContainer\'s splitter is dragged on the canvas', { skip, timeout: 1
 	// The container did not move.
 	const location = (x) => /splitContainer1\.Location = [^;]*;/.exec(x)[0];
 	assert.equal(location(text), location(before));
+	assert.deepEqual(errors, []);
+});
+
+// Decision 182: a class of the project is picked as a grid's DataSource (a binding source and columns follow), and a
+// text box's Text is bound in (DataBindings).
+test('a grid is bound to a class of the project, a text box to one of its properties', { skip, timeout: 120000 }, async (t) => {
+	const fixture = path.join(repo, 'tests', 'Fixtures', 'ControlLibrary');
+	const output = ['Debug', 'Release'].map((c) => path.join(fixture, 'bin', c, 'net10.0', 'ControlLibrary.dll')).find(fs.existsSync);
+	if (!output) { t.skip('build tests/Fixtures/ControlLibrary first'); return; }
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-bind-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	fs.mkdirSync(out, { recursive: true });
+	const harness = await start(designer, { libraries: { load: [output], groups: [] } });
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 800 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 300));
+		return file();
+	};
+	const toolbox = async (name) => { const before = file(); await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name); return waitFile(before); };
+	const choose = async (prop, value) => {
+		const select = await page.waitForSelector(`.row[data-prop="${prop}"] select`);
+		const before = file();
+		await select.select(value);
+		return waitFile(before);
+	};
+
+	await toolbox('DataGridView');
+	const label = await page.evaluate(() => [...document.querySelectorAll('.row[data-prop="DataSource"] option')].map((o) => o.textContent));
+	assert.ok(label.includes('Customer (ControlLibrary) — project class'), label.join(', '));
+	let text = await choose('DataSource', 'typeof(ControlLibrary.Customer)');
+	assert.match(text, /customerBindingSource\.DataSource = typeof\(ControlLibrary\.Customer\);/);
+	assert.match(text, /dataGridView1\.DataSource = customerBindingSource;/);
+	assert.match(text, /nameDataGridViewTextBoxColumn\.DataPropertyName = "Name";/);
+	await page.screenshot({ path: path.join(out, 'bind-1-grid.png') });
+
+	await toolbox('TextBox');
+	await page.waitForSelector('.cat-head');
+	assert.ok(await page.evaluate(() => [...document.querySelectorAll('.cat-head')].some((h) => h.textContent === '(DataBindings)')));
+	text = await choose('DataBindings.Text', 'customerBindingSource - Name');
+	assert.match(text, /textBox1\.DataBindings\.Add\(new (System\.Windows\.Forms\.)?Binding\("Text", customerBindingSource, "Name", true\)\);/);
+	await page.screenshot({ path: path.join(out, 'bind-2-textbox.png') });
 	assert.deepEqual(errors, []);
 });

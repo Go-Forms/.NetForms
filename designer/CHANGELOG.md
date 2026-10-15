@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Data binding:** pick a class of your project as a grid's or list's `DataSource` (a binding source and the grid's
+  columns are made, as in Visual Studio); `DisplayMember`/`ValueMember`/`DataMember`/`DataPropertyName` suggest its
+  properties; bind `Text`, `Checked`, `Value`… in the new **(DataBindings)** group.
 - **SplitContainer:** drag its splitter on the canvas to set `SplitterDistance` (it used to move the whole control);
   the splitter no longer drifts when the form or the container is resized.
 - **Selection rectangle:** drag on the form (or inside a selected panel) to select the controls it touches; a selected

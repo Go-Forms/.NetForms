@@ -226,6 +226,7 @@ public class ToolStripMenuItem : ToolStripDropDownItem
     [Category("Appearance")]
     [Description("Indicates whether the component is in the checked state.")]
     [DefaultValue(false)]
+    [Bindable(true)]
     public bool Checked
     {
         get => _checked;
@@ -235,6 +236,7 @@ public class ToolStripMenuItem : ToolStripDropDownItem
     [Category("Appearance")]
     [Description("Indicates the state of the component.")]
     [DefaultValue(CheckState.Unchecked)]
+    [Bindable(true)]
     public CheckState CheckState
     {
         get => _checkState;

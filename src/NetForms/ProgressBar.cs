@@ -121,6 +121,7 @@ public class ProgressBar : Control
     [Category("Behavior")]
     [Description("The current value for the ProgressBar, in the range specified by the minimum and maximum properties.")]
     [DefaultValue(0)]
+    [Bindable(true)]
     public int Value
     {
         get => _value;
