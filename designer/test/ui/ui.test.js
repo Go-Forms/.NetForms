@@ -270,6 +270,9 @@ test('tree nodes are edited as indented lines', { skip, timeout: 90000 }, async 
 	await page.mouse.click(tree.x + 10, tree.y + 10);
 	await page.waitForFunction(() => [...document.querySelectorAll('.row .name')].some((n) => n.textContent === 'Nodes'));
 	await page.evaluate(() => [...document.querySelectorAll('.row')].find((r) => r.querySelector('.name')?.textContent === 'Nodes').querySelector('button.mini').click());
+	// The TreeNode Editor opens; "As text…" turns it into the indented lines.
+	await page.waitForSelector('.tree-editor');
+	await page.evaluate(() => [...document.querySelectorAll('.tree-editor button')].find((b) => b.textContent === 'As text…').click());
 	const area = await page.waitForSelector('textarea');
 	assert.equal(await area.evaluate((a) => a.value), 'Root\n  Child\nSecond');
 
@@ -1191,5 +1194,52 @@ test('Anchor, Dock, colors and fonts are picked in visual editors', { skip, time
 	text = await waitFile(before);
 	assert.match(text, /button1\.Font = new Font\("Segoe UI", 12F, FontStyle\.Bold\);/);
 	await page.screenshot({ path: path.join(out, 'pick-3-font.png') });
+	assert.deepEqual(errors, []);
+});
+
+// Decision 184: the TreeNode Editor - nodes added, moved in and out, named, tagged, checked.
+test('the TreeNode Editor edits each node and its place', { skip, timeout: 90000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-nodes-'));
+	for (const f of ['CollectionsForm.cs', 'CollectionsForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'Gallery', f), path.join(dir, f));
+	const designer = path.join(dir, 'CollectionsForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 800 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const tree = await (await page.waitForSelector('.hit[data-id="treeView1"]')).boundingBox();
+	await page.mouse.click(tree.x + 10, tree.y + 10);
+	await (await page.waitForSelector('.row[data-prop="Nodes"] button.mini')).click();
+	await page.waitForSelector('.tree-editor');
+	const texts = () => page.$$eval('.tree-node', (n) => n.map((x) => x.style.paddingLeft + ' ' + x.textContent));
+	assert.deepEqual(await texts(), ['4px Root', '20px Child', '4px Second']);
+	const tool = (label) => page.evaluate((l) => [...document.querySelectorAll('.tree-tools button')].find((b) => b.textContent === l || b.title === l).click(), label);
+	const node = (i) => page.click(`.tree-node[data-index="${i}"]`);
+	const type = async (field, value) => { const f = await page.$(`.tree-props [data-field="${field}"]`); await f.click({ clickCount: 3 }); await f.type(value); };
+
+	// Second gets a child, named and tagged; Child moves out to the top level and is checked.
+	await node(2);
+	await tool('Add Child');
+	await type('text', 'Third');
+	await type('tag', 'three');
+	await node(1);
+	await tool('←');
+	await page.click('.tree-props [data-field="checked"]');
+	assert.deepEqual(await texts(), ['4px Root', '4px Child', '4px Second', '20px Third']);
+	await page.screenshot({ path: path.join(out, 'nodes-1-editor.png') });
+	const before = fs.readFileSync(designer, 'utf8');
+	await page.evaluate(() => [...document.querySelectorAll('.tree-editor button')].find((b) => b.textContent === 'OK').click());
+	for (let i = 0; i < 40 && fs.readFileSync(designer, 'utf8') === before; i++) await new Promise((r) => setTimeout(r, 250));
+	const file = fs.readFileSync(designer, 'utf8');
+	assert.match(file, /TreeNode treeNode\d = new TreeNode\("Root"\);/);
+	assert.match(file, /treeNode\d\.Checked = true;/);
+	assert.match(file, /treeNode\d\.Tag = "three";/);
+	assert.match(file, /treeNode\d\.Name = "Node0";/);
+	assert.match(file, /new TreeNode\("Second", new TreeNode\[\] \{ treeNode\d \}\)/);
 	assert.deepEqual(errors, []);
 });

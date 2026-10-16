@@ -114,6 +114,11 @@ A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it g
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.
 
+A **TreeView**'s *Nodes* (**…**) open the TreeNode Editor, as in Visual Studio: the nodes as a tree — *Add Root*,
+*Add Child*, delete, move up and down, out (a sibling of its parent) and in (a child of the node above) — and the
+selected node's `Text`, `Name`, `ImageKey`, `SelectedImageKey` and `StateImageKey` (from the tree's ImageList, with
+thumbnails), `Tag`, `ToolTipText` and `Checked`. *As text…* edits the texts as indented lines instead.
+
 **▾** beside `Anchor`, `Dock`, a color or a font opens Visual Studio's editor for it: four bars around a box for
 `Anchor`, the six places for `Dock`, a color picker with *Custom* (a palette), *Web* and *System* colors, and the font's
 family, size and style with a sample. A button given a color of its own gets `UseVisualStyleBackColor = false`, as in

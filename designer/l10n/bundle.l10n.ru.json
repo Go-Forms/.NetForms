@@ -328,5 +328,16 @@
 	"Bold": "Жирный",
 	"Italic": "Курсив",
 	"Underline": "Подчёркнутый",
-	"Strikeout": "Зачёркнутый"
+	"Strikeout": "Зачёркнутый",
+	"(default)": "(по умолчанию)",
+	"No nodes: Add Root adds one.": "Узлов нет: «Добавить корень» добавит.",
+	"Add Root": "Добавить корень",
+	"Add a node at the top level": "Добавить узел верхнего уровня",
+	"Add Child": "Добавить дочерний",
+	"Add a node under the selected one": "Добавить узел под выбранным",
+	"Remove the node and its children": "Удалить узел и его дочерние",
+	"Out: a sibling of its parent": "Наружу: соседом родителя",
+	"In: a child of the node above": "Внутрь: дочерним узлом выше",
+	"As text…": "Текстом…",
+	"Edit the texts as indented lines": "Править тексты строками с отступами"
 }

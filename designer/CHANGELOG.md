@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **TreeNode Editor:** a TreeView's nodes as a tree — add, delete, move, indent — with each node's Name, pictures,
+  Tag, ToolTipText and Checked.
 - **Visual editors:** Anchor (bars around a box), Dock (the six places), a color picker (Custom, Web, System) and a
   font picker (family, size, styles, sample) behind **▾** in the property grid.
 - **Data binding:** pick a class of your project as a grid's or list's `DataSource` (a binding source and the grid's

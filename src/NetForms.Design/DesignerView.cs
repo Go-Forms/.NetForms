@@ -192,6 +192,12 @@ public sealed class DesignerPropertyRow
     /// <summary>A picture's thumbnail (<c>image</c>): a base64 PNG at most 48 px; null for none.</summary>
     public string? Preview { get; set; }
 
+    /// <summary>A TreeView's Nodes: every node with its properties, for the TreeNode Editor.</summary>
+    public List<DesignerTreeNode>? TreeNodes { get; set; }
+
+    /// <summary>The pictures a tree's nodes can take (its ImageList: keys, or "#i"), their thumbnails in <see cref="Previews"/>.</summary>
+    public List<string>? TreeImages { get; set; }
+
     /// <summary>An ImageList's pictures (<c>images</c>): a thumbnail beside each name in <see cref="Items"/>.</summary>
     public List<string>? Previews { get; set; }
 }

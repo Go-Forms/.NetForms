@@ -353,6 +353,7 @@ public sealed partial class DesignSurface : IDisposable
             case "setParent": SetParent(Resolve(op.Id), Resolve(op.Parent), op); break;
             case "setImage": SetImage(Resolve(op.Id), Required(op.Prop, "prop"), op.Value); break;
             case "setImages": SetImages(Resolve(op.Id), op.Values ?? Array.Empty<string>(), op.Ids); break;
+            case "setTreeNodes": SetTreeNodes(Resolve(op.Id), op.Value); break;
             case "reorder": Reorder(AsControl(Resolve(op.Id)), op.Ids ?? Array.Empty<string?>()); break;
             case "setCell": MoveToCell(AsControl(Resolve(op.Id)), op.Column ?? throw new DesignerEditException("The edit needs 'column'."), op.Row ?? throw new DesignerEditException("The edit needs 'row'.")); break;
             case "setStyles": SetStyles(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
@@ -1362,6 +1363,11 @@ public sealed partial class DesignSurface : IDisposable
             {
                 row.Editor = "collection";
                 (row.Items, row.ItemsFormat) = CollectionText(list);
+                if (list is TreeNodeCollection treeNodes && target is TreeView tree)
+                {
+                    row.TreeNodes = TreeNodesOf(treeNodes);
+                    TreeImages(row, tree);
+                }
                 if (row.ItemsFormat == "components")
                     row.ItemIds = list.Cast<object>().Select((o, i) => Model.FindByInstance(o)?.Name ?? "#" + i).ToList();
                 if (list is ToolStripItemCollection)

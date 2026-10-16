@@ -274,3 +274,15 @@ button, input, select { font: inherit; color: inherit; }
 .font-line .font-size { width: 56px; }
 .font-styles { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 4px 0; }
 .font-sample { padding: 4px; border: 1px solid #8886; overflow: hidden; white-space: nowrap; }
+
+/* The TreeNode Editor (decision 184). */
+.tree-body { display: flex; gap: 6px; }
+.tree-list { flex: 1; min-width: 0; max-height: 220px; overflow-y: auto; border: 1px solid #8886; }
+.tree-node { display: flex; align-items: center; gap: 4px; padding: 1px 4px; cursor: pointer; white-space: nowrap; }
+.tree-node.on { background: var(--vscode-list-activeSelectionBackground, #0078d4); color: var(--vscode-list-activeSelectionForeground, #fff); }
+.tree-props { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tree-field { display: flex; align-items: center; gap: 4px; }
+.tree-field > span { width: 46%; overflow: hidden; text-overflow: ellipsis; }
+.tree-field > input[type=text], .tree-field > select { flex: 1; min-width: 0; }
+.tree-tools { flex-wrap: wrap; }
+

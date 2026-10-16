@@ -1750,8 +1750,9 @@
 		return input;
 	}
 
-	function editCollection(id, r, row) {
+	function editCollection(id, r, row, asText) {
 		if (r.itemsFormat === 'components') { editComponents(id, r, row); return; }
+		if (r.itemsFormat === 'tree' && r.treeNodes && !asText) { editTree(id, r, row); return; }
 		const area = el('textarea');
 		area.value = (r.items || []).join('\n');
 		area.rows = Math.min(12, Math.max(4, (r.items || []).length + 1));
@@ -1987,6 +1988,119 @@
 	 * An ImageList's pictures, as VS's Images Collection Editor: each with its thumbnail and name, reordered and
 	 * removed; "Add…" picks files. OK writes them (the list's ImageStream goes to the form's .resx).
 	 */
+	/**
+	 * The TreeNode Editor, as VS has it: the nodes as a tree (Add Root, Add Child, Delete, moved up, down, in and out),
+	 * the selected node's Text, Name, pictures (the tree's ImageList), Tag, ToolTipText and Checked beside it.
+	 * OK sends the whole tree (setTreeNodes); "As text…" edits the texts as indented lines instead.
+	 */
+	function editTree(id, r, row) {
+		const next = row.nextSibling;
+		if (next && next.classList && next.classList.contains('coll-editor')) { next.remove(); return; }
+		const nodes = (r.treeNodes || []).map((n) => ({ ...n }));
+		let current = nodes.length ? 0 : -1;
+		const box = el('div', 'coll-editor tree-editor');
+		const list = el('div', 'tree-list');
+		const props = el('div', 'tree-props');
+		const end = (i) => { let j = i + 1; while (j < nodes.length && nodes[j].depth > nodes[i].depth) j++; return j; };
+		const prevSibling = (i) => { for (let k = i - 1; k >= 0; k--) { if (nodes[k].depth === nodes[i].depth) return k; if (nodes[k].depth < nodes[i].depth) return -1; } return -1; };
+		const parentOf = (i) => { for (let k = i - 1; k >= 0; k--) if (nodes[k].depth < nodes[i].depth) return k; return -1; };
+		const freshName = () => { let n = 0; while (nodes.some((x) => x.name === 'Node' + n)) n++; return 'Node' + n; };
+		const block = (i) => nodes.slice(i, end(i));
+		const move = (from, to) => { const b = nodes.splice(from, end(from) - from); nodes.splice(to, 0, ...b); return to; };
+		const ops = {
+			root: () => { const name = freshName(); nodes.push({ from: null, depth: 0, text: name, name, image: '', selectedImage: '', stateImage: '', tag: '', toolTipText: '', checked: false }); current = nodes.length - 1; },
+			child: () => {
+				if (current < 0) return ops.root();
+				const name = freshName();
+				const at = end(current);
+				nodes.splice(at, 0, { from: null, depth: nodes[current].depth + 1, text: name, name, image: '', selectedImage: '', stateImage: '', tag: '', toolTipText: '', checked: false });
+				current = at;
+			},
+			del: () => { if (current < 0) return; nodes.splice(current, end(current) - current); current = Math.min(current, nodes.length - 1); },
+			up: () => { const p = prevSibling(current); if (p >= 0) current = move(current, p); },
+			down: () => {
+				const after = end(current);
+				if (after >= nodes.length || nodes[after].depth !== nodes[current].depth) return;
+				const size = end(current) - current;
+				const target = end(after) - size;
+				current = move(current, target);
+			},
+			in: () => { const p = prevSibling(current); if (p < 0) return; for (const n of block(current)) n.depth++; },
+			out: () => {
+				const parent = parentOf(current);
+				if (parent < 0) return;
+				const size = end(current) - current;
+				for (const n of block(current)) n.depth--;
+				// After the rest of its old parent's children: it becomes the parent's next sibling.
+				let after = current + size;
+				while (after < nodes.length && nodes[after].depth > nodes[parent].depth) after++;
+				current = move(current, after - size);
+			},
+		};
+		const field = (label, input) => { const l = el('label', 'tree-field'); const s = el('span', '', label); s.title = label; l.append(s, input); return l; };
+		const imageSelect = (key) => {
+			const s = el('select');
+			const add = (value, text) => { const o = el('option', '', text); o.value = value; s.append(o); };
+			add('', T('(default)'));
+			for (const img of r.treeImages || []) add(img, img);
+			const n = nodes[current];
+			if (n[key] && !(r.treeImages || []).includes(n[key])) add(n[key], n[key]);
+			s.value = n[key] || '';
+			s.dataset.field = key;
+			s.addEventListener('change', () => { n[key] = s.value; drawList(); });
+			return s;
+		};
+		const text = (key) => {
+			const input = el('input');
+			input.type = 'text';
+			input.value = nodes[current][key] || '';
+			input.dataset.field = key;
+			input.addEventListener('input', () => { nodes[current][key] = input.value; if (key === 'text') drawList(); });
+			return input;
+		};
+		const drawProps = () => {
+			props.textContent = '';
+			if (current < 0) { props.append(el('div', 'hint', T('No nodes: Add Root adds one.'))); return; }
+			const check = el('input');
+			check.type = 'checkbox';
+			check.checked = !!nodes[current].checked;
+			check.dataset.field = 'checked';
+			check.addEventListener('change', () => { nodes[current].checked = check.checked; });
+			props.append(field('Text', text('text')), field('Name', text('name')), field('ImageKey', imageSelect('image')),
+				field('SelectedImageKey', imageSelect('selectedImage')), field('StateImageKey', imageSelect('stateImage')),
+				field('Tag', text('tag')), field('ToolTipText', text('toolTipText')), field('Checked', check));
+		};
+		const drawList = () => {
+			list.textContent = '';
+			nodes.forEach((n, i) => {
+				const item = el('div', 'tree-node' + (i === current ? ' on' : ''));
+				item.style.paddingLeft = (4 + n.depth * 16) + 'px';
+				const index = n.image && n.image.startsWith('#') ? Number(n.image.slice(1)) : (r.treeImages || []).indexOf(n.image);
+				const preview = (r.previews || [])[index];
+				if (preview) { const t = el('img', 'thumb'); t.src = 'data:image/png;base64,' + preview; t.alt = ''; item.append(t); }
+				item.append(document.createTextNode(n.text || '(' + n.name + ')'));
+				item.dataset.index = String(i);
+				item.addEventListener('click', () => { current = i; drawList(); drawProps(); });
+				list.append(item);
+			});
+		};
+		const act = (name) => () => { ops[name](); drawList(); drawProps(); };
+		const tools = el('div', 'coll-bar tree-tools');
+		tools.append(button(T('Add Root'), T('Add a node at the top level'), act('root')), button(T('Add Child'), T('Add a node under the selected one'), act('child')),
+			button('✕', T('Remove the node and its children'), act('del')), button('↑', T('Move up'), act('up')), button('↓', T('Move down'), act('down')),
+			button('←', T('Out: a sibling of its parent'), act('out')), button('→', T('In: a child of the node above'), act('in')));
+		const ok = () => apply([{ op: 'setTreeNodes', id, value: JSON.stringify(nodes) }], state.selection);
+		const bar = el('div', 'coll-bar');
+		bar.append(button('OK', T('Apply the changes'), ok), button(T('Cancel'), T('Close without changes'), () => box.remove()),
+			button(T('As text…'), T('Edit the texts as indented lines'), () => { box.remove(); editCollection(id, r, row, true); }));
+		const body = el('div', 'tree-body');
+		body.append(list, props);
+		box.append(tools, body, bar);
+		row.after(box);
+		drawList();
+		drawProps();
+	}
+
 	function editImages(id, r, row) {
 		const next = row.nextSibling;
 		if (next && next.classList && next.classList.contains('coll-editor')) { next.remove(); return; }
