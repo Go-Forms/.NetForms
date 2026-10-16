@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4 — designer: ToolStripContainer, data binding, smart tags and the outline
 
 - **Designer: smart tags.** The arrow at a selected control's corner opens its Tasks panel, as in Visual Studio: its
   main properties, its editors (Edit Items…, Edit Columns…, Edit Nodes…) and its commands — Dock in Parent Container,

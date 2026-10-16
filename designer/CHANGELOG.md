@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.4
 
+- New projects reference NetForms 0.1.4.
 - **Smart tags:** the ◂ arrow of a selected control opens its Tasks panel — properties, editors and commands (Dock in
   Parent Container, Add Tab, Add Column, Embed in ToolStripContainer, Insert Standard Items).
 - **Document Outline:** the controls as a tree in the left pane's *Outline* tab — select, move into a container,
