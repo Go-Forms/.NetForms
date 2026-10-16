@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5 — nested menus stay open
+
+- **Fixed: a nested submenu closed before the mouse could reach it.** A submenu is a window of its own, so on the way
+  there the mouse crosses the parent menu's edge and leaves its window; both dropped the selection and closed the
+  submenu, so from the second level down a MenuStrip's or a ContextMenuStrip's nested items could not be clicked. Now,
+  as in WinForms, an item whose submenu is open stays selected until another item is hovered.
+
 ## 0.1.4 — designer: ToolStripContainer, data binding, smart tags and the outline
 
 - **Designer: smart tags.** The arrow at a selected control's corner opens its Tasks panel, as in Visual Studio: its

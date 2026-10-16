@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NetForms" Version="0.1.4" />
+    <PackageReference Include="NetForms" Version="0.1.5" />
   </ItemGroup>
 
   <ItemGroup>

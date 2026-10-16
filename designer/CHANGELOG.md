@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5
+
+- New projects reference NetForms 0.1.5 (nested submenus stay open while the mouse travels to them).
+
 ## 0.2.4
 
 - New projects reference NetForms 0.1.4.
