@@ -82,7 +82,12 @@
 				renderToolbox();
 				break;
 			case 'properties':
-				if (m.id === primaryId()) { state.props = { id: m.id, rows: m.rows }; renderInspector(); }
+				if (m.id === primaryId()) {
+					state.props = { id: m.id, rows: m.rows };
+					renderInspector();
+					// An open smart tag shows the same properties.
+					if (state.smartOpen === m.id) refreshSelection();
+				}
 				break;
 			case 'events':
 				if (m.id === primaryId()) { state.events = { id: m.id, rows: m.rows }; renderInspector(); }
@@ -738,6 +743,7 @@
 	}
 
 	function selectionChanged() {
+		if (state.smartOpen && !(state.selection.length === 1 && state.selection[0] === state.smartOpen)) state.smartOpen = null;
 		state.props = null;
 		state.events = null;
 		refreshSelection();
@@ -800,6 +806,7 @@
 		const id = primaryId();
 		const it = itemById(id);
 		if (!it || state.selection.length !== 1 || !it.visible || state.locked) return;
+		if (it.smartTag && it.kind === 'control') drawSmartTag(canvas, it);
 		if (it.container && it.movable && it.kind === 'control') {
 			// VS's move glyph: a drag inside a selected container draws a selection rectangle, this moves it.
 			const g = el('div', 'handle move-glyph', '✥');
@@ -1722,6 +1729,97 @@
 	}
 
 	// --- visual property editors -----------------------------------------------------------------
+
+	// --- smart tags (decision 186) ---------------------------------------------------------------------
+
+	/** The arrow at the selected control's top right corner, and its Tasks panel when open. */
+	function drawSmartTag(canvas, it) {
+		const width = parseFloat(canvas.style.width) || 0;
+		const x = it.x + it.w + 18 <= width ? it.x + it.w + 3 : it.x + it.w - 16;
+		const y = Math.max(0, it.y - 2);
+		const glyph = el('div', 'handle smart-glyph' + (state.smartOpen === it.id ? ' on' : ''), '◂');
+		glyph.title = T('{0} Tasks', shortType(it.type));
+		glyph.style.left = x + 'px';
+		glyph.style.top = y + 'px';
+		glyph.addEventListener('mousedown', (e) => {
+			e.stopPropagation();
+			e.preventDefault();
+			state.smartOpen = state.smartOpen === it.id ? null : it.id;
+			refreshSelection();
+		});
+		canvas.append(glyph);
+		if (state.smartOpen === it.id) canvas.append(smartPanel(it, x + 16, y));
+	}
+
+	function smartPanel(it, x, y) {
+		const panel = el('div', 'handle smart-panel');
+		panel.style.left = x + 'px';
+		panel.style.top = y + 'px';
+		for (const type of ['mousedown', 'click', 'dblclick', 'contextmenu']) panel.addEventListener(type, (e) => e.stopPropagation());
+		panel.append(el('div', 'smart-title', T('{0} Tasks', shortType(it.type))));
+		const rows = state.props && state.props.id === it.id ? state.props.rows : null;
+		for (const action of it.smartTag) {
+			const line = el('div', 'smart-line');
+			if (action.verb) {
+				const link = el('button', 'smart-link', T(action.label));
+				link.dataset.verb = action.verb;
+				link.addEventListener('click', () => apply([{ op: 'verb', id: it.id, value: action.verb }], [it.id]));
+				line.append(link);
+			} else if (action.edit) {
+				const link = el('button', 'smart-link', T(action.label));
+				link.dataset.edit = action.edit;
+				link.addEventListener('click', () => {
+					// The grid's own editor for it, as VS's "Edit Items…" opens the collection editor.
+					state.smartOpen = null;
+					refreshSelection();
+					if (state.tab !== 'properties') { state.tab = 'properties'; remember(); renderInspector(); }
+					const button = document.querySelector(`#inspector .row[data-prop="${CSS.escape(action.edit)}"] button.mini`);
+					if (button) { button.scrollIntoView({ block: 'center' }); button.click(); }
+				});
+				line.append(link);
+			} else {
+				const r = rows && rows.find((row) => row.name === action.prop);
+				line.append(el('span', 'smart-label', T(action.label)));
+				line.append(r ? smartEditor(it.id, r, action) : el('span', 'hint', '…'));
+			}
+			panel.append(line);
+		}
+		return panel;
+	}
+
+	/** A property in the Tasks panel: a check box for a bool (the other way round for "Enable Editing"), a list, or text. */
+	function smartEditor(id, r, action) {
+		const commit = (v) => { if (v !== r.value) apply([{ op: 'setProp', id, prop: r.name, value: v }], [id]); };
+		if (r.editor === 'bool') {
+			const cb = el('input');
+			cb.type = 'checkbox';
+			cb.dataset.prop = r.name;
+			cb.checked = (r.value === 'True') !== !!action.invert;
+			cb.addEventListener('change', () => commit(cb.checked !== !!action.invert ? 'True' : 'False'));
+			return cb;
+		}
+		if (r.editor === 'enum' || r.editor === 'component') {
+			const s = el('select');
+			s.dataset.prop = r.name;
+			for (const o of r.options || []) { const opt = el('option', '', optionLabel(o)); opt.value = o; s.append(opt); }
+			s.value = r.value ?? '';
+			s.addEventListener('change', () => commit(s.value));
+			return s;
+		}
+		const input = textInput(r.value, commit);
+		input.dataset.prop = r.name;
+		if (r.options && r.options.length) {
+			const listId = 'smart-options-' + r.name;
+			const dl = el('datalist');
+			dl.id = listId;
+			for (const o of r.options) { const opt = el('option'); opt.value = o; dl.append(opt); }
+			input.setAttribute('list', listId);
+			const wrap = el('span');
+			wrap.append(dl, input);
+			return wrap;
+		}
+		return input;
+	}
 
 	/** Anchor as VS edits it: a box with a bar to each side, each bar on or off. */
 	function anchorEditor(panel, r, commit) {

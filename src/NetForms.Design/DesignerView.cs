@@ -113,6 +113,9 @@ public sealed class DesignerViewItem
     public int[]? Splitter { get; set; }
     public bool SplitterVertical { get; set; }
 
+    /// <summary>What its smart tag (the Tasks panel) offers; null when it has none.</summary>
+    public List<DesignerSmartAction>? SmartTag { get; set; }
+
     /// <summary>A menu item with items of its own: a click on it opens them.</summary>
     public bool HasDropDown { get; set; }
 

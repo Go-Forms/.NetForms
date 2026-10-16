@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Smart tags:** the ◂ arrow of a selected control opens its Tasks panel — properties, editors and commands (Dock in
+  Parent Container, Add Tab, Add Column, Embed in ToolStripContainer, Insert Standard Items).
 - **Document Outline:** the controls as a tree in the left pane's *Outline* tab — select, move into a container,
   reorder (z-order) by dragging.
 - **TreeNode Editor:** a TreeView's nodes as a tree — add, delete, move, indent — with each node's Name, pictures,

@@ -2429,6 +2429,23 @@ WinForms (`exact/binding/*`, `exact/dgv/edit-*`, `exact/dgv/style-*`, `exact/foc
     (`setParent` с прежними Left/Top), верхняя/нижняя треть строки контрола — перед/после него среди соседей: новый
     хост-оп `setChildIndex {id, index}` (`Controls.SetChildIndex`, 0 — передний; у частей SplitContainer и
     ToolStripContainer — отказ), при смене родителя — сперва `setParent`. Тесты: `DesignerOutlineTests` (1), UI-тест.
+186. **Смарт-теги (панель «Задачи»).** У элемента вида `smartTag` — список действий (`DesignerSmartAction`: `label` и
+    одно из `prop` (строка окна свойств, `invert` — булево наоборот: «Enable Editing» = `ReadOnly` выкл.), `edit`
+    (свойство, чей редактор «…» открыть) или `verb`); состав — по дизайнерам VS: TextBox — MultiLine; ComboBox/ListBox
+    — Edit Items, DataSource/DisplayMember/ValueMember; DataGridView — источник, Edit Columns, Enable Adding/Editing/
+    Deleting/Column Reordering; PictureBox — Choose Image, SizeMode; ListView — Items, Columns, View, списки картинок;
+    TreeView — Edit Nodes, ImageList; TabControl — Add/Remove Tab; SplitContainer — Orientation; TableLayoutPanel — Add
+    Column/Row, Remove Last Column/Row, Edit Rows and Columns; ToolStripContainer — Dock Fill in Form, видимость сторон;
+    полосы — Embed in ToolStripContainer, Insert Standard Items (MenuStrip без пунктов), RenderMode, Dock, GripStyle,
+    Edit Items; большие контролы и контейнеры (не в таблице/потоке/панели полос) — Dock/Undock in Parent Container.
+    Клиент: стрелка ◂ у правого верхнего угла выбранного (одного) контрола, панель рядом; свойства берёт из уже
+    загруженных строк окна свойств (`state.props`), правка — `setProp`, панель остаётся открытой; `edit` — закрывает
+    панель и жмёт «…» строки в окне свойств; глагол — новый хост-оп `verb {id, value}`. **Embed in ToolStripContainer**:
+    контейнер `Dock = Fill` спереди в родителе полосы, все полосы родителя — в панель своей стороны (по `Dock`, эта —
+    в верхнюю) новым рядом, прочие компоненты-контролы — в `ContentPanel` с прежним `Location`. **Insert Standard
+    Items** у MenuStrip — File/Edit/Tools/Help с пунктами, разделителями и `ShortcutKeys`, имена как у VS
+    (`saveAsToolStripMenuItem`); **осознанная разница** — без картинок (у VS они в .resx). Тесты:
+    `DesignerSmartTagTests` (3), UI-тест.
 
 **Состояние тестов на конец сессии (решения 158–161, 2026-09-26, Linux):** .NET — **504/504** (было 484; +20
 `ControlLibraryTests`). Расширение — **40/40** (было 32: +8 `libraries.test.js`, +1 протокол с библиотекой, +1 UI —

@@ -301,3 +301,22 @@ button, input, select { font: inherit; color: inherit; }
 .ol-node.ol-after { border-bottom-color: var(--vscode-focusBorder, #0078d4); }
 .ol-node.ol-into { outline: 1px solid var(--vscode-focusBorder, #0078d4); outline-offset: -1px; }
 
+/* Smart tags (decision 186): the arrow at a selected control's corner and its Tasks panel. */
+.handle.smart-glyph {
+	width: 13px; height: 13px; margin: 0; line-height: 12px; font-size: 10px; text-align: center; cursor: pointer;
+	background: #fff; color: #333; border: 1px solid #333;
+}
+.handle.smart-glyph.on { background: var(--vscode-focusBorder, #0078d4); color: #fff; }
+.handle.smart-panel {
+	width: auto; height: auto; margin: 0; min-width: 190px; max-width: 280px; padding: 6px 8px; z-index: 40;
+	background: var(--vscode-editorWidget-background, #f3f3f3); color: var(--vscode-editorWidget-foreground, #222);
+	border: 1px solid var(--vscode-editorWidget-border, #8888); box-shadow: 0 2px 8px #0004;
+	font-family: var(--vscode-font-family, 'Segoe UI', sans-serif); font-size: 12px; cursor: default;
+}
+.smart-title { font-weight: 600; margin-bottom: 4px; }
+.smart-line { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+.smart-label { flex: 1; white-space: nowrap; }
+.smart-line select, .smart-line input[type=text] { max-width: 130px; }
+.smart-link { border: none; background: transparent; padding: 1px 0; color: var(--vscode-textLink-foreground, #0066bf); cursor: pointer; text-align: left; }
+.smart-link:hover { text-decoration: underline; }
+

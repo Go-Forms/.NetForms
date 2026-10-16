@@ -79,6 +79,13 @@ container's controls front-most first, a strip's items under it), as in Visual S
 container puts the control into it, above or below another control gives it that place among its siblings (the
 z-order: the docking order, a FlowLayoutPanel's order).
 
+**Smart tags**: the ◂ arrow at the top right of a selected control opens its *Tasks* panel, as in Visual Studio — its
+most used properties (a TextBox's MultiLine; a grid's data source and Enable Adding, Editing, Deleting; a PictureBox's
+Size Mode; a SplitContainer's orientation…), its editors (*Edit Items…*, *Edit Columns…*, *Edit Nodes…*) and its
+commands: *Dock in Parent Container*, *Add Tab*/*Remove Tab*, *Add Column*/*Add Row*, *Embed in ToolStripContainer*
+(the strips go to its sides, the other controls into its middle) and a MenuStrip's *Insert Standard Items* (File,
+Edit, Tools, Help with their shortcuts; without Visual Studio's pictures).
+
 Move and resize with the mouse or the arrow keys (Ctrl — by 8, Shift — size), snap lines, select several with
 Ctrl/Shift or by drawing a rectangle over them (on the form; inside a panel or group box once it is selected — it then
 moves by the ✥ glyph at its top left, as in Visual Studio; Ctrl/Shift adds to the selection), Escape selects the parent, drop into another container, Format → Align / Make Same Size / Spacing,

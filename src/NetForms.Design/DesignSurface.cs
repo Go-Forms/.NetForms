@@ -359,6 +359,7 @@ public sealed partial class DesignSurface : IDisposable
             case "setStyles": SetStyles(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "rename": SetProperty(Resolve(op.Id), "Name", Required(op.Value, "value")); break;
             case "bringToFront": AsControl(Resolve(op.Id)).BringToFront(); break;
+            case "verb": ApplyVerb(Resolve(op.Id), op.Value); break;
             case "setChildIndex": SetChildIndex(AsControl(Resolve(op.Id)), op.Index ?? throw new DesignerEditException("The edit needs 'index'.")); break;
             case "sendToBack": AsControl(Resolve(op.Id)).SendToBack(); break;
             default: throw new DesignerEditException($"Unknown edit '{op.Op}'.");
@@ -1243,6 +1244,7 @@ public sealed partial class DesignSurface : IDisposable
                 Padding = new[] { child.Padding.Left, child.Padding.Top, child.Padding.Right, child.Padding.Bottom },
             };
             if (child is TableLayoutPanel table) item.Table = TableView(table);
+            if (!nested) item.SmartTag = SmartTagFor(child);
             if (child is SplitContainer split && !split.IsSplitterFixed && !split.Panel1Collapsed && !split.Panel2Collapsed)
             {
                 // Dragged on the canvas as in VS's SplitContainerDesigner: the client sends the new SplitterDistance.

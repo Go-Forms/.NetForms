@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Designer: smart tags.** The arrow at a selected control's corner opens its Tasks panel, as in Visual Studio: its
+  main properties, its editors (Edit Items…, Edit Columns…, Edit Nodes…) and its commands — Dock in Parent Container,
+  Add/Remove Tab, Add Column/Row, Embed in ToolStripContainer, a MenuStrip's Insert Standard Items.
 - **Designer: Document Outline.** The left pane's *Outline* tab shows the form's controls as a tree, as in Visual
   Studio: a click selects, a drag puts a control into another container or in another place among its siblings
   (the z-order, so the docking order).

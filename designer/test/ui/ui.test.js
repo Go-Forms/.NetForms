@@ -1307,3 +1307,60 @@ test('the Document Outline selects, moves and reorders controls', { skip, timeou
 	assert.deepEqual(await rows(), ['', 'button1', 'panel1', 'label1']);
 	assert.deepEqual(errors, []);
 });
+
+// Decision 186: smart tags - the arrow at a selected control's corner opens its Tasks panel.
+test('a smart tag sets properties, opens editors and runs verbs', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-smart-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 800 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 300));
+		return file();
+	};
+	const toolbox = async (name) => { const before = file(); await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name); return waitFile(before); };
+	const act = async (selector) => { const before = file(); await page.click(selector); return waitFile(before); };
+
+	// A button has none; a text box has MultiLine.
+	await page.mouse.click(...await page.$eval('.hit[data-id="button1"]', (n) => { const r = n.getBoundingClientRect(); return [r.x + 5, r.y + 5]; }));
+	assert.equal(await page.$('.smart-glyph'), null);
+	await toolbox('TextBox');
+	await page.click('.smart-glyph');
+	await page.waitForSelector('.smart-panel input[data-prop="Multiline"]');
+	assert.equal(await page.$eval('.smart-title', (n) => n.textContent), 'TextBox Tasks');
+	let text = await act('.smart-panel input[data-prop="Multiline"]');
+	assert.match(text, /textBox1\.Multiline = true;/);
+	// The panel stays open after the edit.
+	await page.waitForSelector('.smart-panel input[data-prop="Multiline"]:checked');
+	await page.screenshot({ path: path.join(out, 'smart-1-textbox.png') });
+
+	// A grid: Enable Editing is ReadOnly the other way round; Dock in Parent Container; Edit Columns opens the grid's editor.
+	await toolbox('DataGridView');
+	await page.click('.smart-glyph');
+	await page.waitForSelector('.smart-panel input[data-prop="ReadOnly"]');
+	assert.equal(await page.$eval('.smart-panel input[data-prop="ReadOnly"]', (n) => n.checked), true, 'editing is on');
+	text = await act('.smart-panel input[data-prop="ReadOnly"]');
+	assert.match(text, /dataGridView1\.ReadOnly = true;/);
+	text = await act('.smart-panel .smart-link[data-verb="DockFill"]');
+	assert.match(text, /dataGridView1\.Dock = DockStyle\.Fill;/);
+	// Still open after the verb (now offering Undock).
+	await page.waitForSelector('.smart-panel .smart-link[data-verb="Undock"]');
+	await page.screenshot({ path: path.join(out, 'smart-2-grid.png') });
+	await page.click('.smart-panel .smart-link[data-edit="Columns"]');
+	await page.waitForSelector('.coll-editor');
+	assert.equal(await page.$('.smart-panel'), null);
+	assert.deepEqual(errors, []);
+});
