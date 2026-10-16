@@ -1243,3 +1243,67 @@ test('the TreeNode Editor edits each node and its place', { skip, timeout: 90000
 	assert.match(file, /new TreeNode\("Second", new TreeNode\[\] \{ treeNode\d \}\)/);
 	assert.deepEqual(errors, []);
 });
+
+// Decision 185: the Document Outline - the controls as a tree, selected by a click, moved into a container and
+// reordered by a drag.
+test('the Document Outline selects, moves and reorders controls', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-outline-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 760 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	await page.waitForSelector('.tb-item');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 300));
+		return file();
+	};
+	const toolbox = async (name) => {
+		const before = file();
+		await page.click('.left-tab[data-tab="toolbox"]');
+		await page.evaluate((n) => [...document.querySelectorAll('.tb-item')].find((i) => i.firstChild.textContent === n).click(), name);
+		const text = await waitFile(before);
+		await page.click('.left-tab[data-tab="outline"]');
+		return text;
+	};
+	const rows = () => page.$$eval('.ol-node', (n) => n.map((x) => x.dataset.id));
+	const drag = async (id, target, where) => {
+		const from = await (await page.$(`.ol-node[data-id="${id}"]`)).boundingBox();
+		const to = await (await page.$(`.ol-node[data-id="${target}"]`)).boundingBox();
+		const before = file();
+		await page.setDragInterception(true);
+		await page.mouse.dragAndDrop({ x: from.x + 30, y: from.y + from.height / 2 }, { x: to.x + 40, y: to.y + to.height * (where === 'before' ? 0.15 : where === 'after' ? 0.85 : 0.5) });
+		await page.setDragInterception(false);
+		return waitFile(before);
+	};
+
+	await page.click('.left-tab[data-tab="outline"]');
+	await page.waitForSelector('.ol-node');
+	// HelloForms adds label1 first: the front-most.
+	assert.deepEqual(await rows(), ['', 'label1', 'button1']);
+	await page.click('.ol-node[data-id="label1"]');
+	await page.waitForSelector('.hit.primary[data-id="label1"]');
+
+	await toolbox('Panel');
+	assert.deepEqual(await rows(), ['', 'panel1', 'label1', 'button1']);
+	let text = await drag('label1', 'panel1', 'into');
+	assert.match(text, /panel1\.Controls\.Add\(label1\);/);
+	assert.deepEqual(await rows(), ['', 'panel1', 'label1', 'button1']);
+	await page.screenshot({ path: path.join(out, 'outline-1.png') });
+
+	// button1 to the front, before panel1.
+	text = await drag('button1', 'panel1', 'before');
+	assert.ok(text.indexOf('Controls.Add(button1);') < text.indexOf('Controls.Add(panel1);'), 'button1 is added first: the front-most');
+	assert.deepEqual(await rows(), ['', 'button1', 'panel1', 'label1']);
+	assert.deepEqual(errors, []);
+});

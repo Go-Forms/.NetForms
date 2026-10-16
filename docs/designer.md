@@ -74,6 +74,11 @@ Debugging (F5) is the C# extension's: its **.NET: Generate Assets for Build and 
 
 ## Canvas
 
+The left pane has two tabs: the **Toolbox** and the **Document Outline** — the form's controls as a tree (each
+container's controls front-most first, a strip's items under it), as in Visual Studio. A click selects; a drag onto a
+container puts the control into it, above or below another control gives it that place among its siblings (the
+z-order: the docking order, a FlowLayoutPanel's order).
+
 Move and resize with the mouse or the arrow keys (Ctrl — by 8, Shift — size), snap lines, select several with
 Ctrl/Shift or by drawing a rectangle over them (on the form; inside a panel or group box once it is selected — it then
 moves by the ✥ glyph at its top left, as in Visual Studio; Ctrl/Shift adds to the selection), Escape selects the parent, drop into another container, Format → Align / Make Same Size / Spacing,

@@ -29,6 +29,9 @@
 		tab: saved.tab || 'properties',
 		collapsed: new Set(saved.collapsed || []),
 		toolboxCollapsed: new Set(saved.toolboxCollapsed || []),
+		// The left pane: the toolbox or the Document Outline (decision 185), and the outline's folded nodes.
+		leftTab: saved.leftTab === 'outline' ? 'outline' : 'toolbox',
+		outlineCollapsed: new Set(saved.outlineCollapsed || []),
 		filter: '',
 		props: null, // { id, rows }
 		events: null,
@@ -44,7 +47,7 @@
 	};
 
 	function remember() {
-		vscode.setState({ zoom: state.zoom, tab: state.tab, locked: state.locked, collapsed: [...state.collapsed], toolboxCollapsed: [...state.toolboxCollapsed] });
+		vscode.setState({ zoom: state.zoom, tab: state.tab, locked: state.locked, collapsed: [...state.collapsed], toolboxCollapsed: [...state.toolboxCollapsed], leftTab: state.leftTab, outlineCollapsed: [...state.outlineCollapsed] });
 	}
 
 	function post(message) { vscode.postMessage(message); }
@@ -272,6 +275,21 @@
 	function renderToolbox() {
 		const box = $('toolbox');
 		box.textContent = '';
+		const tabs = el('div', 'left-tabs');
+		for (const [tab, label, title] of [['toolbox', T('Toolbox'), T('Toolbox')], ['outline', T('Outline'), T('Document Outline')]]) {
+			const b = el('button', 'left-tab' + (state.leftTab === tab ? ' on' : ''), label);
+			b.title = title;
+			b.dataset.tab = tab;
+			b.addEventListener('click', () => { state.leftTab = tab; remember(); renderToolbox(); });
+			tabs.append(b);
+		}
+		box.append(tabs);
+		if (state.leftTab === 'outline') {
+			const outline = el('div', 'outline');
+			box.append(outline);
+			renderOutline(outline);
+			return;
+		}
 		const search = el('input', 'search');
 		search.placeholder = T('Search toolbox');
 		search.value = state.filter;
@@ -290,6 +308,106 @@
 		if (state.notice) box.append(el('div', 'tb-notice', state.notice));
 		box.append(groups);
 		renderToolboxGroups(groups);
+	}
+
+	// --- Document Outline (decision 185) -------------------------------------------------------------
+
+	/**
+	 * The form's controls as a tree, as VS's Document Outline shows them: each container's controls front-most first
+	 * (their z-order, the docking order), a strip's items under it. A click selects; a drag onto a node puts the
+	 * control into it, above or below one puts it in that place among its siblings.
+	 */
+	function renderOutline(host) {
+		host = host || document.querySelector('#toolbox .outline');
+		if (!host || !state.view) return;
+		host.textContent = '';
+		const items = state.view.items.filter((i) => i.kind === 'control' || i.kind === 'nested' || i.kind === 'item');
+		const children = new Map();
+		for (const it of items) {
+			if (!children.has(it.parent)) children.set(it.parent, []);
+			children.get(it.parent).push(it);
+		}
+		// The view lists controls back to front (the paint order): the outline shows the front first.
+		for (const [, list] of children) if (list.length && list[0].kind !== 'item') list.reverse();
+		const node = (it, depth) => {
+			const id = it ? it.id : '';
+			const kids = children.get(id) || [];
+			const row = el('div', 'ol-node' + (state.selection.includes(id) ? ' selected' : '') + (it && !it.visible ? ' hidden-node' : ''));
+			row.style.paddingLeft = (4 + depth * 14) + 'px';
+			row.dataset.id = id;
+			const fold = el('span', 'ol-fold', kids.length ? (state.outlineCollapsed.has(id) ? '▸' : '▾') : '');
+			fold.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (state.outlineCollapsed.has(id)) state.outlineCollapsed.delete(id); else state.outlineCollapsed.add(id);
+				remember();
+				renderOutline();
+			});
+			row.append(fold, el('span', 'ol-name', it ? it.id : state.view.className), el('span', 'ol-type', ' ' + shortType(it ? it.type : '')));
+			row.title = it ? `${it.id} (${shortType(it.type)})` : state.view.className;
+			row.addEventListener('click', (e) => select(id, e.ctrlKey || e.shiftKey));
+			row.addEventListener('contextmenu', (e) => { e.preventDefault(); onContextMenu(e, id); });
+			if (it && it.kind === 'control' && !state.locked) {
+				row.draggable = true;
+				row.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/netforms-outline', id); e.dataTransfer.effectAllowed = 'move'; state.outlineDrag = id; });
+				row.addEventListener('dragend', () => { state.outlineDrag = null; });
+			}
+			row.addEventListener('dragover', (e) => {
+				const zone = outlineZone(e, row, it);
+				clearOutlineMarks(host);
+				if (!zone) return;
+				e.preventDefault();
+				row.classList.add('ol-' + zone);
+			});
+			row.addEventListener('dragleave', () => row.classList.remove('ol-before', 'ol-after', 'ol-into'));
+			row.addEventListener('drop', (e) => {
+				const zone = outlineZone(e, row, it);
+				clearOutlineMarks(host);
+				if (!zone) return;
+				e.preventDefault();
+				outlineDrop(state.outlineDrag, it, zone);
+			});
+			host.append(row);
+			if (!state.outlineCollapsed.has(id)) for (const k of kids) node(k, depth + 1);
+		};
+		node(null, 0);
+	}
+
+	function clearOutlineMarks(host) {
+		host.querySelectorAll('.ol-before, .ol-after, .ol-into').forEach((n) => n.classList.remove('ol-before', 'ol-after', 'ol-into'));
+	}
+
+	/** Where a dragged control would go over a node: "into" a container, "before" or "after" a control; null for nowhere. */
+	function outlineZone(e, row, target) {
+		const id = state.outlineDrag;
+		if (!id) return null;
+		const targetId = target ? target.id : '';
+		// Not onto itself or into what it contains.
+		for (let cur = target; cur; cur = itemById(cur.parent)) if (cur.id === id) return null;
+		const r = row.getBoundingClientRect();
+		const y = (e.clientY - r.top) / r.height;
+		const canInto = !target || target.container;
+		const canBeside = !!target && target.kind === 'control';
+		if (canBeside && y < 0.3) return 'before';
+		if (canBeside && y > 0.7) return 'after';
+		if (canInto && targetId !== (itemById(id) || {}).parent) return 'into';
+		return canBeside ? (y < 0.5 ? 'before' : 'after') : null;
+	}
+
+	function outlineDrop(id, target, zone) {
+		const it = itemById(id);
+		if (!it) return;
+		const ops = [];
+		if (zone === 'into') {
+			ops.push({ op: 'setParent', id, parent: target ? target.id : '', x: it.left, y: it.top });
+		} else {
+			const parent = target.parent;
+			// The siblings front-most first, without the one moved: its place is the target's, or the one after.
+			const siblings = state.view.items.filter((i) => i.parent === parent && i.kind === 'control' && i.id !== id).reverse();
+			const index = siblings.findIndex((s) => s.id === target.id) + (zone === 'after' ? 1 : 0);
+			if (it.parent !== parent) ops.push({ op: 'setParent', id, parent, x: it.left, y: it.top });
+			ops.push({ op: 'setChildIndex', id, index });
+		}
+		apply(ops, [id]);
 	}
 
 	function renderToolboxGroups(host) {
@@ -464,6 +582,7 @@
 		stage.style.minWidth = (right + 2) * state.zoom + 48 + 'px';
 		stage.style.minHeight = (bottom + 32) * state.zoom + 48 + 'px';
 		state.canvas = canvas;
+		if (state.leftTab === 'outline') renderOutline();
 	}
 
 	// --- TableLayoutPanel: the grid, its cells and its boundaries -------------------------------------
@@ -668,6 +787,7 @@
 		drawHandles(canvas);
 		const title = canvas.parentNode && canvas.parentNode.querySelector('.form-title');
 		if (title) title.classList.toggle('selected', state.selection.includes(''));
+		if (state.leftTab === 'outline') renderOutline();
 	}
 
 	function movableSelection() {

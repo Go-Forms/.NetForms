@@ -286,3 +286,18 @@ button, input, select { font: inherit; color: inherit; }
 .tree-field > input[type=text], .tree-field > select { flex: 1; min-width: 0; }
 .tree-tools { flex-wrap: wrap; }
 
+/* The left pane's tabs, and the Document Outline (decision 185). */
+.left-tabs { display: flex; border-bottom: 1px solid var(--vscode-panel-border, #8884); }
+.left-tab { flex: 1; border: none; background: transparent; color: inherit; padding: 5px 2px; cursor: pointer; opacity: .75; }
+.left-tab.on { opacity: 1; border-bottom: 2px solid var(--vscode-focusBorder, #0078d4); font-weight: 600; }
+.outline { padding: 4px 0; }
+.ol-node { display: flex; align-items: center; gap: 2px; padding: 1px 4px; cursor: default; white-space: nowrap; border-top: 2px solid transparent; border-bottom: 2px solid transparent; }
+.ol-node:hover { background: var(--vscode-list-hoverBackground, #8882); }
+.ol-node.selected { background: var(--vscode-list-activeSelectionBackground, #0078d4); color: var(--vscode-list-activeSelectionForeground, #fff); }
+.ol-node.hidden-node .ol-name { font-style: italic; opacity: .7; }
+.ol-fold { width: 12px; flex: none; text-align: center; cursor: pointer; }
+.ol-type { opacity: .6; overflow: hidden; text-overflow: ellipsis; }
+.ol-node.ol-before { border-top-color: var(--vscode-focusBorder, #0078d4); }
+.ol-node.ol-after { border-bottom-color: var(--vscode-focusBorder, #0078d4); }
+.ol-node.ol-into { outline: 1px solid var(--vscode-focusBorder, #0078d4); outline-offset: -1px; }
+

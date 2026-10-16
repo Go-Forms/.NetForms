@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Designer: Document Outline.** The left pane's *Outline* tab shows the form's controls as a tree, as in Visual
+  Studio: a click selects, a drag puts a control into another container or in another place among its siblings
+  (the z-order, so the docking order).
 - **Designer: the TreeNode Editor.** A TreeView's nodes are edited as a tree, as in Visual Studio: added at the top or
   under a node, deleted, moved up, down, in and out, and each one's `Name`, `Text`, pictures from the tree's ImageList
   (`ImageKey`, `SelectedImageKey`, `StateImageKey`), `Tag`, `ToolTipText` and `Checked` set. A new node is named

@@ -339,5 +339,8 @@
 	"Out: a sibling of its parent": "Наружу: соседом родителя",
 	"In: a child of the node above": "Внутрь: дочерним узлом выше",
 	"As text…": "Текстом…",
-	"Edit the texts as indented lines": "Править тексты строками с отступами"
+	"Edit the texts as indented lines": "Править тексты строками с отступами",
+	"Toolbox": "Элементы",
+	"Document Outline": "Структура документа",
+	"Outline": "Структура"
 }

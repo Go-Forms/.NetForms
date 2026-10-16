@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Document Outline:** the controls as a tree in the left pane's *Outline* tab — select, move into a container,
+  reorder (z-order) by dragging.
 - **TreeNode Editor:** a TreeView's nodes as a tree — add, delete, move, indent — with each node's Name, pictures,
   Tag, ToolTipText and Checked.
 - **Visual editors:** Anchor (bars around a box), Dock (the six places), a color picker (Custom, Web, System) and a

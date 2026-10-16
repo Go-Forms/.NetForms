@@ -359,6 +359,7 @@ public sealed partial class DesignSurface : IDisposable
             case "setStyles": SetStyles(Resolve(op.Id), Required(op.Prop, "prop"), op.Values ?? Array.Empty<string>(), op.Ids); break;
             case "rename": SetProperty(Resolve(op.Id), "Name", Required(op.Value, "value")); break;
             case "bringToFront": AsControl(Resolve(op.Id)).BringToFront(); break;
+            case "setChildIndex": SetChildIndex(AsControl(Resolve(op.Id)), op.Index ?? throw new DesignerEditException("The edit needs 'index'.")); break;
             case "sendToBack": AsControl(Resolve(op.Id)).SendToBack(); break;
             default: throw new DesignerEditException($"Unknown edit '{op.Op}'.");
         }
@@ -1113,6 +1114,17 @@ public sealed partial class DesignSurface : IDisposable
     {
         strip.Dock = DockStyle.None;
         panel.Join(strip, new Point(x ?? 0, y ?? 0));
+    }
+
+    /// <summary>
+    /// The Document Outline's order (decision 185): a control's place among its siblings, 0 the front-most - the
+    /// docking order and, in a FlowLayoutPanel, the flow's order (Controls.SetChildIndex, as VS's outline does).
+    /// </summary>
+    private static void SetChildIndex(Control control, int index)
+    {
+        var parent = control.Parent ?? throw new DesignerEditException("The control is not in a container.");
+        if (parent is SplitContainer or ToolStripContainer) throw new DesignerEditException($"The parts of a {parent.GetType().Name} keep their order.");
+        parent.Controls.SetChildIndex(control, Math.Clamp(index, 0, parent.Controls.Count - 1));
     }
 
     private static bool IsAncestor(Control ancestor, Control control)
