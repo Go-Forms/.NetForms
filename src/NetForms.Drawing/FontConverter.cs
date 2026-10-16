@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.Design.Serialization;
 using System.Globalization;
+using System.Linq;
 
 namespace System.Drawing;
 
@@ -71,8 +72,10 @@ public class FontConverter : TypeConverter
             var part = parts[i].Trim();
             if (part.StartsWith("style=", StringComparison.OrdinalIgnoreCase))
             {
-                style = (FontStyle)Enum.Parse(typeof(FontStyle), part.Substring(6), ignoreCase: true);
-                continue;
+                // The rest is the style, its flags separated by the same separator ("style=Bold, Italic"), as WinForms writes it.
+                var flags = string.Join(",", new[] { part.Substring(6) }.Concat(parts.Skip(i + 1)).Select(p => p.Trim()).Where(p => p.Length > 0));
+                style = flags.Length == 0 ? FontStyle.Regular : (FontStyle)Enum.Parse(typeof(FontStyle), flags, ignoreCase: true);
+                break;
             }
             int digits = 0;
             while (digits < part.Length && (char.IsDigit(part[digits]) || part[digits] == '.' || part[digits] == ',')) digits++;

@@ -202,12 +202,13 @@ test('the property grid keeps its place while a property is edited', { skip, tim
 		return body.scrollTop;
 	});
 	const state = () => page.evaluate(() => ({
-		open: document.querySelector('[data-flags-of="Anchor"]')?.style.display !== 'none',
+		open: document.querySelector('[data-picker-of="Anchor"]')?.style.display !== 'none',
 		scroll: document.querySelector('.insp-body').scrollTop,
 		selected: document.querySelector('.hit.primary')?.dataset.id,
 		target: document.querySelector('#inspector .target')?.textContent,
 	}));
-	const check = (flag) => gesture(() => page.evaluate((f) => [...document.querySelectorAll('[data-flags-of="Anchor"] input')].find((c) => c.value === f).click(), flag));
+	// (The Anchor editor is VS's: a bar to each side of a box, decision 183.)
+	const check = (flag) => gesture(() => page.evaluate((f) => document.querySelector(`[data-picker-of="Anchor"] .anchor-bar[data-side="${f}"]`).click(), flag));
 
 	// Three flags one after another, without looking for Anchor again: the grid stays where it was.
 	await check('Top');
@@ -1116,5 +1117,79 @@ test('a grid is bound to a class of the project, a text box to one of its proper
 	text = await choose('DataBindings.Text', 'customerBindingSource - Name');
 	assert.match(text, /textBox1\.DataBindings\.Add\(new (System\.Windows\.Forms\.)?Binding\("Text", customerBindingSource, "Name", true\)\);/);
 	await page.screenshot({ path: path.join(out, 'bind-2-textbox.png') });
+	assert.deepEqual(errors, []);
+});
+
+// Decision 183: VS's visual editors in the property grid - Anchor, Dock, the color and font pickers.
+test('Anchor, Dock, colors and fonts are picked in visual editors', { skip, timeout: 120000 }, async (t) => {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'netforms-ui-pick-'));
+	for (const f of ['MainForm.cs', 'MainForm.Designer.cs']) fs.copyFileSync(path.join(repo, 'samples', 'HelloForms', f), path.join(dir, f));
+	const designer = path.join(dir, 'MainForm.Designer.cs');
+	const harness = await start(designer);
+	const browser = await puppeteer.launch({ executablePath: browserPath, headless: true, args: ['--no-sandbox'] });
+	t.after(async () => { await browser.close(); harness.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+	const page = await browser.newPage();
+	await page.setViewport({ width: 1200, height: 900 });
+	const errors = [];
+	page.on('pageerror', (e) => errors.push(e.message));
+	fs.mkdirSync(out, { recursive: true });
+	await page.goto(harness.url);
+	await page.waitForSelector('.canvas img.picture');
+	const file = () => fs.readFileSync(designer, 'utf8');
+	const waitFile = async (before) => {
+		for (let i = 0; i < 40 && file() === before; i++) await new Promise((r) => setTimeout(r, 250));
+		await page.waitForFunction(() => !document.body.style.cursor, { timeout: 20000 });
+		await new Promise((r) => setTimeout(r, 300));
+		return file();
+	};
+	const open = async (prop) => {
+		await page.click(`.row[data-prop="${prop}"] button.mini`);
+		return page.waitForSelector(`.picker[data-picker-of="${prop}"]`, { visible: true });
+	};
+	const click = async (selector) => { const before = file(); await page.click(selector); return waitFile(before); };
+
+	const button = await (await page.waitForSelector('.hit[data-id="button1"]')).boundingBox();
+	await page.mouse.click(button.x + 5, button.y + 5);
+	await page.waitForSelector('.row[data-prop="Anchor"]');
+
+	// Anchor: button1 is anchored Bottom, Right; a click on the left bar adds Left, the panel stays open.
+	await open('Anchor');
+	let text = await click('.picker[data-picker-of="Anchor"] .anchor-bar.left');
+	assert.match(text, /button1\.Anchor = AnchorStyles\.Bottom \| AnchorStyles\.Left \| AnchorStyles\.Right;/);
+	await page.waitForSelector('.picker[data-picker-of="Anchor"] .anchor-bar.left.on', { visible: true });
+	await page.screenshot({ path: path.join(out, 'pick-1-anchor.png') });
+
+	// Dock: Bottom.
+	await open('Dock');
+	text = await click('.picker[data-picker-of="Dock"] .dock-cell.bottom');
+	assert.match(text, /button1\.Dock = DockStyle\.Bottom;/);
+
+	// Colors: a web color, a system color, one of the palette.
+	await open('BackColor');
+	await page.click('.picker[data-picker-of="BackColor"] .picker-tab[data-tab="web"]');
+	text = await click('.picker[data-picker-of="BackColor"] .color-item[data-color="Red"]');
+	assert.match(text, /button1\.BackColor = Color\.Red;/);
+	// A color of its own turns the visual-style background off, as in VS.
+	assert.match(text, /button1\.UseVisualStyleBackColor = false;/);
+	await page.click('.picker[data-picker-of="BackColor"] .picker-tab[data-tab="system"]');
+	await page.screenshot({ path: path.join(out, 'pick-2-color.png') });
+	text = await click('.picker[data-picker-of="BackColor"] .color-item[data-color="ControlDark"]');
+	assert.match(text, /button1\.BackColor = SystemColors\.ControlDark;/);
+	await page.click('.picker[data-picker-of="BackColor"] .picker-tab[data-tab="custom"]');
+	text = await click('.picker[data-picker-of="BackColor"] .color-cell[data-color="255, 128, 0"]');
+	assert.match(text, /button1\.BackColor = Color\.FromArgb\(255, 128, 0\);/);
+
+	// The font: bold, then a size.
+	await open('Font');
+	text = await click('.picker[data-picker-of="Font"] input[data-style="Bold"]');
+	assert.match(text, /button1\.Font = new Font\("Segoe UI", 9F, FontStyle\.Bold\);/);
+	const before = file();
+	const size = await page.waitForSelector('.picker[data-picker-of="Font"] .font-size');
+	await size.click({ clickCount: 3 });
+	await size.type('12');
+	await page.keyboard.press('Tab');
+	text = await waitFile(before);
+	assert.match(text, /button1\.Font = new Font\("Segoe UI", 12F, FontStyle\.Bold\);/);
+	await page.screenshot({ path: path.join(out, 'pick-3-font.png') });
 	assert.deepEqual(errors, []);
 });

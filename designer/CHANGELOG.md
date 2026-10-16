@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Visual editors:** Anchor (bars around a box), Dock (the six places), a color picker (Custom, Web, System) and a
+  font picker (family, size, styles, sample) behind **▾** in the property grid.
 - **Data binding:** pick a class of your project as a grid's or list's `DataSource` (a binding source and the grid's
   columns are made, as in Visual Studio); `DisplayMember`/`ValueMember`/`DataMember`/`DataPropertyName` suggest its
   properties; bind `Text`, `Checked`, `Value`… in the new **(DataBindings)** group.

@@ -143,6 +143,12 @@ public sealed class DesignerPropertyRow
 {
     public string Name { get; set; } = "";
 
+    /// <summary>A color row: the system colors (Control, WindowText…), apart from the web colors in Options, as VS's color picker has them.</summary>
+    public List<string>? SystemOptions { get; set; }
+
+    /// <summary>The CSS colors of the system colors (#rrggbb, by name): the grid's swatches cannot know them otherwise.</summary>
+    public Dictionary<string, string>? Swatches { get; set; }
+
     /// <summary>What the grid shows when it is not the name (a (DataBindings) row is "DataBindings.Text", shown "Text").</summary>
     public string? Label { get; set; }
     public string Category { get; set; } = "";

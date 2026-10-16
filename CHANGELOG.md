@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Designer: Visual Studio's editors for Anchor, Dock, colors and fonts.** Four bars around a box for `Anchor`, the six
+  places for `Dock`, a color picker with Custom, Web and System colors (system colors now show their swatch), and a
+  font picker: family, size, Bold/Italic/Underline/Strikeout, a sample.
+- **Fixed: a font with two styles could not be read back.** `FontConverter` wrote `Segoe UI, 12pt, style=Bold, Italic`
+  and then refused it; it now reads the whole style list, as in WinForms.
+- **Fixed: a button's own BackColor did not show.** Setting `BackColor` turns `UseVisualStyleBackColor` off, as in
+  WinForms (in the designer through the property, so `UseVisualStyleBackColor = false` is written, as VS writes it).
 - **Designer: data binding in the property grid.** `DataSource` lists the form's binding sources and the classes of
   the project: a class picked for a grid or a list makes a `customerBindingSource` for it (`DataSource =
   typeof(Customer)`) and a grid gets a column per property, as in Visual Studio. `DisplayMember`, `ValueMember`,

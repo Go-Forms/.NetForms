@@ -1422,6 +1422,43 @@
 			apply([{ op: 'setProp', id, prop: r.name, value: v }], select);
 		};
 
+		// VS's visual editors: Anchor (four bars around a box), Dock (the six places), a color picker, a font picker.
+		const visual = r.type === 'AnchorStyles' && r.editor === 'flags' ? anchorEditor
+			: r.type === 'DockStyle' && r.editor === 'enum' ? dockEditor
+			: r.editor === 'color' ? colorEditor
+			: r.editor === 'font' ? fontEditor
+			: null;
+		if (visual) {
+			if (r.swatches) state.swatches = r.swatches;
+			const input = textInput(r.value, commit);
+			if (r.editor === 'color') {
+				const sw = el('span', 'swatch');
+				sw.style.background = cssColor(r.value);
+				value.append(sw);
+			}
+			if (r.editor === 'enum') input.readOnly = true;
+			const more = el('button', 'mini', '▾');
+			more.title = T('Choose');
+			const panel = el('div', 'picker');
+			panel.dataset.pickerOf = r.name;
+			// Open stays open across the edits made in it (Top, then Right), as the flags list does.
+			const open = state.openFlags;
+			if (open.id !== id) { open.id = id; open.names = new Set(); }
+			panel.style.display = open.names.has(r.name) ? '' : 'none';
+			more.classList.toggle('on', open.names.has(r.name));
+			const toggle = (show) => {
+				panel.style.display = show ? '' : 'none';
+				more.classList.toggle('on', show);
+				if (show) open.names.add(r.name); else open.names.delete(r.name);
+			};
+			more.addEventListener('click', () => toggle(panel.style.display === 'none'));
+			visual(panel, r, commit);
+			value.append(input, more);
+			row.extra = panel;
+			addReset(value, id, r);
+			return row;
+		}
+
 		switch (r.editor) {
 			case 'bool':
 			case 'enum':
@@ -1468,22 +1505,6 @@
 				});
 				value.append(input, more);
 				row.extra = panel;
-				break;
-			}
-			case 'color': {
-				const sw = el('span', 'swatch');
-				sw.style.background = cssColor(r.value);
-				const input = textInput(r.value, commit);
-				if (r.options) {
-					const listId = 'colors-' + r.name;
-					const dl = el('datalist');
-					dl.id = listId;
-					for (const o of r.options) { const opt = el('option'); opt.value = o; dl.append(opt); }
-					input.setAttribute('list', listId);
-					value.append(dl);
-				}
-				value.prepend(sw);
-				value.append(input);
 				break;
 			}
 			case 'collection': {
@@ -1567,13 +1588,144 @@
 				value.append(input);
 			}
 		}
+		addReset(value, id, r);
+		return row;
+	}
+
+	function addReset(value, id, r) {
 		if (r.modified && r.name !== 'Name' && r.editor !== 'readonly' && r.editor !== 'collection' && r.editor !== 'styles' && r.editor !== 'image' && r.editor !== 'images') {
 			const reset = el('button', 'mini', '↺');
 			reset.title = T('Reset to the default');
 			reset.addEventListener('click', () => apply([{ op: 'resetProp', id, prop: r.name }], state.selection));
 			value.append(reset);
 		}
-		return row;
+	}
+
+	// --- visual property editors -----------------------------------------------------------------
+
+	/** Anchor as VS edits it: a box with a bar to each side, each bar on or off. */
+	function anchorEditor(panel, r, commit) {
+		const set = new Set((r.value || '').split(',').map((s) => s.trim()).filter((s) => s && s !== 'None'));
+		const box = el('div', 'anchor-box');
+		box.append(el('div', 'anchor-control'));
+		for (const side of ['Top', 'Left', 'Right', 'Bottom']) {
+			const bar = el('button', 'anchor-bar ' + side.toLowerCase() + (set.has(side) ? ' on' : ''));
+			bar.title = side;
+			bar.dataset.side = side;
+			bar.addEventListener('click', () => {
+				if (set.has(side)) set.delete(side); else set.add(side);
+				const order = ['Top', 'Bottom', 'Left', 'Right'].filter((s) => set.has(s));
+				commit(order.length ? order.join(', ') : 'None');
+			});
+			box.append(bar);
+		}
+		panel.append(box);
+	}
+
+	/** Dock as VS edits it: Top, Left, Fill, Right, Bottom around the middle, None below. */
+	function dockEditor(panel, r, commit) {
+		const grid = el('div', 'dock-grid');
+		for (const place of ['Top', 'Left', 'Fill', 'Right', 'Bottom', 'None']) {
+			const b = el('button', 'dock-cell ' + place.toLowerCase() + (r.value === place ? ' on' : ''), place === 'None' ? T('None') : '');
+			b.title = place;
+			b.dataset.dock = place;
+			b.addEventListener('click', () => commit(place));
+			grid.append(b);
+		}
+		panel.append(grid);
+	}
+
+	/** VS's color picker: Custom (a palette), Web and System (the known colors by name). */
+	function colorEditor(panel, r, commit) {
+		const tabs = el('div', 'picker-tabs');
+		const body = el('div', 'picker-body');
+		const palette = ['255, 255, 255', '255, 192, 192', '255, 224, 192', '255, 255, 192', '192, 255, 192', '192, 255, 255', '192, 192, 255', '255, 192, 255',
+			'224, 224, 224', '255, 128, 128', '255, 192, 128', '255, 255, 128', '128, 255, 128', '128, 255, 255', '128, 128, 255', '255, 128, 255',
+			'192, 192, 192', '255, 0, 0', '255, 128, 0', '255, 255, 0', '0, 255, 0', '0, 255, 255', '0, 0, 255', '255, 0, 255',
+			'128, 128, 128', '192, 0, 0', '192, 64, 0', '192, 192, 0', '0, 192, 0', '0, 192, 192', '0, 0, 192', '192, 0, 192',
+			'64, 64, 64', '128, 0, 0', '128, 64, 0', '128, 128, 0', '0, 128, 0', '0, 128, 128', '0, 0, 128', '128, 0, 128',
+			'0, 0, 0', '64, 0, 0', '128, 64, 64', '64, 64, 0', '0, 64, 0', '0, 64, 64', '0, 0, 64', '64, 0, 64'];
+		const show = (which) => {
+			body.textContent = '';
+			tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === which));
+			if (which === 'custom') {
+				const grid = el('div', 'color-grid');
+				for (const c of palette) {
+					const cell = el('button', 'color-cell');
+					cell.style.background = `rgb(${c})`;
+					cell.title = c;
+					cell.dataset.color = c;
+					cell.addEventListener('click', () => commit(c));
+					grid.append(cell);
+				}
+				body.append(grid);
+				return;
+			}
+			const list = el('div', 'color-list');
+			for (const name of (which === 'web' ? r.options : r.systemOptions) || []) {
+				const item = el('button', 'color-item' + (r.value === name ? ' on' : ''));
+				const sw = el('span', 'swatch');
+				sw.style.background = cssColor(name);
+				item.append(sw, document.createTextNode(name));
+				item.dataset.color = name;
+				item.addEventListener('click', () => commit(name));
+				list.append(item);
+			}
+			body.append(list);
+			const current = list.querySelector('.on');
+			if (current) setTimeout(() => current.scrollIntoView({ block: 'nearest' }), 0);
+		};
+		for (const [tab, label] of [['custom', T('Custom')], ['web', T('Web')], ['system', T('System')]]) {
+			const b = el('button', 'picker-tab', label);
+			b.dataset.tab = tab;
+			b.addEventListener('click', () => show(tab));
+			tabs.append(b);
+		}
+		panel.append(tabs, body);
+		show((r.systemOptions || []).includes(r.value) ? 'system' : (r.options || []).includes(r.value) ? 'web' : 'custom');
+	}
+
+	/** The font: family, size and style, written back as "Segoe UI, 9pt, style=Bold, Italic". */
+	function fontEditor(panel, r, commit) {
+		const m = /^(.*?),\s*([\d.]+)\s*(pt|px|world|point|pixel|in|mm|doc)?(?:,\s*style=(.*))?$/i.exec(r.value || '') || [];
+		const family = el('select', 'font-family');
+		const families = (r.options || []).slice();
+		if (m[1] && !families.includes(m[1])) families.unshift(m[1]);
+		for (const f of families) { const o = el('option', '', f); o.value = f; family.append(o); }
+		family.value = m[1] || families[0] || '';
+		const size = el('input', 'font-size');
+		size.type = 'number';
+		size.min = '1';
+		size.step = '0.25';
+		size.value = m[2] || '9';
+		const styles = new Set((m[4] || '').split(',').map((s) => s.trim()).filter(Boolean));
+		const checks = el('div', 'font-styles');
+		const write = () => {
+			const list = ['Bold', 'Italic', 'Underline', 'Strikeout'].filter((s) => styles.has(s));
+			const unit = m[3] && !/^pt$/i.test(m[3]) ? m[3] : 'pt';
+			commit(`${family.value}, ${size.value}${unit}` + (list.length ? `, style=${list.join(', ')}` : ''));
+		};
+		for (const s of ['Bold', 'Italic', 'Underline', 'Strikeout']) {
+			const label = el('label');
+			const cb = el('input');
+			cb.type = 'checkbox';
+			cb.checked = styles.has(s);
+			cb.dataset.style = s;
+			cb.addEventListener('change', () => { if (cb.checked) styles.add(s); else styles.delete(s); write(); });
+			label.append(cb, document.createTextNode(' ' + T(s)));
+			checks.append(label);
+		}
+		family.addEventListener('change', write);
+		size.addEventListener('change', write);
+		const line = el('div', 'font-line');
+		line.append(family, size);
+		const sample = el('div', 'font-sample', 'AaBbYyZz 123');
+		sample.style.fontFamily = `"${family.value}"`;
+		sample.style.fontSize = Math.min(28, (parseFloat(size.value) || 9) * 4 / 3) + 'px';
+		sample.style.fontWeight = styles.has('Bold') ? 'bold' : '';
+		sample.style.fontStyle = styles.has('Italic') ? 'italic' : '';
+		sample.style.textDecoration = [styles.has('Underline') ? 'underline' : '', styles.has('Strikeout') ? 'line-through' : ''].join(' ').trim();
+		panel.append(line, checks, sample);
 	}
 
 	/** How a choice reads in a list: "(none)", a project class as "Customer (ControlLibrary) — project class". */
@@ -1872,8 +2024,10 @@
 		draw();
 	}
 
+	/** The CSS color of a grid value: "R, G, B", "A, R, G, B", a web name, or a system color (its swatch from the host). */
 	function cssColor(text) {
 		if (!text) return 'transparent';
+		if (state.swatches && state.swatches[text]) return state.swatches[text];
 		const parts = text.split(',').map((s) => s.trim());
 		if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) return `rgb(${parts.join(',')})`;
 		if (parts.length === 4 && parts.every((p) => /^\d+$/.test(p))) return `rgba(${parts[1]},${parts[2]},${parts[3]},${parts[0] / 255})`;

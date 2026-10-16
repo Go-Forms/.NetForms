@@ -320,5 +320,13 @@
 	"A ToolStripPanel takes tool strips only.": "ToolStripPanel принимает только панели инструментов (ToolStrip, MenuStrip, StatusStrip).",
 	"Drag to move": "Перетащите, чтобы переместить",
 	"{0} ({1}) — project class": "{0} ({1}) — класс проекта",
-	"(DataBindings)": "(DataBindings)"
+	"(DataBindings)": "(DataBindings)",
+	"Custom": "Свои",
+	"Web": "Веб",
+	"System": "Системные",
+	"None": "Нет",
+	"Bold": "Жирный",
+	"Italic": "Курсив",
+	"Underline": "Подчёркнутый",
+	"Strikeout": "Зачёркнутый"
 }

@@ -1393,7 +1393,9 @@ public sealed partial class DesignSurface : IDisposable
                     : type == typeof(Font) ? "font"
                     : IsNumber(type) ? "number"
                     : "text";
-                if (type.IsEnum) row.Options = Enum.GetNames(type).ToList();
+                if (type == typeof(Color)) ColorOptions(row);
+                else if (type == typeof(Font)) row.Options = FontFamilies();
+                else if (type.IsEnum) row.Options = Enum.GetNames(type).ToList();
                 else if (type == typeof(string) && pd.Name is "DisplayMember" or "ValueMember" or "DataMember" or "DataPropertyName") MemberOptions(row, target, pd.Name);
                 else if (!pd.IsReadOnly && type != typeof(bool) && pd.Converter.GetStandardValuesSupported())
                 {
@@ -1411,6 +1413,33 @@ public sealed partial class DesignSurface : IDisposable
         if (target is DataGridViewColumn { DataGridView: not null } column) rows.Add(ColumnTypeRow(column));
         BindingRows(target, rows);
         return rows.OrderBy(r => r.Category, StringComparer.Ordinal).ThenBy(r => r.Name, StringComparer.Ordinal).ToList();
+    }
+
+    private static List<string>? s_webColors, s_systemColors, s_fontFamilies;
+    private static Dictionary<string, string>? s_systemSwatches;
+
+    /// <summary>The color picker's Web and System tabs: the known colors, by kind, in KnownColor order (as VS lists them).</summary>
+    private static void ColorOptions(DesignerPropertyRow row)
+    {
+        if (s_webColors == null)
+        {
+            var known = Enum.GetValues<KnownColor>().Select(Color.FromKnownColor).ToList();
+            s_systemColors = known.Where(c => c.IsSystemColor).Select(c => c.Name).Distinct().ToList();
+            s_systemSwatches = known.Where(c => c.IsSystemColor).GroupBy(c => c.Name).ToDictionary(g => g.Key, g => $"#{g.First().R:x2}{g.First().G:x2}{g.First().B:x2}");
+            s_webColors = known.Where(c => !c.IsSystemColor).Select(c => c.Name).Distinct().ToList();
+        }
+        row.Options = s_webColors;
+        row.SystemOptions = s_systemColors;
+        row.Swatches = s_systemSwatches;
+    }
+
+    /// <summary>The installed font families, for the font picker.</summary>
+    private static List<string> FontFamilies()
+    {
+        if (s_fontFamilies != null) return s_fontFamilies;
+        try { s_fontFamilies = FontFamily.Families.Select(f => f.Name).Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).Take(400).ToList(); }
+        catch (Exception) { s_fontFamilies = new List<string>(); }
+        return s_fontFamilies;
     }
 
     private static string? Text(PropertyDescriptor pd, object? value)

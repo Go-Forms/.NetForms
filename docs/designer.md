@@ -114,6 +114,11 @@ A **FlowLayoutPanel** goes by order, not by coordinates: a control added to it g
 dragged into it goes where the mark between the controls shows, a drag inside it reorders the flow, and the arrow keys
 move the selected control back or forth in it.
 
+**▾** beside `Anchor`, `Dock`, a color or a font opens Visual Studio's editor for it: four bars around a box for
+`Anchor`, the six places for `Dock`, a color picker with *Custom* (a palette), *Web* and *System* colors, and the font's
+family, size and style with a sample. A button given a color of its own gets `UseVisualStyleBackColor = false`, as in
+Visual Studio, so the color shows.
+
 **Data binding** is set in the property grid, as in Visual Studio. `DataSource` (of a BindingSource, a DataGridView, a
 ComboBox, a ListBox) lists the form's binding sources and the **classes of the project** (its build output is loaded
 as for its own controls — build it first): a class picked for a BindingSource becomes `DataSource = typeof(Customer)`;

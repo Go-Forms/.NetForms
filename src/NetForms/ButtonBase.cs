@@ -81,6 +81,24 @@ public abstract class ButtonBase : Control
 
     private bool _useVisualStyleBackColorSet;
 
+    /// <summary>A color of its own means no visual-style background: UseVisualStyleBackColor goes off (WinForms; while designed, through the property, so it is written).</summary>
+    public override Color BackColor
+    {
+        get => base.BackColor;
+        set
+        {
+            if (DesignMode)
+            {
+                if (value != Color.Empty) TypeDescriptor.GetProperties(this)["UseVisualStyleBackColor"]?.SetValue(this, false);
+            }
+            else
+            {
+                UseVisualStyleBackColor = false;
+            }
+            base.BackColor = value;
+        }
+    }
+
     /// <summary>Written once set explicitly - the designer does that for every new button.</summary>
     internal bool ShouldSerializeUseVisualStyleBackColor() => _useVisualStyleBackColorSet;
 
