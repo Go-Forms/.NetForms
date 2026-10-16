@@ -249,6 +249,53 @@ public class ToolStripTests
     }
 
     [Fact]
+    public void LeavingAMenuForItsOpenSubmenuKeepsTheSubmenuOpenAtEveryDepth()
+    {
+        var file = new ToolStripMenuItem("&File");
+        var recent = new ToolStripMenuItem("Recent");
+        var projects = new ToolStripMenuItem("Projects");
+        var deep = new ToolStripMenuItem("deep.sln");
+        projects.DropDownItems.Add(deep);
+        recent.DropDownItems.AddRange(new ToolStripItem[] { new ToolStripMenuItem("a.txt"), projects });
+        file.DropDownItems.AddRange(new ToolStripItem[] { recent, new ToolStripMenuItem("Other") });
+        var menu = new MenuStrip();
+        menu.Items.Add(file);
+
+        var (platform, form, window) = ShowForm(menu);
+        using (form)
+        {
+            int clicked = 0;
+            deep.Click += (_, _) => clicked++;
+
+            window.Click(new Point(file.Bounds.Left + 5, 10));
+            var level1 = platform.Windows.Last();
+            level1.Host.MouseMove(new Point(recent.Bounds.Left + 5, recent.Bounds.Top + 5), MouseButton.None, InputModifiers.None);
+            Assert.True(recent.DropDownVisible);
+
+            // On the way to the submenu the mouse crosses the menu's padding and leaves its window.
+            level1.Host.MouseMove(new Point(file.DropDown.Width - 1, recent.Bounds.Top + 5), MouseButton.None, InputModifiers.None);
+            level1.Host.MouseLeave();
+            Assert.True(recent.Selected);
+            Assert.True(recent.DropDownVisible);
+
+            var level2 = platform.Windows.Last();
+            Assert.NotSame(level1, level2);
+            level2.Host.MouseMove(new Point(projects.Bounds.Left + 5, projects.Bounds.Top + 5), MouseButton.None, InputModifiers.None);
+            Assert.True(projects.DropDownVisible);
+            level2.Host.MouseMove(new Point(recent.DropDown.Width - 1, projects.Bounds.Top + 5), MouseButton.None, InputModifiers.None);
+            level2.Host.MouseLeave();
+            Assert.True(projects.DropDownVisible);
+            Assert.True(recent.DropDownVisible);
+
+            var level3 = platform.Windows.Last();
+            Assert.NotSame(level2, level3);
+            level3.Click(new Point(deep.Bounds.Left + 5, deep.Bounds.Top + 5));
+            Assert.Equal(1, clicked);
+            Assert.False(file.DropDownVisible);
+        }
+    }
+
+    [Fact]
     public void EscapeClosesTheInnermostMenuAndThenTheWholeChain()
     {
         var file = new ToolStripMenuItem("&File");

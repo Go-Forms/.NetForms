@@ -411,6 +411,12 @@ public class ToolStripDropDown : ToolStrip
         }
     }
 
+    /// <summary>
+    /// A submenu is a window of its own: the mouse has to leave this one (and cross its padding) to get
+    /// there, so an item whose submenu is open stays selected until another item is hovered, as in WinForms.
+    /// </summary>
+    private protected override bool ClearsSelectionOffItems => SelectedItemInternal is not ToolStripDropDownItem { DropDownVisible: true };
+
     internal override void HandleItemClick(ToolStripItem item)
     {
         base.HandleItemClick(item);

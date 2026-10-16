@@ -865,16 +865,19 @@ public class ToolStrip : ScrollableControl
         }
         var item = GetItemAt(e.Location);
         if (item != null && !item.CanSelect) item = null;
-        SelectItem(item);
+        if (item != null || ClearsSelectionOffItems) SelectItem(item);
         if (item != null) item.HandleMouseMove(Translate(e, item));
         base.OnMouseMove(e);
     }
 
     protected override void OnMouseLeave(EventArgs e)
     {
-        if (_pressedItem == null) SelectItem(null);
+        if (_pressedItem == null && ClearsSelectionOffItems) SelectItem(null);
         base.OnMouseLeave(e);
     }
+
+    /// <summary>Whether the mouse moving off every item (onto padding, a separator, or out of the strip) drops the selection.</summary>
+    private protected virtual bool ClearsSelectionOffItems => true;
 
     private static MouseEventArgs Translate(MouseEventArgs e, ToolStripItem item) =>
         new MouseEventArgs(e.Button, e.Clicks, e.X - item.Bounds.X, e.Y - item.Bounds.Y, e.Delta);
